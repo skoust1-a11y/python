@@ -47,12 +47,12 @@ Following steps should be performed to build the solution for this practice.
 
 ### Step 4: Implement rate limiting and error handling​
 
-- Integrate `SlowAPI` to set per-user rate limits (e.g., 10 requests/min).​
+- Integrate `slowAPI` to set per-user rate limits (e.g., 3 requests/min).​
 - Handle common API errors such as invalid keys, missing inputs, or timeouts with clear status codes and messages (400, 401, 429, etc.).
 
 ### Step 5: Document your API with OpenAPI​
 
-- Leverage FastAPI’s auto-generated Swagger UI at`/docs` for interactive testing.​
+- Leverage FastAPI’s built-in **Swagger UI** and **ReDoc** for auto-generated documentation.​
 
 |Tool| path |Purpose|
 |---|---|---|
@@ -83,7 +83,7 @@ When the program runs:​
 
 -----
 
-### Folder Structure
+### Project Structure
 
 ![](./screenshots/folder-structure.png)
 
