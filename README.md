@@ -90,17 +90,15 @@ Combine both tools into a single agent that decides which tool to use based on t
 
 #### Requirements
 
-1. In `main.py` import your tools:
-from travel_tools import get_destination_info, get_user_location
-
-2. Initialize a Model (use LangChain OpenAI with Gemini)
+1. In `main.py` import your tools.
+2. Initialize a Model (use LangChain `ChatOpenAI` configured to work with Gemini).
 3. Combine your tools into a list.
-4. Pull the official ReAct prompt from LangChain Hub and create an Agent using `create_react_agent`.
-5. Create an endpoint (`/ask`) which will accept input from user and invoke the agent executor.
-6. Test at least three user queries:
-- "what are the visiting place near me" → should use both get_user_location and get_destination_info
-- "What's the region of my address?" → should use get_user_location
-- "Which months are best to visit Bali?" → should use get_destination_info
+4. Create an Agent using `create_agent` with a custom system prompt.
+5. Create a POST endpoint (`/ask`) which will accept a query from user and invoke the agent.
+6. Test at least three user queries.
+- `"what are the visiting place near me"` → should use both `get_user_location` and `get_destination_info`
+- `"What's the region of my address?"` → should use `get_user_location`
+- `"Which months are best to visit Bali?"` → should use `get_destination_info`
 
 
 ### Project Setup
@@ -166,6 +164,18 @@ from travel_tools import get_destination_info, get_user_location
    APIIP_API_KEY=your_apiip_key_here
    ```
    
+   **Tip**: You can copy `.envbackup` to `.env` and update the values:
+   
+   **For Linux/Mac:**
+   ```bash
+   cp .envbackup .env
+   ```
+   
+   **For Windows:**
+   ```cmd
+   copy .envbackup .env
+   ```
+   
    **Note**: Make sure there are no spaces around the `=` sign in the `.env` file.
 
    To get a Gemini API key:
@@ -199,23 +209,43 @@ You can test the endpoints using:
    - **External Tool**: `GET /tools/external` - Tests `get_user_location`
 
 3. **Test the Agent** (Task 3):
-   - **POST /ask?query=what are the visiting place near me** - Should use both tools
-   - **POST /ask?query=What's the region of my address?** - Should use `get_user_location`
-   - **POST /ask?query=Which months are best to visit Bali?** - Should use `get_destination_info`
+   - **POST /ask** with `query` parameter:
+     - `query=what are the visiting place near me` - Should use both tools
+     - `query=What's the region of my address?` - Should use `get_user_location`
+     - `query=Which months are best to visit Bali?` - Should use `get_destination_info`
+   
+   **Example using curl**:
+   ```bash
+   curl -X POST "http://localhost:8000/ask?query=what are the visiting place near me"
+   ```
 
 ## Key Implementation Details
 
 ### Agent Setup
 
-The project uses `create_react_agent` with `AgentExecutor` for robust agent execution:
+The project uses `create_agent` from LangChain to create an intelligent agent that can select and use tools:
 
-- **LangChain Hub Integration**: Uses the official ReAct prompt (`hwchase17/react`) from LangChain Hub
-- **Error Handling**: Includes `handle_parsing_errors=True` for graceful error recovery
-- **Verbose Mode**: Enabled for detailed execution logs during development
+- **Custom System Prompt**: Includes specific instructions for handling location-based queries
+- **Tool Selection**: The agent automatically decides which tool(s) to use based on the user query
+- **Message Format**: Uses LangChain's message format with role-based conversations
 
 ### Tool Invocation Format
 
-- **AgentExecutor**: Uses `{"input": "query"}` format and returns `{"output": "response"}`
-- **Individual Tools**: Use `tool.invoke({"parameter": value})` format
+- **Agent**: Uses `{"messages": [{"role": "user", "content": query}]}` format and returns messages with the response
+- **Individual Tools**: 
+  - `get_destination_info.invoke({"destination": "Goa"})` - Returns JSON string
+  - `get_user_location.invoke({"input": ""})` - Returns JSON string
+  - Both tools return JSON strings that need to be parsed with `json.loads()`
+
+### Project Structure
+
+```
+practice-1-trip-and-travel-agent/
+├── main.py              # FastAPI application with agent and endpoints
+├── travel_tools.py      # Tool implementations (internal & external)
+├── pyproject.toml       # Project dependencies
+├── .env                 # Environment variables (create this)
+└── README.md           # This file
+```
 
 

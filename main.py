@@ -2,12 +2,10 @@ import json
 from fastapi import FastAPI, HTTPException
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-from langchain.agents import create_react_agent, AgentExecutor
+from langchain.agents import create_agent
 from travel_tools import get_destination_info, get_user_location
 import os
-from langchain import hub
 import uvicorn
-
 # -------------------------------
 # Environment Setup
 # -------------------------------
@@ -36,20 +34,18 @@ model = ChatOpenAI(
 # -------------------------------
 
 
-# -------------------------------
-# Step 3: Define Prompt
-# -------------------------------
-# Replace your custom prompt with the recommended one from the hub.
-# This prompt is specifically designed to work with the ReAct agent.
-#Use the non-conversational ReAct prompt that does not require `chat_history`.
-
-
 
 # -------------------------------
-# Step 4: Create ReAct Agent
+# Step 3: Create Agent
 # -------------------------------
-# Create a ReAct Agent
-# Create an AgentExecutor with the agent and tools
+prompt= """You are a helpful travel and trip planning assistant. 
+When users ask about places to visit near them, places near their location, or visiting places in their area:
+   - FIRST: Automatically call get_user_location to get the user's city/region
+   - THEN: Automatically call get_destination_info with the user's city name (extracted from location) to get travel information
+   - DO NOT ask follow-up questions - directly provide the information using both tools
+"""
+# Create an Agent using create_agent with the prompt and tools
+
 
 
 # -------------------------------
@@ -69,7 +65,7 @@ model = ChatOpenAI(
 
 
 # Task-3 Intelligent Agent Endpoint
-# Create an endpoint (`/ask`) which will accept input from user and invoke the agent executor.
+# Create an endpoint (`/ask`) which will accept input from user and invoke the agent.
 
 
 # -------------------------------
