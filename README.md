@@ -1,6 +1,6 @@
 ## Study Buddy: AI Tutor - Orchestrated Microservices with gRPC
 
-This project demonstrates an orchestrated microservices architecture where an Orchestrator Agent coordinates multiple AI services (Gemini and Ollama) using gRPC protocol.
+This practice exercise demonstrates an orchestrated microservices architecture where an Orchestrator Agent coordinates multiple AI services (Gemini and Ollama) using gRPC protocol.
 
 ### Architecture
 
@@ -24,31 +24,31 @@ Your AI Tutor system is evolving into a distributed architecture where multiple 
 ### Task Details
 Following steps should be performed to build the solution for this practice. ​
 
-Step 1: Create `.proto` contracts​
+**Step 1: Create `.proto` contracts​**
 
 - Define `prompts.proto` (PromptManager) and `ollama_service.proto` (OllamaService) with request/response messages and RPCs.
 
-Step 2: Generate Python bindings​
+**Step 2: Generate Python bindings​**
 
 - Install `grpcio / grpcio-tools` and run protoc to produce `*_pb2.py` and `*_pb2_grpc.py` for both proto files.
 
-Step 3: Implement Ollama gRPC server​
+**Step 3: Implement Ollama gRPC server​**
 
 - Complete `OllamaServiceServicer.GenerateExplanation` to call the Ollama HTTP API, parse the response, and return the proto response.​
 - Start a gRPC server (port 50052) and register the service.​
 
-Step 4: Implement Prompt Manager gRPC server​
+**Step 4: Implement Prompt Manager gRPC server​**
 
 - Complete `PromptManagerServicer.GetPrompt` to look up prompts and return PromptResponse.​
 - Start a gRPC server (port 50051) and register the service.
 
-Step 5: Implement the Orchestrator client​
+**Step 5: Implement the Orchestrator client​**
 
 - Create gRPC channels/stubs to Prompt Manager and Ollama.​
 - Implement `get_system_prompt`, `call_ollama`, and `orchestrate_dual_explanation` to fetch prompt, call Gemini (HTTP), call Ollama (gRPC), and combine results.​
 - Add proper error handling and graceful degradation.
 
-Step 6: Wire up FastAPI main.py and test end-to-end
+**Step 6: Wire up FastAPI main.py and test end-to-end**
 
 - Initialize `OrchestratorAgent` in the FastAPI app, implement the `/explain/dual` endpoint to call the orchestrator, and convert results to response models.​
 - Run servers and client, then validate using two terminals (server(s) + client/API).
@@ -64,7 +64,7 @@ When the program runs:​
 
 ## Project Structure
 ```
-ai_tutor_9/
+ai_tutor_orchestrated_microservices_with_gRPC/
 ├── app/
 │   ├── proto/
 │   │   ├── __init__.py
