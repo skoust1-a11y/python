@@ -62,6 +62,10 @@ When the program runs:​
 - Responses are returned instantly with system prompts or model results.​
 - The architecture showcases low-latency, structured interservice communication between AI components.
 
+### Note:
+
+**Complete the solution code as per the instructions given as comments in the rtespective files.**
+
 ## Project Structure
 ```
 ai_tutor_orchestrated_microservices_with_gRPC/
