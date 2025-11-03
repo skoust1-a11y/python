@@ -1,0 +1,9 @@
+// complete the code
+syntax = "proto3";
+
+package prompts;
+
+// Service definition for Prompt Manager
+// This service manages system prompts for different AI tasks
+
+

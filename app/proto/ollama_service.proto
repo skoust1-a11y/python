@@ -1,0 +1,18 @@
+// complete the code
+
+syntax = "proto3";
+
+package ollama;
+
+// Ollama AI Inference Service
+
+
+// Request for AI inference
+
+
+// Response from AI inference
+
+
+
+
+
