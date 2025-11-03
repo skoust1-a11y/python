@@ -64,7 +64,7 @@ When the program runs:​
 
 ### Note:
 
-**Complete the solution code as per the instructions given as comments in the rtespective files.**
+**Complete the solution code as per the instructions given as comments in the respective files.**
 
 ## Project Structure
 ```
