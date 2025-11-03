@@ -34,8 +34,7 @@ Prepare and present your final project demo, showcasing functionality and explai
 
 ✅ Integrate **LLM APIs** for dynamic and context-aware activity recommendations.
 
-✅ Ensure **structured data validation** and clean API responses using Pydantic 
-models.
+✅ Ensure **structured data validation** and clean API responses using Pydantic models.
 
 ✅ **Implement endpoints** and handle API errors gracefully.
 
@@ -111,11 +110,16 @@ The project progresses through structured milestones to help you build systemati
 
 ## Guidelines for Success
 
-🔹 **Start Early** – Initialize the FastAPI project, env vars, and folder structure in Sprint 11.  
+🔹 **Start Early** – Initialize the FastAPI project, env vars, and folder structure in Sprint 11. 
+
 🔹 **Keep It Simple** – Deliver core endpoints (detection, recommendation, logging) before adding extras.  
+
 🔹 **Test Thoroughly** – Manually verify responses, then add `pytest` / `TestClient` tests for key routes.
-🔹 **Focus on API UX** – Make responses predictable, well-documented (OpenAPI), and easy to consume.  
+
+🔹 **Focus on API UX** – Make responses predictable, well-documented (OpenAPI), and easy to consume. 
+
 🔹 **Leverage Feedback** – Share API docs and Postman/Swagger samples with mentors for iterative refinement.
+
 🔹 **Stay Organized** – Keep repo tidy, use meaningful commits, and document setup + run steps.
 
 💡 **Pro Tip**: Think of this project as something you’d proudly showcase in an **interview portfolio**.  
