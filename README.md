@@ -1,4 +1,4 @@
-# Sprint 4 Practice Assignment: Equipping the Travel & Trip Planner Bot with Tools and Intelligence
+# Sprint 4 Practice Assignment: Equipping the Travel & Trip Agent with Tools and Intelligence
 
 ## Project Context
 You’ve already built the core travel suggestion engine in previous sprints — it can generate itineraries and structured outputs.  
