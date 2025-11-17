@@ -146,11 +146,11 @@ The project progresses through structured milestones to help you build systemati
 
 You may choose one of the following scenarios for your SPA project:
 
-1. **Wellbeing Coach** – Your Personalized 5-Minute Mental Booster
-2. **Code Mentor** –  Your AI Pair Programmer 
-3. **Career Compass** – Your AI Career Growth Partner
-4. **Health Mate** –Your Smart Lifestyle Optimizer  
-5. **Project Pilot** – Your AI Productivity Manager  
+1. [Career Compass](Career Compass.md)– Your Personalized 5-Minute Mental Booster
+2. [Code Mentor](Code Mentor.md) –  Your AI Pair Programmer 
+3. [Health Mate](Health Mate.md) – Your AI Career Growth Partner
+4. [Project Pilot](Project Pilot.md) –Your Smart Lifestyle Optimizer  
+5. [Wellbeing Coach](Wellbeing Coach.md) – Your AI Productivity Manager  
  
 
 ---
