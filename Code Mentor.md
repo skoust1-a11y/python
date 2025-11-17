@@ -30,54 +30,52 @@ The goal of this project is to build a **Python-based Code Mentor Application** 
 
 ## Functional Requirements
 
-### 1. Code Understanding & Explanation
+### 1. Code Issue Detection
+- Accept code input via text or file upload.  
+- Analyze and detect syntax errors, logic flaws, and inefficient patterns.  
+- Identify complex or unclear sections in the code.  
 
-- Accept code input via text or file upload.
-- Generate human-friendly explanations of logic and structure.
-- Highlight complex or inefficient sections.
+### 2. Code Context Awareness
+- Understand the programming language, coding style, and skill level of the user.  
+- Interpret the purpose of the code to provide meaningful explanations.  
+- Adapt responses based on the user's experience level and learning progress.
 
-### 2. Debugging Assistance
+### 3. Code Improvement Recommendation System
+Recommends actions such as:
 
-- Detect common syntax and logic errors.
-- Suggest step-by-step solutions or improved versions of the code.
+- Human-friendly explanations of code logic and structure.  
+- Step-by-step debugging insights and improved code versions.  
+- Optimization suggestions for cleaner, faster, and maintainable code.  
+- Reusable code snippets (e.g., API calls, loops, class templates).  
+- Function/class templates relevant to the current problem.  
 
-### 3. Code Optimization & Best Practices
+Also includes:
 
-- Recommend cleaner, faster, and more maintainable code.
-- Share best practices based on developer skill level and language conventions.
+- User feedback options: “Helpful” / “Not Helpful”.  
+- Continuous learning loop to refine future recommendations.
 
-### 4. Snippet & Template Recommendation
+### 4. AI Integration
 
-- Provide reusable code snippets for common tasks (e.g., API calls, loops, class structures).
-- Suggest function or class templates relevant to the current problem.
+- Use **LLM Models** for dynamic and personalized well-being activity generation.
 
-### 5. Learning Feedback Loop
-
-- Allow users to mark suggestions as “helpful” or “not helpful”.
-- Adapt future recommendations based on feedback patterns.
-
-## AI Integration
-
-- Utilize **LLM models** to analyze and generate code explanations and improvements.
-- Maintain history to refine suggestions according to user’s past coding sessions.
+---
 
 ## Technical Details
 
 **Programming Language:** Python
 
-**Libraries/Tools:**
+### Libraries & Tools
 
-| Tool / Library | Purpose |
-|---|---|
-| **FastAPI** | Backend API services |
-| **Uvicorn** | Server execution |
-| **Pydantic** | Request/response validation |
-| **Requests** | Communication with AI model APIs |
-| **python-dotenv** | Secure environment variable handling |
+| Library/Tool | Purpose |
+|-------------|---------|
+| `fastapi`   | Build backend API |
+| `uvicorn`   | Run FastAPI server |
+| `requests`  | Communicate with Gemini / Ollama APIs |
+| `dotenv`    | Manage environment variables securely |
 
-**Environment Variables:**
+### Environment Variables
 
-| Variable Name | Purpose |
-|---|---|
-| `GEMINI_API_KEY` | Authentication for Gemini AI model |
-| `OLLAMA_MODEL_PATH` | Path for local Ollama model instance |
+| Variable | Purpose |
+|---------|---------|
+| `GEMINI_API_KEY` | Authenticate requests to Gemini API |
+| `OLLAMA_MODEL_PATH` | Path to local Ollama model instance |
