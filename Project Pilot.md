@@ -30,53 +30,56 @@ The goal of this project is to develop a **Python-based Productivity Management 
 
 ## Functional Requirements
 
-### 1. Task Capture & Organization
+### 1. Task & Workload Detection
+- Allow users to add tasks with details such as deadlines, categories, effort levels, and context.  
+- Capture projects, goals, and daily plans for structured organization.  
+- Detect task size and identify tasks that require breakdown into smaller steps.
 
-- Allow users to add tasks with details like deadline, category, effort level, and context.
-- Group tasks into projects, goals, or daily plans.
+### 2. Productivity Context Awareness
+- Analyze urgency, importance, time constraints, and user focus levels.  
+- Understand available time in the user’s day to tailor prioritization.  
+- Interpret user habits, consistency streaks, and time usage patterns to generate insights.
 
-### 2. Intelligent Prioritization
+### 3. Smart Productivity Recommendation System
+Recommends productivity actions such as:
 
-- Automatically rank tasks using urgency, importance, and time constraints.
-- Suggest task order for the day based on available time and focus level.
+- Automatically prioritized task order for the day.  
+- Suggested micro-steps for large tasks and estimated time blocks.  
+- Focus session timers (e.g., Pomodoro) and break reminders.  
+- Motivational nudges and progress prompts.  
+- Weekly summaries and personalized improvement tips.  
 
-### 3. Smart Work Breakdown
+Also includes:
 
-- Break large tasks into smaller actionable micro steps.
-- Suggest estimated time blocks for focused work sessions.
+- Tracking completed tasks and productivity streaks.  
+- Continuous feedback loop to refine recommendations based on user behavior.
+- User feedback option: “Helpful” / “Not Helpful”
+- Feedback loop to improve suggestions over time
 
-### 4. Focus & Accountability Assistance
+### 4. AI Integration
 
-- Provide focus session timers (e.g., Pomodoro technique).
-- Send motivational nudges, break reminders, and progress prompts.
+- Use **LLM Models** for dynamic and personalized well-being activity generation.
 
-### 5. Productivity Insights
-
-- Track completed tasks, consistency streaks, and time usage.
-- Generate weekly summaries and personalized improvement tips.
-
-## AI Integration
-
-- Use **LLM models** to analyze user behavior, refine prioritization logic, and generate focus guidance.
-- Adapt task recommendations and productivity strategies over time.
+---
 
 ## Technical Details
 
 **Programming Language:** Python
 
-**Libraries/Tools:**
+### Libraries & Tools
 
-| Tool / Library | Purpose |
-|---|---|
-| **FastAPI** | Backend API development |
-| **Uvicorn** | Server execution |
-| **Pydantic** | Data validation & modeling |
-| **Requests** | Communication with AI models |
-| **python-dotenv** | Environment variable management |
+| Library/Tool | Purpose |
+|-------------|---------|
+| `fastapi`   | Build backend API |
+| `uvicorn`   | Run FastAPI server |
+| `requests`  | Communicate with Gemini / Ollama APIs |
+| `dotenv`    | Manage environment variables securely |
 
-**Environment Variables:**
+### Environment Variables
 
-| Variable Name | Purpose |
-|---|---|
-| `GEMINI_API_KEY` | Authentication for Gemini AI model |
-| `OLLAMA_MODEL_PATH` | Path for local Ollama model instance |
+| Variable | Purpose |
+|---------|---------|
+| `GEMINI_API_KEY` | Authenticate requests to Gemini API |
+| `OLLAMA_MODEL_PATH` | Path to local Ollama model instance |
+
+---
