@@ -48,7 +48,8 @@ Recommends achievable wellbeing actions such as:
 - Choose a healthier meal alternative  
 
 Also includes:
-
+- User feedback option: “Helpful” / “Not Helpful”
+- Feedback loop to improve suggestions over time
 - Adaptive suggestions based on user routines and goals.  
 - Goal setting for steps, water intake, and other habits.  
 - Motivational nudges and reminders.  
