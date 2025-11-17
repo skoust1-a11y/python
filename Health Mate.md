@@ -27,60 +27,57 @@ The goal of this project is to create a **Python-based Smart Lifestyle Optimizat
 - Recommends small daily habit adjustments to improve overall wellbeing.
 - Suggests nutrition, hydration, sleep, fitness, and mindfulness activities.
 - Tracks progress and adapts guidance over time.
-
 ## Functional Requirements
 
-### 1. Lifestyle Data Tracking
+### 1. Lifestyle Pattern Detection
+- Accept manual or synced data (sleep hours, steps, meals, water intake, mood, etc.).  
+- Store and update daily habit logs.  
+- Detect patterns such as sleep deficit, dehydration, long sedentary hours, or stress buildup.  
 
-- Accept manual input or synced data (sleep hours, steps, meals, water intake, mood, etc.).
-- Store and update daily habit logs.
+### 2. Health Context Awareness
+- Understand the user’s routine, habits, and health goals.  
+- Generate daily or weekly wellbeing summaries based on tracked patterns.  
+- Adapt insights based on ongoing lifestyle changes and progress.
 
-### 2. Pattern Detection & Health Insights
+### 3. Personalized Habit Recommendation System
+Recommends achievable wellbeing actions such as:
 
-- Identify patterns such as sleep deficit, dehydration, long sedentary hours, or stress buildup.
-- Generate daily or weekly wellbeing summaries.
+- Drink a glass of water  
+- Take a 3-minute stretch break  
+- Adjust bedtime routine  
+- Choose a healthier meal alternative  
 
-### 3. Personalized Habit Recommendations
+Also includes:
 
-- Provide small, achievable actions such as:
-  - Drink a glass of water
-  - Take a 3-minute stretch break
-  - Adjust bedtime routine
-  - Choose a healthier meal alternative
-- Adapt suggestions based on user routines and goals.
+- Adaptive suggestions based on user routines and goals.  
+- Goal setting for steps, water intake, and other habits.  
+- Motivational nudges and reminders.  
+- Progress tracking with visual trends and “done/skip” action logging.
 
-### 4. Goal Setting & Motivation
+### 4. AI Integration
 
-- Allow users to set health goals (e.g., steps/day, water intake).
-- Provide motivational nudges and reminders.
+- Use **LLM Models** for dynamic and personalized well-being activity generation.
 
-### 5. Progress Tracking
-
-- Display visual progress trends over time.
-- Allow users to mark actions as “done” or “skip”.
-
-## AI Integration
-
-- Use **LLM models** to generate personalized recommendations and lifestyle coaching messages.
-- Learn from user engagement patterns to refine future suggestions.
+---
 
 ## Technical Details
 
 **Programming Language:** Python
 
-**Libraries/Tools:**
+### Libraries & Tools
 
-| Tool / Library | Purpose |
-|---|---|
-| **FastAPI** | Backend API development |
-| **Uvicorn** | Running FastAPI server |
-| **Pydantic** | Data validation & models |
-| **Requests** | API communication (AI services) |
-| **python-dotenv** | Secure environment variable management |
+| Library/Tool | Purpose |
+|-------------|---------|
+| `fastapi`   | Build backend API |
+| `uvicorn`   | Run FastAPI server |
+| `requests`  | Communicate with Gemini / Ollama APIs |
+| `dotenv`    | Manage environment variables securely |
 
-**Environment Variables:**
+### Environment Variables
 
-| Variable Name | Purpose |
-|---|---|
-| `GEMINI_API_KEY` | Authentication for Gemini AI model |
+| Variable | Purpose |
+|---------|---------|
+| `GEMINI_API_KEY` | Authenticate requests to Gemini API |
 | `OLLAMA_MODEL_PATH` | Path to local Ollama model instance |
+
+---
