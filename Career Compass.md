@@ -28,55 +28,55 @@ The goal of this project is to build a **Python-based Career Guidance Applicatio
 - Provides portfolio and resume-building suggestions.
 - Guides interview practice using AI-powered Q&A feedback.
 
-## Functional Requirements
+# Functional Requirements
 
-### 1. User Profile & Skill Assessment
+## 1. Career & Skill Detection
+- Collect and analyze the user's interests, education background, skills, and career goals.  
+- Detect strengths, weaknesses, and skill gaps using assessment logic.  
+- Continuously refine the profile based on user interactions and progress updates.
 
-- Collect user interests, education, skill level, and career goals.
-- Analyze strengths and gaps to identify opportunities for improvement.
+## 2. Career Context Awareness
+- Understand the user's background, learning style, and career aspirations to personalize guidance.  
+- Identify industry trends relevant to the user's chosen field.  
+- Adapt recommendations based on the user’s current skill level (beginner/intermediate/advanced).
 
-### 2. Career Path Recommendation
+## 3. Career Growth Recommendation System
+Recommends personalized career development actions such as:
 
-- Suggest suitable roles (e.g., Data Analyst, Web Developer, UI/UX Designer).
-- Explain why a role fits the user's profile with examples and industry context.
+- Suitable job roles (e.g., Data Analyst, Web Developer, UI/UX Designer) with role-fit explanations.  
+- Step-by-step skill roadmaps with curated learning resources.  
+- Real-world mini-projects to help build the user’s portfolio.  
+- Resume formatting tips and sample templates.  
+- Mock HR and technical interview questions with improvement feedback.
 
-### 3. Personalized Skill Roadmap
+Also includes:
 
-- Provide step-by-step learning paths with curated resources.
-- Suggest timelines for beginner, intermediate, and advanced learners.
+- User feedback option: “Helpful” / “Not Helpful”.  
+- Continuous feedback loop to improve future recommendations.
 
-### 4. Portfolio & Resume Guidance
-
-- Recommend real-world mini-projects to showcase skills.
-- Provide resume formatting tips and sample templates.
-
-### 5. Interview Preparation Support
-
-- Generate mock technical and HR interview questions.
-- Provide evaluation feedback and improvement suggestions.
-
-## AI Integration
+## 4. AI Integration
 
 - Use **LLM models** to generate career path recommendations, learning plans, and interview coaching.
 - Continuously refine suggestions based on user progress and feedback.
+
+---
 
 ## Technical Details
 
 **Programming Language:** Python
 
-**Libraries/Tools:**
+### Libraries & Tools
 
-| Tool / Library | Purpose |
-|---|---|
-| **FastAPI** | Backend API services |
-| **Uvicorn** | Server execution |
-| **Pydantic** | Request/response validation |
-| **Requests** | Communication with AI model APIs |
-| **python-dotenv** | Secure environment variable handling |
+| Library/Tool | Purpose |
+|-------------|---------|
+| `fastapi`   | Build backend API |
+| `uvicorn`   | Run FastAPI server |
+| `requests`  | Communicate with Gemini / Ollama APIs |
+| `dotenv`    | Manage environment variables securely |
 
-**Environment Variables:**
+### Environment Variables
 
-| Variable Name | Purpose |
-|---|---|
-| `GEMINI_API_KEY` | Authentication for Gemini AI model |
-| `OLLAMA_MODEL_PATH` | Path for local Ollama model instance |
+| Variable | Purpose |
+|---------|---------|
+| `GEMINI_API_KEY` | Authenticate requests to Gemini API |
+| `OLLAMA_MODEL_PATH` | Path to local Ollama model instance |
