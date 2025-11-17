@@ -30,17 +30,17 @@ The goal of this project is to build a **Python-based Career Guidance Applicatio
 
 # Functional Requirements
 
-## 1. Career & Skill Detection
+### 1. Career & Skill Detection
 - Collect and analyze the user's interests, education background, skills, and career goals.  
 - Detect strengths, weaknesses, and skill gaps using assessment logic.  
 - Continuously refine the profile based on user interactions and progress updates.
 
-## 2. Career Context Awareness
+### 2. Career Context Awareness
 - Understand the user's background, learning style, and career aspirations to personalize guidance.  
 - Identify industry trends relevant to the user's chosen field.  
 - Adapt recommendations based on the user’s current skill level (beginner/intermediate/advanced).
 
-## 3. Career Growth Recommendation System
+### 3. Career Growth Recommendation System
 Recommends personalized career development actions such as:
 
 - Suitable job roles (e.g., Data Analyst, Web Developer, UI/UX Designer) with role-fit explanations.  
@@ -54,7 +54,7 @@ Also includes:
 - User feedback option: “Helpful” / “Not Helpful”.  
 - Continuous feedback loop to improve future recommendations.
 
-## 4. AI Integration
+### 4. AI Integration
 
 - Use **LLM models** to generate career path recommendations, learning plans, and interview coaching.
 - Continuously refine suggestions based on user progress and feedback.
