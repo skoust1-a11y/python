@@ -75,7 +75,6 @@ def load_config() -> Dict[str, Any]:
     logger.info("Configuration loaded")
     logger.debug(f"Embedding deployment: {config['azure_embedding_deployment']}")
     logger.debug(f"Endpoint: {config['azure_endpoint']}")
-    logger.debug(f"Database: {db_host}:{db_port}/{db_name}")
     logger.debug(f"Collection: {config['collection_name']}")
     logger.debug(f"Chunking: size={config['chunk_size']}, overlap={config['chunk_overlap']}")
     
