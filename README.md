@@ -189,25 +189,17 @@ Before starting S2, ensure you have completed **Sprint 1**:
 │   ├── routes/                             # API routes
 │   │   ├── __init__.py
 │   │   └── ingestion_routes.py            # FastAPI routes for ingestion & query
-│   ├── services/                           # Business logic services
-│   │   ├── __init__.py
-│   │   ├── # Document Loaders
-│   │   ├── pdf_loader_service.py          # PDF document loading service
-│   │   ├── text_loader_service.py         # Text file loading service
-│   │   ├── html_loader_service.py         # HTML file loading service (uses BSHTMLLoader)
-│   │   ├── web_loader_service.py          # Web page loading service
-│   │   ├── # Document Processing
-│   │   ├── document_processing_service.py  # Multi-source processing & file type detection
-│   │   ├── chunking_service.py            # Document chunking service
-│   │   ├── # Orchestration
-│   │   ├── injection_pipeline_service.py  # Complete pipeline orchestration
-│   │   ├── # Storage & Query
-│   │   ├── embedding_service.py           # Embedding generation & vector storage
-│   │   └── query_service.py               # Vector similarity search service
-│   └── utils/                              # Utility functions
+│   └── services/                           # Business logic services
 │       ├── __init__.py
-│       ├── file_type_detector.py          # File type detection utility
-│       └── file_utils.py                  # File management utilities
+│       ├── pdf_loader_service.py          # PDF document loading service
+│       ├── text_loader_service.py         # Text file loading service
+│       ├── html_loader_service.py         # HTML file loading service (uses BSHTMLLoader)
+│       ├── web_loader_service.py          # Web page loading service
+│       ├── document_processing_service.py  # Multi-source processing & file type detection
+│       ├── chunking_service.py            # Document chunking service
+│       ├── injection_pipeline_service.py  # Complete pipeline orchestration
+│       ├── embedding_service.py           # Embedding generation & vector storage
+│       └── query_service.py               # Vector similarity search service
 ├── Documents/                              # Documents directory (all uploaded files stored here)
 │   ├── *.pdf                               # PDF documents
 │   ├── *.txt                               # Text documents
@@ -220,13 +212,16 @@ Before starting S2, ensure you have completed **Sprint 1**:
 ├── pyproject.toml                          # Project dependencies and configuration
 ├── uv.lock                                 # Lock file for reproducible builds
 ├── .env                                    # Environment variables (create this - not in git)
-├── .env.example                            # Environment variables template
 ├── .gitignore                             # Git ignore patterns
 └── README.md                              # This file
-
-Note: Old files at root level (config.py, utils.py, rag_ingestion_pipeline.py, api.py)
-      are deprecated and kept for reference only. Use the modular structure in main/.
 ```
+
+**Service Organization:**
+
+- **Document Loaders**: `pdf_loader_service.py`, `text_loader_service.py`, `html_loader_service.py`, `web_loader_service.py`
+- **Document Processing**: `document_processing_service.py`, `chunking_service.py`
+- **Orchestration**: `injection_pipeline_service.py`
+- **Storage & Query**: `embedding_service.py`, `query_service.py`
 
 ---
 
