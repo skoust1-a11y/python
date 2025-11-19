@@ -1,12 +1,10 @@
-# Project Pilot – Your AI Productivity Manager
+# Problem Statement: Project Pilot – Your AI Productivity Manager
 
 An AI-driven productivity assistant that helps users plan tasks, stay focused, and make progress through personalized micro-planning and real-time guidance.
 
 ---
 
-## Problem Statement: Project Pilot – Your AI Productivity Manager
-
-### Context
+## Context
 
 In today’s demanding work and study environments, people struggle to manage complex tasks, shifting priorities, and inconsistent productivity levels. Most existing productivity tools are rigid, require manual setup, or fail to adapt to individual working styles.
 
@@ -16,7 +14,7 @@ In today’s demanding work and study environments, people struggle to manage co
 - Productivity dips due to fluctuating focus and energy levels.  
 - Tools lack personalization and real-time adaptive support.  
 
-### Project Goal
+## Project Goal
 
 Design an AI-powered Productivity Manager that provides **personalized planning, micro-task breakdowns, and real-time focus support** to help users stay organized and productive.
 
