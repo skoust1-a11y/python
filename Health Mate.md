@@ -1,12 +1,9 @@
-# Health Mate – Your Smart Lifestyle Optimizer
+# Problem Statement: Health Mate – Your Smart Lifestyle Optimizer
 
 An AI-powered wellness companion that helps users improve daily habits through personalized micro-actions across sleep, nutrition, hydration, fitness, and stress balance.
 
 ---
-
-## Problem Statement: Health Mate – Your Smart Lifestyle Optimizer
-
-### Context
+## Context
 
 Modern routines often lead to irregular sleep, poor nutrition, low activity levels, and unmanaged stress. Most wellness tools require manual tracking, lack personalization, or promote extreme goals rather than achievable daily improvements.
 
@@ -17,7 +14,7 @@ Modern routines often lead to irregular sleep, poor nutrition, low activity leve
 - Health information is scattered across multiple apps.  
 - People need small, sustainable improvements—not drastic changes.  
 
-### Project Goal
+## Project Goal
 
 Design an AI-powered Lifestyle Optimizer that provides **personalized micro-habit suggestions** to help users build healthier routines step-by-step.
 
