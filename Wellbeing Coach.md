@@ -1,6 +1,6 @@
-## Problem Statement: Wellbeing Coach – Your Personalized 5-Minute Mental Booster
+# Problem Statement: Wellbeing Coach – Your Personalized 5-Minute Mental Booster
  
-### Context
+## Context
  
 In today’s fast-paced digital lifestyle, people experience increased stress, anxiety, and burnout due to long working hours, continuous screen exposure, and limited personal interaction. Most existing wellness solutions require extended sessions or manual input, which discourages consistent usage.
  
@@ -10,7 +10,7 @@ Most wellness apps lack meaningful personalization.
 Users need quick, convenient support—not lengthy commitments.
 Overwhelming data and fragmented experiences reduce engagement.
  
-### Project Goal
+## Project Goal
  
 Design an AI-powered Wellbeing Coach that suggests **personalized 5-minute micro-activities** to help users improve their emotional wellbeing.
 Think through what data and context your solution should consider and justify your approach.
