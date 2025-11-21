@@ -66,7 +66,7 @@ Create a **FastAPI-based AI agent** that remembers trip details across turns wit
 1. Create a file named `stateful_trip_agent.py`.  
 2. Import the necessary modules:
 3. Initialize the LLM using your Gemini API key.  
-4. Define a `get_session_history(session_id: str)` function that returns a unique `ChatMessageHistory` per session.  
+4. Define a `get_session_history(session_id: str)` function that returns a unique `InMemoryChatMessageHistory` per session.  
 5. Create a `ChatPromptTemplate` that includes a `MessagesPlaceholder(variable_name="chat_history")`.  
 6. Create a core LCEL chain:
    ```python
