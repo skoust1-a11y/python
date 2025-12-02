@@ -151,7 +151,7 @@ class QueryRequest(BaseModel):
 class QueryResult(BaseModel):
     content: str
     metadata: dict
-    score: Optional[float] = None
+    distance: Optional[float] = None
 
 class QueryResponse(BaseModel):
     success: bool
@@ -232,12 +232,15 @@ async def query_vectorstore(request: QueryRequest):
     - **query**: The search query text
     - **top_k**: Number of results to return (default: 5)
     """
-    # TODO: Implement query endpoint.
+    # TODO: Implement vector database query.
     # Expected:
-    # - Use QueryService().similarity_search(request.query, top_k=request.top_k)
-    # - Map results to List[QueryResult]
-    # - Return QueryResponse; handle HTTPException on failure
-    raise NotImplementedError("query_vectorstore() not implemented. Execute search and return QueryResponse.")
+    # - Initialize QueryService()
+    # - Call similarity_search(request.query, top_k=request.top_k)
+    # - Results are tuples: (Document, distance_score)
+    # - Map results to List[QueryResult] with content, metadata, and distance
+    # - Build and return QueryResponse(success, query, results, count)
+    # - Handle exceptions: log errors and raise HTTPException(status_code=500)
+    raise NotImplementedError("query_vectorstore() not implemented. Query vector database and return QueryResponse.")
 
 
 

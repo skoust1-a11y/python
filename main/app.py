@@ -1,5 +1,8 @@
 """
-FastAPI application for AutoMind RAG Ingestion Pipeline.
+FastAPI application for Smart Auto Advisor RAG Ingestion Pipeline.
+
+Smart Auto Advisor is an AI-powered conversational assistant for car manufacturers
+that helps customers get instant answers about vehicle models, features, pricing, and availability.
 """
 
 import sys
@@ -23,8 +26,10 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
-    title="AutoMind RAG Ingestion API",
-    description="API for uploading documents and triggering RAG ingestion pipeline",
+    title="Smart Auto Advisor - RAG Ingestion API",
+    description="API for uploading documents and triggering RAG ingestion pipeline. "
+                "Smart Auto Advisor is an AI-powered conversational assistant for car manufacturers "
+                "that helps customers get instant answers about vehicle models, features, pricing, and availability.",
     version="1.0.0"
 )
 
@@ -45,7 +50,8 @@ app.include_router(router)
 async def root():
     """Root endpoint."""
     return {
-        "message": "AutoMind RAG Ingestion API",
+        "name": "Smart Auto Advisor - RAG Ingestion API",
+        "description": "AI-powered conversational assistant for car manufacturers",
         "version": "1.0.0",
         "docs": "/docs"
     }
