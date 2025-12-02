@@ -1,5 +1,8 @@
 """
-FastAPI application setup for RAG query pipeline.
+FastAPI application setup for Smart Auto Advisor RAG query pipeline.
+
+Smart Auto Advisor is an AI-powered conversational assistant for car manufacturers
+that helps customers get instant answers about vehicle models, features, pricing, and availability.
 """
 
 import os
@@ -126,7 +129,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI application
 app = FastAPI(
     title="AutoMind RAG Query API",
-    description="REST API for querying AutoMind Motors knowledge base using Retrieval-Augmented Generation",
+    description="REST API for querying Smart Auto Advisor knowledge base using Retrieval-Augmented Generation",
     version="1.0.0",
     lifespan=lifespan
 )
