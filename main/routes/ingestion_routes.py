@@ -7,7 +7,6 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, File, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from main.config import logger
@@ -59,16 +58,6 @@ def validate_and_prepare_upload(
         raise HTTPException(status_code=400, detail=error_msg)
     return file_extension, file_size
 
-def count_documents_in_directory(directory: str, allowed_extensions: Optional[set] = None) -> int:
-    if not os.path.exists(directory):
-        return 0
-    count = 0
-    for file_path in Path(directory).glob("*"):
-        if file_path.is_file():
-            if allowed_extensions is None or file_path.suffix.lower() in allowed_extensions:
-                count += 1
-    return count
-
 def list_documents_in_directory(directory: str, allowed_extensions: Optional[set] = None):
     documents = []
     if not os.path.exists(directory):
@@ -86,34 +75,6 @@ def list_documents_in_directory(directory: str, allowed_extensions: Optional[set
                 "uploaded_at": datetime.fromtimestamp(stat.st_mtime).isoformat()
             })
     return documents
-
-def delete_file(directory: str, filename: str) -> bool:
-    file_path = os.path.join(directory, filename)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail=f"Document not found: {filename}")
-    try:
-        os.remove(file_path)
-        logger.info(f"Deleted file: {file_path}")
-        return True
-    except Exception as e:
-        error_msg = f"Failed to delete {filename}: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        raise HTTPException(status_code=500, detail=error_msg)
-
-def delete_all_files(directory: str) -> int:
-    try:
-        deleted_count = 0
-        for file_path in Path(directory).glob("*"):
-            if file_path.is_file():
-                file_path.unlink()
-                deleted_count += 1
-                logger.debug(f"Deleted: {file_path}")
-        logger.info(f"Deleted {deleted_count} file(s) from {directory}")
-        return deleted_count
-    except Exception as e:
-        error_msg = f"Failed to delete documents: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        raise HTTPException(status_code=500, detail=error_msg)
 
 # Configuration
 DOCUMENTS_DIR = "Documents"
@@ -139,11 +100,6 @@ class DocumentInfo(BaseModel):
     extension: str
     uploaded_at: str
 
-class HealthResponse(BaseModel):
-    status: str
-    documents_dir: str
-    total_documents: int
-
 class QueryRequest(BaseModel):
     query: str
     top_k: Optional[int] = 5
@@ -167,17 +123,6 @@ async def root():
     # Expected:
     # - Return a dict with name, version, description, and list of endpoints
     raise NotImplementedError("root() not implemented. Return API info dictionary.")
-
-
-@router.get("/health", response_model=HealthResponse)
-async def health_check():
-    """Health check endpoint."""
-    # TODO: Implement health check.
-    # Expected:
-    # - Compute total documents in DOCUMENTS_DIR
-    # - Return HealthResponse(status, documents_dir, total_documents)
-    # - Handle and raise HTTPException on failure
-    raise NotImplementedError("health_check() not implemented. Build and return HealthResponse.")
 
 
 @router.get("/documents", response_model=List[DocumentInfo])
@@ -207,23 +152,6 @@ async def upload_document(file: UploadFile = File(...)):
     raise NotImplementedError("upload_document() not implemented. Validate, save, process, and return UploadResponse.")
 
 
-@router.post("/upload-multiple", response_model=List[UploadResponse])
-async def upload_multiple_documents(files: List[UploadFile] = File(...)):
-    """
-    Upload multiple documents at once and automatically generate embeddings.
-    Each document is processed immediately and stored in the vector database.
-    
-    - **files**: List of document files to upload (use same field name 'files' for all files)
-    """
-    # TODO: Implement multi-file upload and processing.
-    # Expected:
-    # - Validate inputs
-    # - Loop files: validate, save, process with InjectionPipelineService
-    # - Aggregate UploadResponse items; collect errors
-    # - Return 207 with partial results if needed, or list of responses
-    raise NotImplementedError("upload_multiple_documents() not implemented. Validate, save, process, aggregate responses.")
-
-
 @router.post("/query", response_model=QueryResponse)
 async def query_vectorstore(request: QueryRequest):
     """
@@ -241,16 +169,4 @@ async def query_vectorstore(request: QueryRequest):
     # - Build and return QueryResponse(success, query, results, count)
     # - Handle exceptions: log errors and raise HTTPException(status_code=500)
     raise NotImplementedError("query_vectorstore() not implemented. Query vector database and return QueryResponse.")
-
-
-
-
-@router.delete("/documents")
-async def delete_all_documents():
-    """Delete all documents from the Documents directory."""
-    # TODO: Implement delete all endpoint.
-    # Expected:
-    # - Call delete_all_files(DOCUMENTS_DIR)
-    # - Return dict with status, message, and deleted_count
-    raise NotImplementedError("delete_all_documents() not implemented. Delete files and return summary.")
 
