@@ -52,8 +52,8 @@ const ChatComponent: React.FC = () => {
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
 
-// Task 1 : Stream and display AI responses in real time, updating the assistant’s message as tokens arrive, 
-// and handle errors gracefully during streaming.
+// Task 1 : Display streaming AI responses received from backend 
+// and handle errors gracefully.
 
 
 
