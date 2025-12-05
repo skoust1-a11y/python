@@ -1,120 +1,102 @@
-# Sprint 3 Practice Assignment: Enhancing the Travel & Trip Planner Agent with Advanced LangChain Features
-
 ## Project Context
+
 You are continuing as the lead developer of the **Travel & Trip Planner Agent**, an AI-powered system that helps users plan trips based on their preferences, budget, and destination.  
 
-In **Sprint 2**, you built the core suggestion engine and learned how to make synchronous and asynchronous LLM calls using **LangChain**, **Gemini**, and **FastAPI**.  
+In earlier practice, you built the core suggestion engine and learned how to make synchronous and asynchronous LLM calls using **LangChain**, **Gemini**, and **FastAPI**.  
 
-In **Sprint 3**, your goal is to **enhance this engine** by integrating advanced LangChain capabilities such as **prompt templates**, **few-shot prompting**, **structured output parsing**.  
-
-By the end of this sprint, you will have a robust and intelligent trip planner that can produce structured, contextual, and reliable travel recommendations.
+In this practice, you will **enhance this engine** by integrating advanced LangChain capabilities such as **prompt templates**, **few-shot prompting**, and **structured output parsing**. By the end, you will have a robust and intelligent trip planner that can produce structured, contextual, and reliable travel recommendations.
 
 ---
 
 ## Problem Statement
 
-You will use **LangChain**, **FastAPI**, and **ChatOpenAI** via `langchain_openai` to demonstrate your understanding.
+Enhance your **Travel & Trip Planner Agent** by integrating advanced LangChain features for dynamic prompt management, personalized recommendations, and structured output generation.  
+You will complete **three main tasks**:
 
 ---
 
-### Task 1: Fetch Dynamic Prompt from Langfuse
-You will create a dynamic prompt that adapts to user inputs such as destination, duration, and budget.
+### **Task 1 — Fetch Dynamic Prompt from Langfuse**
 
-#### Requirements
-1. Connect to Langfuse using your API key.
+#### Goal  
+Demonstrate dynamic prompt generation from an external source (Langfuse) instead of local templates, creating prompts that adapt to user inputs such as destination, duration, and budget.
 
-2. Fetch a pre-defined prompt template (e.g., travel_itinerary) from Langfuse.
-- Name the prompt: `travel_itinerary`
-- Set the label to: `production`
-- set temperature as 0.7
-- Define a prompt template in Langfuse such as:
-```
-You are an expert travel planner.
-Suggest a {days}-day itinerary for {destination} under a budget of ${budget}.
-Include top attractions and local food recommendations.
-```
-3. Fill placeholders in the fetched template: {destination}, {days}, {budget}.
-4. Build a FastAPI endpoint /task1 that:
-- Accepts query parameters: destination, days, and budget
-- Uses the fetched template to generate the LLM prompt
-- Invokes the LLM (Gemini) and returns the generated itinerary
+#### Requirements  
+1. **Langfuse Connection**
+   - Connect to Langfuse using your API credentials.
 
-**Goal:** Demonstrate dynamic prompt generation from an external source (Langfuse) instead of local templates.
+2. **Prompt Template Setup**
+   - Fetch a pre-defined prompt template from Langfuse (e.g., `travel_itinerary`).
+   - Configure the prompt with appropriate settings (e.g., label: `production`, temperature: `0.7`).
+   - Define a prompt template in Langfuse with placeholders such as `{destination}`, `{days}`, and `{budget}`.
+
+3. **API Endpoint**
+   - Create a FastAPI endpoint `/task1` that accepts query parameters: `destination`, `days`, and `budget`.
+   - Fetch the template from Langfuse and fill the placeholders with user inputs.
+   - Use the fetched template to generate the LLM prompt.
+
+4. **LLM Invocation**
+   - Invoke the LLM (Gemini) with the generated prompt and return the itinerary response.
 
 ---
 
-### Task 2: Few-Shot Prompting for Personalized Recommendations
-You will teach the model to produce better recommendations by showing **examples (few-shots)**.
+### **Task 2 — Few-Shot Prompting for Personalized Recommendations**
 
-#### Requirements
-1. Use `ChatPromptTemplate` to define a system message and example interactions:
-- Example 1: “User is a solo traveler visiting Japan for 5 days.”  
-  → “Provide an itinerary focusing on cultural and food experiences.”
-- Example 2: “User is a couple visiting Italy for 7 days.”  
-  → “Provide a romantic itinerary with scenic and dining experiences.”
-2. Accept a new user query through a POST request `/task2`.
-3. Combine the examples and user input into a single few-shot prompt.
-4. Invoke the LLM (Gemini) and return the personalized itinerary.
+#### Goal  
+Teach the model to produce better recommendations by using few-shot examples to guide the model's output style and context.
 
-**Goal:** Practice few-shot prompting to guide the model’s output style and context.
+#### Requirements  
+1. **Prompt Template Setup**
+   - Use `ChatPromptTemplate` to define a system message and example interactions.
+   - Include examples that demonstrate different travel scenarios (e.g., solo traveler, couple, family).
+   - Show how each example should be formatted in the response.
 
----
+2. **API Endpoint**
+   - Create a POST endpoint `/task2` that accepts a user query.
 
-### Task 3: Structured Output Parsing for Trip Data
-You will now ensure the model outputs structured JSON that can be easily stored or visualized on the frontend.
+3. **Few-Shot Prompt Construction**
+   - Combine the examples and user input into a single few-shot prompt.
 
-#### Requirements
-1. Define a **Pydantic model** (e.g., `TripPlan`) with fields such as:
-- `destination` (str)
-- `days` (int)
-- `estimated_cost` (str)
-- `highlights` (list of strings)
-2. Use LangChain’s `PydanticOutputParser` to enforce structured output.
-3. Accept user input (`destination`, `days`, `budget`) via `/task3`.
-4. Pass the parsed output to the model using `LLMChain` and `.invoke()`.
-5. Return a JSON response following your `TripPlan` schema.
-
-**Goal:** Generate clean, structured, and validated model outputs.
+4. **LLM Invocation**
+   - Invoke the LLM (Gemini) with the few-shot prompt and return the personalized itinerary.
 
 ---
 
-## 🎯 Expected Outcome
-By completing all four tasks, you will have a FastAPI-based travel planner that demonstrates:
+### **Task 3 — Structured Output Parsing for Trip Data**
 
-| Concept | Demonstrated Through |
-|----------|----------------------|
-| Fetching prompt from Langfuse | Task 1 |
-| Few-Shot Prompting | Task 2 |
-| Output Parsing with Pydantic | Task 3 |
+#### Goal  
+Ensure the model outputs structured JSON that can be easily stored or visualized on the frontend by using Pydantic models and LangChain's output parsers.
+
+#### Requirements  
+1. **Pydantic Schema Definition**
+   - Define a Pydantic model (e.g., `TripPlan`) with fields such as:
+     - `destination` (str)
+     - `days` (int)
+     - `estimated_cost` (str)
+     - `highlights` (list of strings)
+
+2. **Output Parser Setup**
+   - Use LangChain's `PydanticOutputParser` to enforce structured output from the LLM.
+
+3. **API Endpoint**
+   - Create an endpoint `/task3` that accepts user input (`destination`, `days`, `budget`).
+
+4. **LLM Invocation and Parsing**
+   - Format the prompt with the output parser instructions.
+   - Invoke the LLM and parse the response using the PydanticOutputParser.
+
+5. **Response**
+   - Return a JSON response following your `TripPlan` schema.
 
 ---
 
-## Setup Instructions
+## Evaluation Criteria
 
-1. **Install Dependencies**
-   ```bash
-   uv sync
-   ```
+Ensure you evaluate your solution against the below criteria:
 
-2. **Environment Configuration**
-   Create a `.env` file in the project root:
-   ```env
-   GEMINI_API_KEY=your_gemini_api_key_here
-   GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
-   GEMINI_MODEL_NAME=gemini-2.0-flash
-   LANGFUSE_PUBLIC_KEY=your_langfuse_public_key_here
-   LANGFUSE_SECRET_KEY=your_langfuse_secret_key_here
-   LANGFUSE_HOST=https://cloud.langfuse.com
-   ```
-   
-   **Get your API key:** [Google AI Studio](https://aistudio.google.com/)
-
-3. **Run the FastAPI Server**
-   ```bash
-   uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-   ```
-
-4. **Test the API**
-   - Open your browser to `http://localhost:8000/docs` for interactive API documentation
-   - Or send POST requests to the retry/basic endpoint
+1. Langfuse connection is properly configured and prompts are successfully fetched from the external source.
+2. Task 1 endpoint correctly fills template placeholders and generates dynamic prompts based on user inputs.
+3. Task 2 endpoint implements few-shot prompting with appropriate examples that guide the model's output style.
+4. Task 3 endpoint uses PydanticOutputParser to enforce structured output validation.
+5. All endpoints correctly invoke the LLM and return appropriate responses.
+6. Structured output from Task 3 follows the defined Pydantic schema and validates correctly.
 
