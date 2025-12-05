@@ -1,251 +1,69 @@
-# Sprint 4 Practice Assignment: Equipping the Travel & Trip Agent with Tools and Intelligence
-
 ## Project Context
-You’ve already built the core travel suggestion engine in previous sprints — it can generate itineraries and structured outputs.  
-Now, it’s time to make your **Trip & Travel Agent** smarter by giving it **tools** it can use to fetch information, reason about data, and respond intelligently.
 
-You will:
-1. Build an internal tool that uses an LLM to fetch and summarize travel details.  
-2. Build an **external tool** that connects to a live API.  
-3. Combine them into an **agent** that can decide which tool to use automatically.  
+You've already built the core travel suggestion engine in earlier practice — it can generate itineraries and structured outputs.  
+Now, it's time to make your **Trip & Travel Agent** smarter by giving it **tools** it can use to fetch information, reason about data, and respond intelligently.
+
 
 ---
 
 ## Problem Statement
 
-You will create and test three tasks:
+Equip your **Travel & Trip Planner Agent** with tools and intelligence by creating tools with internal logic and external API integration, then combining them into an intelligent agent that can automatically select and use the appropriate tools based on user queries.  
+You will complete **three main tasks**:
 
 ---
 
 ### **Task 1 — Create and Test an Internal Tool (`get_destination_info`)**
 
-#### Goal
+#### Goal  
 Create an internal tool that uses the Gemini LLM to fetch and summarize travel-related details for any destination.
 
-#### Requirements
-1. Create a file with name `travel_tools.py`
-2. Inside this file, import required packages.
-3. Load environment variables.
-4. Initialize the LLM.
-4. Define a function decorated with @tool.
-```
-@tool
-def get_destination_info(destination: str):
-    """Fetch travel details for a given destination using Gemini LLM."""
-```
-5. Inside the function
-- Use the LLM to generate a short travel summary.
-- Example prompt:
-```
-prompt = f"Give a short travel guide for {destination}. Include best visiting months, famous attractions, and what the place is known for."
-response = llm.invoke(prompt)
-return {"destination": destination, "info": response.content}
-```
-- Handle errors using try–except and return a JSON error message if any issue occurs.
-6. In main.py, create a POST API endpoint /tools/internal that:
-- Accepts destination as input.
-- Calls the tool using:
-```
-get_destination_info.invoke({"destination": destination})
+#### Requirements  
+1. Implement a tool function in `travel_tools.py` that uses an LLM to generate travel summaries for destinations, including information about visiting months, attractions, and notable features.
 
-```
-- Returns the result.
-7. Test the endpoint through Swagger UI.
-Example query:
-```
-POST /tools/internal
-{
-    "destination": "Goa"
-}
-```
-Expected: The LLM responds with travel details about Goa (places to visit, best time, etc.)
+2. Make sure the function can be registered as a tool, returns structured data, and includes proper error handling.
 
-### **Task 2 — Create and Test an External API Tool — `get_user_location`**
-#### Goal
+3. Create a FastAPI POST endpoint `/tools/internal` that accepts destination input, invokes the tool, and returns the travel information as a JSON response.
 
-The travel bot should also understand the user’s current location to give localized recommendations.
-You will create a LangChain tool that fetches the user’s country using the apiip.net geolocation API.
+---
 
-#### Requirements
+### **Task 2 — Create and Test an External API Tool (`get_user_location`)**
 
-1. Add your API key to a .env file:
-```
-APIIP_API_KEY=your_apiip_key_here
-```
-2. Write a function get_user_location(input:str) decorated with @tool inside `travel_tools.py` file.
-3. Inside, use the requests library to call:
-``` http://apiip.net/api/check?accessKey=<your_api_key>```
+#### Goal  
+Create a LangChain tool that fetches the user's current location using an external geolocation API to provide localized recommendations.
 
-4. Extract and return only:
-``` {"ip": "...", "city": "...", "region": "...", "country": "..."}```
+#### Requirements  
+1. Configure environment variables with the required API key for the external geolocation service.
 
-5. Handle errors (e.g., missing API key, network issues) with try...except and return JSON error messages.
-6. In `main.py` file create a api endpoint with (`/tools/external`) and call 
-  get_user_location.invoke({"input": ""})
-7. Test the endpoint through swagger. 
+2. Implement a tool function in `travel_tools.py` that connects to an external geolocation API and retrieves user location data (e.g., IP, city, region, country).
+
+3. Ensure the function can be registered as a tool and includes proper error handling for API failures, network issues, and missing credentials.
+
+4. Create a FastAPI endpoint `/tools/external` that invokes the tool and returns location data as a JSON response.
+
+---
 
 ### **Task 3 — Build an Intelligent Travel Agent**
-#### Goal
-Combine both tools into a single agent that decides which tool to use based on the user query.
 
-#### Requirements
+#### Goal  
+Combine both tools into a single agent that automatically decides which tool(s) to use based on the user query.
 
-1. In `main.py` import your tools.
-2. Initialize a Model (use LangChain `ChatOpenAI` configured to work with Gemini).
-3. Combine your tools into a list.
-4. Create an Agent using `create_agent` with a custom system prompt.
-5. Create a POST endpoint (`/ask`) which will accept a query from user and invoke the agent.
-6. Test at least three user queries.
-- `"what are the visiting place near me"` → should use both `get_user_location` and `get_destination_info`
-- `"What's the region of my address?"` → should use `get_user_location`
-- `"Which months are best to visit Bali?"` → should use `get_destination_info`
+#### Requirements  
+1. Set up an agent using `create_agent` that combines both tools and is configured with a custom system prompt to guide tool selection based on user queries.
 
+2. Configure the agent to automatically select the appropriate tool(s) for different query types (e.g., location-based queries, destination-specific queries).
 
-### Project Setup
+3. Create a FastAPI POST endpoint `/ask` that accepts user queries, invokes the agent, and returns the agent's response.
 
-- Create a file `travel_tools.py`.
-- Where implement first 2 task which are creating tools `get_destination_info` and `get_user_location`.
-- Then in `main.py` file call those two tools and create agent_executor.
-- create 3 endpoints :
-    - '/ask'- Route to interact with the agent.
-    - '/tools/internal' - Test internal tool endpoint
-    - '/tools/external' - Test external tool
+---
 
-### Run the application
+## Evaluation Criteria
 
-1. Navigate to the project directory:
+Ensure you evaluate your solution against the below criteria:
 
-   **For Linux:**
-   ```bash
-   cd practice-1-trip-and-travel-agent
-   ```
-
-   **For Windows:**
-   ```cmd
-   cd practice-1-trip-and-travel-agent
-   ```
-
-2. Install dependencies using UV:
-
-   **For Linux/Windows (Same command):**
-   ```bash
-   uv sync
-   ```
-
-   This will automatically:
-   - Create a virtual environment
-   - Install all dependencies from `pyproject.toml`
-   - Set up the project environment
-
-## Configuration
-
-1. Create a `.env` file in the project root:
-
-   **For Linux:**
-   ```bash
-   touch .env
-   ```
-
-   **For Windows (PowerShell):**
-   ```powershell
-   New-Item -Path .env -ItemType File
-   ```
-
-   **For Windows (CMD):**
-   ```cmd
-   type nul > .env
-   ```
-
-2. Add your Google Gemini API key and apiip key to the `.env` file:
-   ```
-   GEMINI_API_KEY=your_gemini_api_key_here
-   GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
-   GEMINI_MODEL_NAME=gemini-2.0-flash
-   APIIP_API_KEY=your_apiip_key_here
-   ```
-   
-   **Tip**: You can copy `.envbackup` to `.env` and update the values:
-   
-   **For Linux/Mac:**
-   ```bash
-   cp .envbackup .env
-   ```
-   
-   **For Windows:**
-   ```cmd
-   copy .envbackup .env
-   ```
-   
-   **Note**: Make sure there are no spaces around the `=` sign in the `.env` file.
-
-   To get a Gemini API key:
-   - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
-   - Sign in with your Google account
-   - Create a new API key
-
-   To get an APIIP API key:
-   - Visit [apiip.net](https://apiip.net/)
-   - Sign up for a free account
-   - Generate an API key from your dashboard
-3. Run your application:
-
-   **For Linux/Windows (Same command):**
-   ```bash
-   uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-   ```
-
-   The service will be available at `http://localhost:8000`
-
-   **Note**: On Windows, you can use either PowerShell or CMD for these commands.
-
-### Testing the API
-
-You can test the endpoints using:
-
-1. **FastAPI Interactive Docs**: Visit `http://localhost:8000/docs` for the automatic interactive API documentation
-
-2. **Test Individual Tools**:
-   - **Internal Tool**: `GET /tools/internal?destination=Goa` - Tests `get_destination_info`
-   - **External Tool**: `GET /tools/external` - Tests `get_user_location`
-
-3. **Test the Agent** (Task 3):
-   - **POST /ask** with `query` parameter:
-     - `query=what are the visiting place near me` - Should use both tools
-     - `query=What's the region of my address?` - Should use `get_user_location`
-     - `query=Which months are best to visit Bali?` - Should use `get_destination_info`
-   
-   **Example using curl**:
-   ```bash
-   curl -X POST "http://localhost:8000/ask?query=what are the visiting place near me"
-   ```
-
-## Key Implementation Details
-
-### Agent Setup
-
-The project uses `create_agent` from LangChain to create an intelligent agent that can select and use tools:
-
-- **Custom System Prompt**: Includes specific instructions for handling location-based queries
-- **Tool Selection**: The agent automatically decides which tool(s) to use based on the user query
-- **Message Format**: Uses LangChain's message format with role-based conversations
-
-### Tool Invocation Format
-
-- **Agent**: Uses `{"messages": [{"role": "user", "content": query}]}` format and returns messages with the response
-- **Individual Tools**: 
-  - `get_destination_info.invoke({"destination": "Goa"})` - Returns JSON string
-  - `get_user_location.invoke({"input": ""})` - Returns JSON string
-  - Both tools return JSON strings that need to be parsed with `json.loads()`
-
-### Project Structure
-
-```
-practice-1-trip-and-travel-agent/
-├── main.py              # FastAPI application with agent and endpoints
-├── travel_tools.py      # Tool implementations (internal & external)
-├── pyproject.toml       # Project dependencies
-├── .env                 # Environment variables (create this)
-└── README.md           # This file
-```
-
-
+1. Internal tool is correctly implemented with proper error handling and returns structured travel information.
+2. External tool successfully connects to the external API and returns location data with proper error handling.
+3. Both tools are properly decorated with `@tool` and can be invoked independently through their respective endpoints.
+4. Agent is correctly configured with both tools and a custom system prompt.
+5. Agent automatically selects the appropriate tool(s) based on different types of user queries.
+6. All three endpoints (`/tools/internal`, `/tools/external`, `/ask`) correctly invoke their respective tools/agent and return appropriate responses.
