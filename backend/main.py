@@ -88,8 +88,26 @@ def new_session():
     """Generate a new chat session ID."""
     return {"session_id": str(uuid.uuid4())}
 
-# Task 2: Implement a /chat endpoint that streams AI responses asynchronously while preserving 
-# session context using session_id.
+@app.post("/chat")
+async def chat(payload: ChatInput):
+    """
+    Stateful chat endpoint that remembers context per session.
+    Streams the model's response token by token.
+    """
+    config = {"configurable": {"session_id": payload.session_id}}
+
+    async def event_generator():
+        try:
+            # Use .astream() for non-blocking streaming in an async context
+            async for chunk in stateful_chain.astream({"input": payload.input}, config=config):
+                yield f"data: {chunk}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            # Log the full error for debugging
+            print(f"Error during stream: {e}")
+            yield f"data: Error: {str(e)}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 # -------------------------------
