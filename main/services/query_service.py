@@ -26,14 +26,9 @@ class QueryService:
     
     def _get_vectorstore(self) -> PGVector:
         """Get or initialize the vectorstore."""
-        # TODO: Implement vectorstore retrieval/initialization.
-        # Expected:
-        # - If `self.vectorstore` is already set, return it
-        # - Otherwise, call `self.embedding_service.get_vectorstore()` and cache it
-        # - Return the PGVector instance
-        raise NotImplementedError(
-            "_get_vectorstore() not implemented. Retrieve and cache PGVector via EmbeddingService."
-        )
+        if self.vectorstore is None:
+            self.vectorstore = self.embedding_service.get_vectorstore()
+        return self.vectorstore
     
     def similarity_search(
         self, 
@@ -52,36 +47,25 @@ class QueryService:
         Returns:
             List of result dictionaries with content and metadata
         """
-        # TODO: Implement similarity search with scores.
-        # Expected steps:
-        # 1) Get vectorstore via `_get_vectorstore()`
-        # 2) Call `similarity_search_with_score(query, k=top_k, filter=filter?)`
-        # 3) Format each (Document, score) into:
-        #    {"content": doc.page_content, "metadata": doc.metadata, "score": float(score), "distance": float(score)}
-        # 4) Return the formatted list
-        # 5) Include basic logging and error handling
-        raise NotImplementedError(
-            "similarity_search() not implemented. Use similarity_search_with_score and format results."
-        )
-    
-    def similarity_search_simple(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        """
-        Perform similarity search without scores (simpler interface).
-        
-        Args:
-            query: Search query text
-            top_k: Number of results to return
+        try:
+            vectorstore = self._get_vectorstore()
             
-        Returns:
-            List of result dictionaries with content and metadata
-        """
-        # TODO: Implement simple similarity search (no scores).
-        # Expected:
-        # - Get vectorstore via `_get_vectorstore()`
-        # - Call `similarity_search(query, k=top_k)`
-        # - Return list of {"content": doc.page_content, "metadata": doc.metadata}
-        # - Include basic logging and error handling
-        raise NotImplementedError(
-            "similarity_search_simple() not implemented. Use similarity_search and format results."
-        )
-
+            self.logger.debug(f"Performing similarity search: query='{query}', top_k={top_k}")
+            
+            # Perform similarity search
+            if filter:
+                results = vectorstore.similarity_search_with_score(
+                    query, 
+                    k=top_k,
+                    filter=filter
+                )
+            else:
+                results = vectorstore.similarity_search_with_score(query, k=top_k)
+            
+            self.logger.info(f"Found {len(results)} result(s) for query")
+            # Return raw results: List of tuples (Document, distance_score)
+            return results
+            
+        except Exception as e:
+            self.logger.error(f"Query failed: {e}", exc_info=True)
+            raise
