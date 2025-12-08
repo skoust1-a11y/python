@@ -26,12 +26,11 @@ def create_production_prompt() -> ChatPromptTemplate:
         ChatPromptTemplate instance with hallucination prevention instructions
         
     Hints:
-        1. Log that you're creating the production prompt template
-        2. Use ChatPromptTemplate.from_messages() to create the template
-        3. Pass a list of tuples, where each tuple contains:
+        1. Use ChatPromptTemplate.from_messages() to create the template
+        2. Pass a list of tuples, where each tuple contains:
            - Role name: "system" or "human"
            - Message content: String with placeholders like {context} and {question}
-        4. System message should include:
+        3. System message should include:
            - Introduction: "You are AutoMind Motors' technical support assistant..."
            - CRITICAL INSTRUCTIONS section with:
              * Answer ONLY using provided context
@@ -42,17 +41,14 @@ def create_production_prompt() -> ChatPromptTemplate:
              * Multiple source synthesis
              * Safety-critical question handling
            - Context placeholder: "Context:\n{context}"
-        5. Human message should contain: "{question}"
-        6. Log successful template creation
-        7. Return the template
+        4. Human message should contain: "{question}"
+        5. Return the template
     """
-    # TODO: Step 1 - Log that you're creating the production prompt template
-    
-    # TODO: Step 2 - Create ChatPromptTemplate using from_messages()
+    # TODO: Step 1 - Create ChatPromptTemplate using from_messages()
     # Use ChatPromptTemplate.from_messages() with a list of message tuples
     # Each tuple should be: (role, message_content)
     
-    # TODO: Step 3 - Define system message
+    # TODO: Step 2 - Define system message
     # Create system message with:
     #   - Introduction: "You are AutoMind Motors' technical support assistant. You help customers with vehicle maintenance, troubleshooting, and technical questions."
     #   - CRITICAL INSTRUCTIONS section:
@@ -65,15 +61,13 @@ def create_production_prompt() -> ChatPromptTemplate:
     #     * "For safety-critical questions, be extra cautious and recommend professional inspection if uncertain"
     #   - Context placeholder: "Context:\n{context}"
     
-    # TODO: Step 4 - Define human message
+    # TODO: Step 3 - Define human message
     # Create human message with: "{question}"
     
-    # TODO: Step 5 - Combine messages in from_messages()
+    # TODO: Step 4 - Combine messages in from_messages()
     # Pass list of tuples: [("system", system_message), ("human", human_message)]
     
-    # TODO: Step 6 - Log successful template creation
-    
-    # TODO: Step 7 - Return the template
+    # TODO: Step 5 - Return the template
     
     # Placeholder - remove this line once you implement the function
     raise NotImplementedError("TODO: Implement create_production_prompt() function")

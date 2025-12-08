@@ -128,75 +128,68 @@ async def query_rag(request: QueryRequest):
         HTTPException: If pipeline not initialized or query processing fails
         
     Hints:
-        1. Log request received (truncate question if longer than 50 chars)
-        2. Get app_state using get_app_state()
-        3. Increment total_queries counter
-        4. Wrap logic in try-except blocks for error handling
-        5. Validate RAG pipeline components (rag_chain and retriever)
-        6. If not initialized, raise HTTPException with 503 status
-        7. Handle custom top_k from request or use default from config
-        8. Create custom retriever if top_k is provided, otherwise use default
-        9. Execute query using query_with_error_handling()
-        10. Check result status and handle failures
-        11. Extract answer and update metrics
-        12. Format sources from result if include_sources is True
-        13. Build metadata dictionary with chunks_retrieved, top_k, model, etc.
-        14. Update successful_queries counter
-        15. Log quality metrics and sources
-        16. Return QueryResponse with all data
-        17. Handle HTTPException and general exceptions separately
+        1. Get app_state using get_app_state()
+        2. Increment total_queries counter
+        3. Wrap logic in try-except blocks for error handling
+        4. Validate RAG pipeline components (rag_chain and retriever)
+        5. If not initialized, raise HTTPException with 503 status
+        6. Handle custom top_k from request or use default from config
+        7. Create custom retriever if top_k is provided, otherwise use default
+        8. Execute query using query_with_error_handling()
+        9. Check result status and handle failures
+        10. Extract answer and update metrics
+        11. Format sources from result if include_sources is True
+        12. Build metadata dictionary with chunks_retrieved, top_k, model, etc.
+        13. Update successful_queries counter
+        14. Return QueryResponse with all data
+        15. Handle HTTPException and general exceptions separately
     """
-    # TODO: Step 1 - Log request received
-    # Log separator line (80 equals signs)
-    # Log the question (truncate to 50 characters if longer)
-    
-    # TODO: Step 2 - Get app state and increment counter
+    # TODO: Step 1 - Get app state and increment counter
     # Get app_state using get_app_state()
     # Increment app_state.total_queries
     
     try:
-        # TODO: Step 3 - Validate RAG pipeline components
+        # TODO: Step 2 - Validate RAG pipeline components
         # Check if app_state.rag_chain and app_state.retriever are not None
-        # If either is None, log error and raise HTTPException with:
+        # If either is None, raise HTTPException with:
         #   - status_code: status.HTTP_503_SERVICE_UNAVAILABLE
         #   - detail: "RAG pipeline not initialized"
         
-        # TODO: Step 4 - Determine top_k value
+        # TODO: Step 3 - Determine top_k value
         # If request.top_k is provided, use it; otherwise use app_state.config['top_k']
         # Store in variable k
         
-        # TODO: Step 5 - Create or get retriever
+        # TODO: Step 4 - Create or get retriever
         # If request.top_k is provided:
         #   - Create custom retriever from app_state.vectorstore.as_retriever()
         #   - Use search_type="similarity" and search_kwargs={"k": k}
         # Otherwise, use app_state.retriever
         
-        # TODO: Step 6 - Execute query
+        # TODO: Step 5 - Execute query
         # Call query_with_error_handling() with:
         #   - app_state.rag_chain
-        #   - retriever (from step 5)
+        #   - retriever (from step 4)
         #   - request.question
         # Store result
         
-        # TODO: Step 7 - Check query result status
+        # TODO: Step 6 - Check query result status
         # If result["status"] is not "success":
-        #   - Log error with error message
         #   - Raise HTTPException with:
         #     * status_code: status.HTTP_500_INTERNAL_SERVER_ERROR
         #     * detail: result.get('error', 'Query processing failed')
         
-        # TODO: Step 8 - Extract answer and update metrics
+        # TODO: Step 7 - Extract answer and update metrics
         # Get answer from result["answer"]
         # Add retrieved_chunks count to app_state.total_chunks_retrieved
         
-        # TODO: Step 9 - Format sources
+        # TODO: Step 8 - Format sources
         # Initialize empty sources list
         # If request.include_sources is True and "sources" in result:
         #   - Create list of SourceDocument objects from result["sources"]
         #   - Extract: source, chunk_id (as string), content (remove "..." from content_preview)
         #   - Set relevance_score to None
         
-        # TODO: Step 10 - Build metadata dictionary
+        # TODO: Step 9 - Build metadata dictionary
         # Create metadata dict with:
         #   - chunks_retrieved: from result
         #   - top_k: k value
@@ -204,36 +197,28 @@ async def query_rag(request: QueryRequest):
         #   - has_sources: boolean (len(sources) > 0)
         #   - graceful_failure: from result quality_metrics
         
-        # TODO: Step 11 - Update success metrics
+        # TODO: Step 10 - Update success metrics
         # Increment app_state.successful_queries
-        # Log warning if graceful_failure is True
-        # Log sources preview (first 3 sources)
-        # Log successful processing with query number
-        # Log separator line
         
-        # TODO: Step 12 - Return QueryResponse
+        # TODO: Step 11 - Return QueryResponse
         # Return QueryResponse with:
         #   - question: request.question
-        #   - answer: answer from step 8
-        #   - sources: sources list from step 9
-        #   - metadata: metadata dict from step 10
+        #   - answer: answer from step 7
+        #   - sources: sources list from step 8
+        #   - metadata: metadata dict from step 9
         #   - timestamp: datetime.now().isoformat()
         
         # Placeholder - remove this line once you implement the function
         raise NotImplementedError("TODO: Implement query_rag() function")
         
     except HTTPException:
-        # TODO: Step 13 - Handle HTTPException
+        # TODO: Step 12 - Handle HTTPException
         # Increment app_state.failed_queries
-        # Log error
-        # Log separator line
         # Re-raise the exception
         raise
     except Exception as e:
-        # TODO: Step 14 - Handle general exceptions
+        # TODO: Step 13 - Handle general exceptions
         # Increment app_state.failed_queries
-        # Log error with exc_info=True
-        # Log separator line
         # Raise HTTPException with:
         #   - status_code: status.HTTP_500_INTERNAL_SERVER_ERROR
         #   - detail: f"Query processing failed: {str(e)}"
@@ -258,56 +243,42 @@ async def retrieve_chunks(request: RetrievalRequest):
         HTTPException: If retrieval fails
         
     Hints:
-        1. Log request received (truncate query if longer than 50 chars)
-        2. Get app_state using get_app_state()
-        3. Wrap logic in try-except for error handling
-        4. Determine top_k from request or use default from config
-        5. Create retriever from vectorstore with custom k
-        6. Invoke retriever to get documents
-        7. Format documents into SourceDocument objects
-        8. Log sources preview
-        9. Return RetrievalResponse with chunks and metadata
-        10. Handle exceptions with appropriate HTTPException
+        1. Get app_state using get_app_state()
+        2. Wrap logic in try-except for error handling
+        3. Determine top_k from request or use default from config
+        4. Create retriever from vectorstore with custom k
+        5. Invoke retriever to get documents
+        6. Format documents into SourceDocument objects
+        7. Return RetrievalResponse with chunks and metadata
+        8. Handle exceptions with appropriate HTTPException
     """
-    # TODO: Step 1 - Log request received
-    # Log separator line (80 equals signs)
-    # Log the query (truncate to 50 characters if longer)
-    
-    # TODO: Step 2 - Get app state
+    # TODO: Step 1 - Get app state
     # Get app_state using get_app_state()
     
     try:
-        # TODO: Step 3 - Determine top_k value
+        # TODO: Step 2 - Determine top_k value
         # Use request.top_k if provided, otherwise use app_state.config['top_k']
         # Store in variable k
-        # Log the top_k value being used
         
-        # TODO: Step 4 - Create retriever
+        # TODO: Step 3 - Create retriever
         # Create retriever from app_state.vectorstore.as_retriever()
         # Use search_type="similarity" and search_kwargs={"k": k}
-        # Log retriever creation
         
-        # TODO: Step 5 - Retrieve documents
+        # TODO: Step 4 - Retrieve documents
         # Invoke retriever with request.query
         # Store documents in variable
-        # Log number of chunks retrieved
         
-        # TODO: Step 6 - Format chunks for response
+        # TODO: Step 5 - Format chunks for response
         # Create list of SourceDocument objects from retrieved documents:
         #   - source: from doc.metadata.get('source', 'Unknown')
         #   - chunk_id: from doc.metadata.get('chunk_id', 'N/A') as string
         #   - content: from doc.page_content
         #   - relevance_score: None
         
-        # TODO: Step 7 - Log sources preview
-        # Create preview list of first 3 sources with format: "source (chunk chunk_id)"
-        # Log sources preview
-        
-        # TODO: Step 8 - Log separator and return response
-        # Log separator line
+        # TODO: Step 6 - Return response
         # Return RetrievalResponse with:
         #   - query: request.query
-        #   - chunks: chunks list from step 6
+        #   - chunks: chunks list from step 5
         #   - count: length of chunks list
         #   - timestamp: datetime.now().isoformat()
         
@@ -315,9 +286,7 @@ async def retrieve_chunks(request: RetrievalRequest):
         raise NotImplementedError("TODO: Implement retrieve_chunks() function")
         
     except Exception as e:
-        # TODO: Step 9 - Handle exceptions
-        # Log error with exc_info=True
-        # Log separator line
+        # TODO: Step 7 - Handle exceptions
         # Raise HTTPException with:
         #   - status_code: status.HTTP_500_INTERNAL_SERVER_ERROR
         #   - detail: f"Retrieval failed: {str(e)}"

@@ -34,25 +34,19 @@ def initialize_llm(config: Dict[str, Any]) -> AzureChatOpenAI:
         Exception: If LLM initialization fails
         
     Hints:
-        1. Log the initialization start with the deployment name from config
-        2. Wrap the initialization in a try-except block for error handling
-        3. Create an AzureChatOpenAI instance with the following parameters:
+        1. Wrap the initialization in a try-except block for error handling
+        2. Create an AzureChatOpenAI instance with the following parameters:
            - azure_endpoint: from config['azure_endpoint']
            - azure_deployment: from config['azure_llm_deployment']
            - api_key: from config['azure_api_key']
            - api_version: from config['api_version']
            - temperature: 0.1 (low temperature for factual, consistent responses)
            - max_tokens: 1000 (maximum response length)
-        4. Log the configuration details (temperature and max_tokens)
-        5. Log successful initialization
-        6. Return the initialized LLM instance
-        7. In the except block, log the error with exc_info=True and re-raise it
+        3. Return the initialized LLM instance
+        4. In the except block, re-raise the exception
     """
-    # TODO: Step 1 - Log that you're starting LLM initialization
-    # Use logger.info() with the deployment name from config
-    
     try:
-        # TODO: Step 2 - Create AzureChatOpenAI instance
+        # TODO: Step 1 - Create AzureChatOpenAI instance
         # Initialize the LLM with parameters from config dictionary
         # Remember to set:
         #   - azure_endpoint
@@ -62,20 +56,13 @@ def initialize_llm(config: Dict[str, Any]) -> AzureChatOpenAI:
         #   - temperature=0.1 (for factual accuracy)
         #   - max_tokens=1000
         
-        # TODO: Step 3 - Log the configuration details
-        # Use logger.debug() to log temperature and max_tokens settings
-        
-        # TODO: Step 4 - Log successful initialization
-        # Use logger.info() to confirm the LLM was initialized successfully
-        
-        # TODO: Step 5 - Return the initialized LLM instance
+        # TODO: Step 2 - Return the initialized LLM instance
         
         # Placeholder - remove this line once you implement the function
         raise NotImplementedError("TODO: Implement initialize_llm() function")
         
     except Exception as e:
-        # TODO: Step 6 - Handle errors
-        # Log the error with logger.error() including exc_info=True
-        # Then re-raise the exception
+        # TODO: Step 3 - Handle errors
+        # Re-raise the exception
         raise
 
