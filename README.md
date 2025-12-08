@@ -29,7 +29,7 @@ Prepare a PostgreSQL database with vector search capabilities.
 
 #### Goal
 
-Create vector embeddings for sample automotive text and store them in the database.
+Create vector embeddings for sample automotive text(sample_data.py) and store them in the database using(embedding_setup.py).
 
 #### Requirements
 
