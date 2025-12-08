@@ -48,22 +48,24 @@ class QueryService:
             List of result dictionaries with content and metadata
         """
         try:
-            vectorstore = self._get_vectorstore()
+            # TODO: Get the vectorstore instance using the helper method
+            # Hint: Use self._get_vectorstore()
+            vectorstore = None
             
             self.logger.debug(f"Performing similarity search: query='{query}', top_k={top_k}")
             
-            # Perform similarity search
-            if filter:
-                results = vectorstore.similarity_search_with_score(
-                    query, 
-                    k=top_k,
-                    filter=filter
-                )
-            else:
-                results = vectorstore.similarity_search_with_score(query, k=top_k)
+            # TODO: Perform similarity search on the vectorstore
+            # Hint: Use similarity_search_with_score method
+            # - If filter is provided, pass it as a parameter
+            # - Use top_k for the k parameter
+            # - Store results in a variable called 'results'
+            results = None
             
-            self.logger.info(f"Found {len(results)} result(s) for query")
-            # Return raw results: List of tuples (Document, distance_score)
+            # TODO: Log the number of results found
+            # Hint: Use self.logger.info() with the count of results
+            
+            # TODO: Return the results
+            # Note: Results should be a list of tuples (Document, distance_score)
             return results
             
         except Exception as e:
