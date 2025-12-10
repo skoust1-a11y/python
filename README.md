@@ -79,9 +79,7 @@ Build a complete query pipeline with REST API endpoints for querying the RAG sys
 
    - `POST /query` - Full RAG query with retrieval and LLM generation
    - `POST /retrieve` - Semantic search only (retrieval without LLM)
-   - `GET /health` - Health check endpoint
-   - `GET /metrics` - Pipeline metrics and statistics
-   - `GET /` - API information endpoint
+   
 
 3. **Response Format**
    - Include question, answer, sources, and metadata
