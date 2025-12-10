@@ -88,10 +88,9 @@ Implement asynchronous LLM invocation to enable non-blocking, concurrent operati
 
 Ensure you evaluate your solution against the below criteria:
 
-1. Environment variables are correctly loaded from `.env` file.
-2. LLM models are properly instantiated with correct configuration parameters.
-3. FastAPI endpoints correctly accept user input and return structured JSON responses.
-4. Task 1 endpoint generates synchronous travel itineraries based on user inputs.
-5. Task 2 endpoint provides both factual and creative responses with appropriate temperature settings.
-6. Task 3 endpoint implements asynchronous LLM invocation correctly.
+1. LLM-Model-Initialization: LLM models are properly instantiated with correct configuration parameters.
+2. Accepts-Input: FastAPI endpoints correctly accept user input and return structured JSON responses.
+3. Task1-endpoint: `/task1` endpoint generates synchronous travel itineraries based on user inputs.
+4. Task2-endpoint:`/task2` endpoint provides both factual and creative responses with appropriate temperature settings.
+5. Task3-endpoint:`/task3` implements asynchronous LLM invocation correctly using `aynscio`.
 
