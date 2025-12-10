@@ -93,10 +93,12 @@ Ensure the model outputs structured JSON that can be easily stored or visualized
 
 Ensure you evaluate your solution against the below criteria:
 
-1. Langfuse connection is properly configured and prompts are successfully fetched from the external source.
-2. Task 1 endpoint correctly fills template placeholders and generates dynamic prompts based on user inputs.
-3. Task 2 endpoint implements few-shot prompting with appropriate examples that guide the model's output style.
-4. Task 3 endpoint uses PydanticOutputParser to enforce structured output validation.
-5. All endpoints correctly invoke the LLM and return appropriate responses.
-6. Structured output from Task 3 follows the defined Pydantic schema and validates correctly.
+1. Langfuse-connection: Langfuse connection is properly configured and prompts are successfully fetched from the external source.
+2. Calling-Langfuse-Prompt: `/task1` endpoint correctly fills template placeholders and generates dynamic prompts based on user inputs.
+3. Pydantic-model-for-Task1: Define a Pydantic model to capture itinerary request details: destination, number of days, and budget
+4. Few-Shot-Prompting: `/task2` endpoint implements few-shot prompting with appropriate examples that guide the model's output style.
+5. Pydantic-model-for-Task2: Define a Pydantic model UserQuery to capture the user’s input query for processing
+6. PydanticOutputParser: `/task3` endpoint uses PydanticOutputParser to enforce structured output validation.
+7. LLM-Invocation: All endpoints correctly invoke the LLM and return appropriate responses.
+8. Schema Validation: The output from `/task3` endpoint is correctly structured, matches the Pydantic schema, and validates without errors.
 
