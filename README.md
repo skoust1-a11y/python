@@ -6,7 +6,7 @@ This practice focuses on the **foundation layer** — setting up the vector data
 
 ## Problem Statement
 
-Before building a RAG system, you need to understand how text is converted into vector embeddings, how to store and retrieve embeddings efficiently, and how semantic similarity search works. Without a proper vector database infrastructure, you can't build a functional RAG system that retrieves relevant information from knowledge bases.
+Establish the foundational understanding of how text is converted into vector embeddings, how to store and retrieve embeddings efficiently, and how semantic similarity search works. Without a proper vector database infrastructure, you can't build a functional RAG system that retrieves relevant information from knowledge bases.
 
 You will complete three tasks to build this foundation:
 
