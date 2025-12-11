@@ -8,7 +8,7 @@ This practice builds on the previous practices to create a complete query system
 
 ## Problem Statement
 
-A RAG system needs to answer user questions by retrieving relevant context from the vector database and generating accurate, sourced responses. The system must handle queries efficiently, provide citations, and scale to serve multiple users simultaneously. Without a proper query pipeline, you can't transform stored embeddings into actionable answers.
+Implement a complete query system that answers user questions by retrieving relevant context from the vector database and generating accurate, sourced responses. The system must handle queries efficiently, provide citations, and scale to serve multiple users simultaneously. Without a proper query pipeline, you can't transform stored embeddings into actionable answers.
 
 You will complete three tasks to build this query pipeline:
 
@@ -79,7 +79,6 @@ Build a complete query pipeline with REST API endpoints for querying the RAG sys
 
    - `POST /query` - Full RAG query with retrieval and LLM generation
    - `POST /retrieve` - Semantic search only (retrieval without LLM)
-   
 
 3. **Response Format**
    - Include question, answer, sources, and metadata
