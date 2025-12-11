@@ -6,7 +6,7 @@ This practice builds on the previous practice to create a complete document inge
 
 ## Problem Statement
 
-Real-world RAG systems need to process diverse document formats (PDFs, web pages, text files) and convert them into searchable vectors. Documents must be split into manageable chunks, embedded, and stored with metadata for accurate retrieval. Without a proper ingestion pipeline, you can't populate your knowledge base with company documents, product specs, or customer data.
+Build a robust ingestion pipeline that processes diverse document formats (PDFs, web pages, text files) and converts them into searchable vectors. Documents must be split into manageable chunks, embedded, and stored with metadata for accurate retrieval. Without a proper ingestion pipeline, you can't populate your knowledge base with company documents, product specs, or customer data.
 
 You will complete three tasks to build this ingestion pipeline:
 
