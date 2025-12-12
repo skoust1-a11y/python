@@ -11,7 +11,7 @@ You’ll configure user roles (admin), enable social logins (like Google), and p
 
 ## Problem Statement
 
-Your task is to **implement secure authentication and authorization** for your Travel Agent using **Auth0**, **React**, and **FastAPI**.  
+Implement secure authentication and authorization for your Travel Agent using **Auth0**, **React**, and **FastAPI**.  
 You’ll complete three main tasks corresponding to the three learning objectives.
 
 ---
