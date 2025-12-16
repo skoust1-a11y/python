@@ -19,5 +19,5 @@
 
 #### Instructions
 
-- Creata `UV` project `p6-sum-of-odd-and-even` inside `p6-sum-of-odd-and-even` folder.
+- Use boilerplate.
 - Implement the program code inside the `main` function of the `main.py` file.
