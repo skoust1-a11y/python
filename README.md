@@ -38,17 +38,9 @@ Following steps should be performed to build the solution for this practice. ​
 - Display student details and performance reports.​
 - Serialize validated student data to a dictionary and JSON for real-world use cases like saving reports.
 
-#### Sample UV Project Structure
-
-![](./screenshots/folder-structure.png)
-
-**Expected Output:**
-
-![](./screenshots/expected-output.png)
-
 #### Instructions:
 
-- Create a `UV` project named `p1_student_management_app` and implement the required functionality.
+- Use boilerplate.
 - Ensure your code is well-organized and includes comments for clarity.
 - Test your code thoroughly to ensure it meets the requirements.
 
