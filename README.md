@@ -19,5 +19,5 @@
 
 #### Instructions
 
-- Creata `UV` project `p5-reverse-digits` inside the `p5-reverse-digits` folder.
+- Use boilerplate.
 - Implement the program code inside the `main` function of the `main.py` file.
