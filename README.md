@@ -17,7 +17,7 @@
 
 #### Instructions
 
-- Creata `UV` project `p3-vowel-checker` in your local machine.
+- Use boilerplate.
 - Implement the program code inside the `main` function of the `main.py` file.
 
 
