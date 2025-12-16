@@ -28,7 +28,6 @@ Following steps should be performed to build the solution for this practice.
 
 ### Step 1: Prepare Your Project & Dependencies 
 
-- Create a new project folder and initialize it using the `uv` package manager.​
 - Install the required libraries — `openai` for API interaction and `python-dotenv` for secure environment management.​
 - Verify that your environment is properly initialized before proceeding.
 
@@ -87,13 +86,3 @@ Goodbye! Keep learning with AI.
 ```
 
 -----
-
-### Project Structure
-
-```
-ai_tutor_llm_models/
-├── main.py
-├── pyproject.toml
-├── README.md
-└── uv.lock
-```
