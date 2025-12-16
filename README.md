@@ -3,7 +3,7 @@
 ### Problem Statement
 
 - Design a Python application to process and validate retail sales records efficiently while maintaining clear logs and robust error handling.​
-- The program should read sales data from a text file, validate each record for correctness, handle exceptions gracefully, and generate a summary report of total sales. It should also log key events such as data validation, errors, and file operations for monitoring and debugging purposes.
+- The program should read sales data from a text file (given in boilerplate), validate each record for correctness, handle exceptions gracefully, and generate a summary report of total sales. It should also log key events such as data validation, errors, and file operations for monitoring and debugging purposes.
 
 ### Context
 
