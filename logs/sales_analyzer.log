@@ -1,0 +1,16 @@
+21-10-25 17:11:22 | INFO | SalesAnalyzerLogger | === Sales Data Analyzer Started ===
+21-10-25 17:11:22 | INFO | SalesAnalyzerLogger | Reading sales data from file...
+21-10-25 17:11:22 | INFO | SalesAnalyzerLogger | Read 7 records from sales_data_analyzer_app/data/sales_data.txt
+21-10-25 17:11:22 | INFO | SalesAnalyzerLogger | Validating sales data...
+21-10-25 17:11:22 | DEBUG | SalesAnalyzerLogger | Validated record: ProductA - 15 units - ₹1200.5
+21-10-25 17:11:22 | DEBUG | SalesAnalyzerLogger | Validated record: ProductB - 10 units - ₹800.0
+21-10-25 17:11:22 | WARNING | SalesAnalyzerLogger | Skipping invalid record: Non-numeric data in record: ('ProductC', 'five', '1000.00')
+21-10-25 17:11:22 | DEBUG | SalesAnalyzerLogger | Validated record: ProductD - 20 units - ₹1500.25
+21-10-25 17:11:22 | WARNING | SalesAnalyzerLogger | Skipping invalid record: Invalid values: quantity=0, amount=600.0
+21-10-25 17:11:22 | WARNING | SalesAnalyzerLogger | Skipping invalid record: Invalid values: quantity=12, amount=-300.0
+21-10-25 17:11:22 | DEBUG | SalesAnalyzerLogger | Validated record: ProductG - 8 units - ₹950.75
+21-10-25 17:11:22 | INFO | SalesAnalyzerLogger | Calculating total and average sales...
+21-10-25 17:11:22 | INFO | SalesAnalyzerLogger | Summary report written to /sales_data_analyzer_app/data/sales_summary.txt
+21-10-25 17:11:22 | INFO | SalesAnalyzerLogger | Sales summary written to /sales_data_analyzer_app/data/sales_summary.txt
+21-10-25 17:11:22 | INFO | SalesAnalyzerLogger | === Sales Data Analyzer Completed ===
+

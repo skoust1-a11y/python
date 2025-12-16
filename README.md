@@ -46,17 +46,9 @@ Logging helps monitor the application flow and simplifies debugging in long-runn
 
 ​This step demonstrates how to combine file I/O, validation, and logging to create a robust and traceable application.
 
-#### Sample UV Project Structure
-
-![](./screenshots/folder-structure.png)
-
-**Expected Output - Log file:**
-
-![](./screenshots/expected-output.png)
-
 #### Instructions:
 
-- Create a `UV` project named `p1_sales_analyzer_app` and implement the required functionality.
+- Use boilerplate
 - Ensure your code is well-organized and includes comments for clarity.
 - Test your code thoroughly to ensure it meets the requirements.
 
