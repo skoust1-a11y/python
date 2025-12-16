@@ -27,8 +27,6 @@ Following steps should be performed to build the solution for this practice.
 ### Step 1: Configure Testing Environment​
 
 - Install `pytest`, `pytest-cov`, and `httpx` for testing.​
-- Set up a `tests/` directory in your project folder.​
-- Create a `pytest.ini` file to configure test markers for unit and integration tests.​
 
 
 ### Step 2: Write Unit Tests (Fast & Isolated)​
@@ -52,7 +50,7 @@ Following steps should be performed to build the solution for this practice.
 - Aim for 80%+ coverage to ensure production readiness.
 
 #### Note
-**Copy the previous sprint - "Develop and Document Rest API Endpoints" exercise solution into the cloned repository to solve this exercise.**
+**Copy the solution code from the previous sprint, “Develop and Document REST API Endpoints,” into the cloned repository, placing it in the appropriate files to complete this exercise.**
 
 ----
 
@@ -67,15 +65,3 @@ When the program runs:​
 - Developers can run tests confidently before deployment, ensuring every update maintains system stability.
 
 ----
-
-### 💡 Expected Output Reference
-
-![](./screenshots/expected-output-test-report.png)
-
------
-
-### Project Structure
-
-![](./screenshots/project-structure.png)
-
------
