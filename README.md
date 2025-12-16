@@ -23,5 +23,5 @@
 
 #### Instructions
 
-- Creata `UV` project `p4-bmi-interpreter` inside the `p4-bmi-interpreter` folder.
+- Use boilerplate.
 - Implement the program code inside the `main` function of the `main.py` file.
