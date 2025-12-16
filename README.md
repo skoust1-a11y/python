@@ -23,7 +23,7 @@ Thank you for shopping with us!​
 
 #### Instructions
 
-- Creata `UV` project `p2-generate-whatsapp-messages` inside the `p2-generate-whatsapp-messages` folder
+- Use boilerplate
 - Implement the program code inside the `main` function of the `main.py` file.
 
 
