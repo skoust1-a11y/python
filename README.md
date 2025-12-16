@@ -35,7 +35,7 @@ Following steps should be performed to build the solution for this practice.
 
 ### Step 2: Define Pydantic models for request and response validation.
 
-- Create a `schemas.py` file and add models to structure input (concept requests) and output (explanations with metadata) and error responses.​
+- Inside the `schemas.py` file add models to structure input (concept requests) and output (explanations with metadata) and error responses.​
 - Use these schemas in your API endpoints for cleaner, consistent data handling.
 
 ### Step 3: Expose REST API endpoints​
@@ -76,15 +76,3 @@ When the program runs:​
 - Rate limiting ensures excessive requests are blocked with 429 errors.
 
 ----
-
-### 💡 Expected Output Reference
-
-![](./screenshots/expected-output-docs.png)
-
------
-
-### Project Structure
-
-![](./screenshots/folder-structure.png)
-
------
