@@ -53,14 +53,11 @@ indicating that the movie was not found.
 | Titanic | 1997 | 195 | Romance |
 | Avatar | 2009 | 162 | Sci-Fi |
 
-**Expected Output:**
 
-![](./expected-output.png)
 
 #### Instructions:
 
-- Create a `UV` project named `p1_movie_collection_app` and implement the required functionality inside the `main,py` file.
-- Ensure your code is well-organized and includes comments for clarity.
+- Use boilerplate
 - Test your code thoroughly to ensure it meets the requirements.
 
 
