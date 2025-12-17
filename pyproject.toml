@@ -1,7 +1,7 @@
 [project]
 name = "sprint-9-practice"
 version = "0.1.0"
-description = "Sprint 9 Practice: Evaluated RAG Pipeline with Langfuse"
+description = "Evaluated RAG Pipeline with Langfuse"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

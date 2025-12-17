@@ -2,7 +2,7 @@
 
 ## Project Context
 
-You're building an **Employee Policy RAG System**, an AI-powered system that helps employees get answers to questions about company policies, benefits, vacation time, remote work arrangements, and compliance requirements.
+You're building a **Product Manual RAG System**, an AI-powered system that helps users get answers to questions about product features, installation, configuration, troubleshooting, and usage instructions.
 
 This practice focuses on **RAG system evaluation** — implementing automated evaluation pipelines using Langfuse and LLM-as-a-judge techniques. You'll learn how to create evaluation datasets, build evaluators that measure faithfulness and answer relevance, and run comprehensive evaluation pipelines that track quality metrics and SLO compliance.
 
@@ -78,7 +78,7 @@ Integrate automatic evaluation and tracing into the API query endpoint.
 
 Ensure you evaluate your solution against the below criteria:
 
-1. **Evaluation Dataset Creation**: Langfuse dataset is created with 10 test questions (3 easy, 4 medium, 3 hard) with proper metadata (category, difficulty, policy_area) and expected outputs. Dataset items are successfully added to Langfuse using langfuse.create_dataset_item().
+1. **Evaluation Dataset Creation**: Langfuse dataset is created with 10 test questions (3 easy, 4 medium, 3 hard) with proper metadata (category, difficulty, manual_section) and expected outputs. Dataset items are successfully added to Langfuse using langfuse.create_dataset_item().
 
 2. **LLM-as-a-Judge Evaluators**: Faithfulness and answer relevance evaluators are implemented with structured prompts, score extraction from LLM judgments, and Langfuse score attachment. Evaluators return scores in 0.0-1.0 range and handle errors gracefully.
 

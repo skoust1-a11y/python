@@ -29,7 +29,7 @@ def create_dataset(langfuse: Langfuse, dataset_name: str):
     Create an evaluation dataset for the RAG system.
     
     TODO: Call langfuse.create_dataset() with name, description, and metadata.
-    Metadata should include: sprint="C3-S09", type="employee_policy_qa", version="1.0", knowledge_base="employee_handbook"
+    Metadata should include: sprint="C3-S09", type="product_manual_qa", version="1.0", knowledge_base="product_manual"
     """
     # TODO: Implement this function
     pass
@@ -40,11 +40,11 @@ def add_items(langfuse: Langfuse, dataset_name: str):
     Add test cases to the dataset.
     
     TODO: 
-    1. Create a list of 10 test cases (3 easy, 4 medium, 3 hard) based on employee policy document.
-    2. Each test case should have: input (question), expected (answer), category, difficulty, policy_area.
+    1. Create a list of 10 test cases (3 easy, 4 medium, 3 hard) based on product manual document.
+    2. Each test case should have: input (question), expected (answer), category, difficulty, manual_section.
     3. For hard questions, add edge_case field.
     4. Loop through test cases and call langfuse.create_dataset_item() for each.
-    5. Build metadata dict with category, difficulty, policy_area, source="employee_policy", and edge_case if present.
+    5. Build metadata dict with category, difficulty, manual_section, source="product_manual", and edge_case if present.
     """
     # TODO: Implement this function
     test_cases = [
@@ -60,7 +60,7 @@ def main():
     Main function to create the evaluation dataset.
     
     TODO: 
-    1. Set DATASET_NAME = "employee_policy"
+    1. Set DATASET_NAME = "product_manual"
     2. Get Langfuse client, create dataset, add items
     3. Print summary with dataset name, total questions, and breakdown
     """
