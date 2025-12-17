@@ -205,13 +205,12 @@ def get_llm():
     return _llm
 
 
-def add_documents_to_index(documents, use_semantic_splitter=True):
+def add_documents_to_index(documents):
     """
-    Add new documents to the existing index.
+    Add new documents to the existing index using semantic chunking.
     
     Args:
         documents: List of Document objects to add
-        use_semantic_splitter: Whether to use semantic chunking (default: True)
         
     Returns:
         dict: Result message with number of documents indexed
@@ -221,20 +220,16 @@ def add_documents_to_index(documents, use_semantic_splitter=True):
     if _index is None:
         initialize_services()
     
-    logger.info(f"Adding {len(documents)} document(s) to index...")
-    logger.info(f"  Using semantic chunking: {use_semantic_splitter}")
+    logger.info(f"Adding {len(documents)} document(s) to index with semantic chunking...")
     
-    # TODO: Implement document indexing with optional semantic chunking
-    # HINT: Check if use_semantic_splitter is True
-    # HINT: If True:
+    # TODO: Implement document indexing with semantic chunking
+    # HINT: Steps to complete:
     #   1. Get embedding model using get_embed_model()
     #   2. Create semantic splitter using create_semantic_splitter(embed_model)
     #   3. Generate nodes using generate_nodes_from_documents(semantic_splitter, documents)
-    #   4. Insert each node into the index using _index.insert(node)
-    # HINT: If False:
-    #   1. Insert each document directly using _index.insert(doc)
+    #   4. Loop through nodes and insert each one using _index.insert(node)
     # HINT: Use try-except to handle insertion errors
-    # HINT: Return a dictionary with success message
+    # HINT: Return a dictionary with success message: {"message": "Successfully indexed X document(s)"}
     # Your code here:
     raise NotImplementedError("add_documents_to_index method is not implemented yet. Please complete the implementation.")
 

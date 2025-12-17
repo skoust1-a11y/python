@@ -124,20 +124,16 @@ Build the query endpoint with metadata filtering support.
 
 #### Goal
 
-Implement the complete indexing pipeline with optional semantic chunking.
+Implement the complete indexing pipeline with semantic chunking.
 
 #### Requirements
 
-1. Check if semantic chunking is enabled
-2. If enabled:
-   - Get embedding model
-   - Create semantic splitter
-   - Generate nodes from documents
-   - Insert nodes into index
-3. If disabled:
-   - Insert documents directly into index
-4. Handle errors during insertion
-5. Return success message with document count
+1. Get embedding model using get_embed_model()
+2. Create semantic splitter using create_semantic_splitter()
+3. Generate nodes from documents using generate_nodes_from_documents()
+4. Insert each node into the index
+5. Handle errors during insertion
+6. Return success message with document count
 
 **File**: `main/service/rag_service.py` - `add_documents_to_index()`
 
