@@ -1,4 +1,4 @@
-# Evaluated RAG Pipeline with Langfuse
+# Product Manual RAG System
 
 ## Project Context
 
@@ -50,7 +50,7 @@ Build evaluators that use LLM-as-a-judge to score answer quality and implement t
 
 4. Implement `run_dataset_evaluation()` to run evaluation on dataset and calculate metrics
 
-**File**: `main/evaluation/evaluators.py`
+**File**: `main/evaluation/dataset_evaluation.py`
 
 ---
 
