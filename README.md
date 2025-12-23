@@ -195,4 +195,3 @@ Ensure you evaluate your solution against the below criteria:
 
 9. **FastAPI Endpoint Implementation**: POST /support/query endpoint is decorated with @app.post("/support/query") and accepts query parameter. Endpoint initializes state correctly with all required fields, invokes react_graph, extracts final answer correctly (handles FINAL ANSWER extraction and cleanup), logs query and final answer, and returns {"answer": final_answer}. Endpoint handles edge cases (no FINAL ANSWER found).
 
-10. **Main Block Implementation**: Main block includes uvicorn.run() to start the server with appropriate host, port, and reload settings.
