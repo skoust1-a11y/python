@@ -85,7 +85,7 @@ Add a security middleware that validates Auth0 JWT tokens and permits only autho
 
 Ensure you evaluate your solution against the bellow criteria:
 
-1. Frontend is protected by Auth0 provider.
-2. Frontend is correctly performing conditional display of chat component and admin welcome message based on roles.
-3. Frontend is correctly sending the JWT token to the backend.
-4. Backend is properly validating JWT token sent by Auth0.
+1. **Auth Protection**: Ensure the frontend is wrapped with `<Auth0Provider>` from `@auth0/auth0-react` library properly so that only authenticated users can access protected areas.
+2. **Role Display**: Make sure the frontend correctly shows the chat component or the admin welcome message based on the user’s assigned roles.
+3. **Token Forwarding**: Ensure the frontend includes the JWT token in every backend request for secure authentication by getting access token.
+4. **Token Validation**: Complete the security.py file to handle JWT authentication and authorization.
