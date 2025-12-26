@@ -61,9 +61,7 @@ Combine both tools into a single agent that automatically decides which tool(s) 
 
 Ensure you evaluate your solution against the below criteria:
 
-1. Internal tool is correctly implemented with proper error handling and returns structured travel information.
-2. External tool successfully connects to the external API and returns location data with proper error handling.
-3. Both tools are properly decorated with `@tool` and can be invoked independently through their respective endpoints.
-4. Agent is correctly configured with both tools and a custom system prompt.
-5. Agent automatically selects the appropriate tool(s) based on different types of user queries.
-6. All three endpoints (`/tools/internal`, `/tools/external`, `/ask`) correctly invoke their respective tools/agent and return appropriate responses.
+1. **Tool Configuration**: Ensure both tools (get_destination_info and get_user_location) are imported, registered, and ready for the agent to invoke.
+2. **Agent Logic**: Make sure the ReAct agent is created with the correct system prompt so it can automatically call tools without follow-up questions.
+3. **Route Handling**: Ensure each FastAPI route correctly invokes the corresponding tool or agent and returns clean JSON responses.
+4. **Error Management**: Make sure appropriate exceptions are caught and converted into HTTP errors to prevent the API from crashing.
