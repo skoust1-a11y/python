@@ -93,12 +93,14 @@ Ensure the model outputs structured JSON that can be easily stored or visualized
 
 Ensure you evaluate your solution against the below criteria:
 
-1. Langfuse-connection: Langfuse connection is properly configured and prompts are successfully fetched from the external source.
-2. Calling-Langfuse-Prompt: `/task1` endpoint correctly fills template placeholders and generates dynamic prompts based on user inputs.
-3. Pydantic-model-for-Task1: Define a Pydantic model to capture itinerary request details: destination, number of days, and budget
-4. Few-Shot-Prompting: `/task2` endpoint implements few-shot prompting with appropriate examples that guide the model's output style.
-5. Pydantic-model-for-Task2: Define a Pydantic model UserQuery to capture the user’s input query for processing
-6. PydanticOutputParser: `/task3` endpoint uses PydanticOutputParser to enforce structured output validation.
-7. LLM-Invocation: All endpoints correctly invoke the LLM and return appropriate responses.
-8. Schema Validation: The output from `/task3` endpoint is correctly structured, matches the Pydantic schema, and validates without errors.
+1. **LLM Setup**: Make sure your LLM models are initialized correctly using environment variables and the specified temperature and retry settings.
+2. **Environment Loading**: Ensure your .env file is loaded properly and required keys like GEMINI_API_KEY are validated before starting the app.
+3. **FastAPI Setup**: Make sure the FastAPI app is initialized correctly with appropriate routes and descriptive titles
+4. **Langfuse Integration**: Ensure the Langfuse client is configured with the right keys and used to fetch prompts dynamically.
+5. **Task 1 Implementation**: Make sure the travel itinerary prompt is fetched from Langfuse, formatted with user inputs, and sent to the LLM for a response.
+6. **Task 2 Few-Shot Prompting**: Ensure ChatPromptTemplate.from_messages() is used correctly with few-shot examples and dynamic user queries.
+7. **Task 3 Structured Output**: Make sure Pydantic models and PydanticOutputParser are used to validate and return structured trip plan data.
+8. **Error Handling**: Ensure appropriate HTTP exceptions are raised for missing prompts, validation errors, and general failures.
+9. **Response Formatting**: Make sure all task endpoints return clean JSON responses with clear field names for easy consumption.
+10. **App Execution**: Ensure the app runs correctly with uvicorn as the entry point and reload is enabled for development
 
