@@ -45,7 +45,7 @@ Build a React chat UI that communicates with your FastAPI `/chat` endpoint, send
 
 Ensure you evaluate your solution against the bellow criteria:
 
-1. CORS is correctly setup in the backend.
-2. Frontend is correctly calling the streaming endpoint.
-3. Frontend is displaying streaming response received from backend.
+1. **CORS Setup**: Make sure backend CORS middleware is correctly configured so the frontend at localhost:5173 or localhost:3000 can send requests without being blocked.
+2. **Streaming Read in Frontend**: Make sure the frontend correctly reads streamed chunks using ReadableStream, decodes them, and forwards meaningful data: lines to the message handler.
+3. **Streaming Display**: Ensure the frontend smoothly displays streaming AI responses from the backend and handles any errors gracefully.
   
