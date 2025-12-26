@@ -60,9 +60,9 @@ Attach the Langfuse Callback Handler in your chat API so all chain events (LLM c
 
 Ensure you evaluate your solution against the below criteria:
 
-1. `@observe` decorator is correctly applied.
-2. OpenTelemetry spans are properly initialized and visible in console logs.
-3. Langfuse Callback Handler is properly configured and attached to chain executions.
-4. Traces include proper metadata (session_id, user_email, trace_name) enabling correlation across requests.
-5. Traces are correctly flushed to avoid losing data from streamed responses.
+1. **Decorator Usage**: Ensure the @observe decorator is correctly applied so observability hooks trigger during chain execution.
+2. **Span Logging**: Make sure OpenTelemetry spans are properly initialized and visible in the console logs during request processing.
+3. **Callback Setup**: Ensure the Langfuse Callback Handler is correctly configured and attached to all chain executions.
+4. **Trace Metadata**: Make sure traces include important metadata such as session_id, user_email, and trace_name for clear correlation across requests.
+5. **Trace Flushing**: Ensure traces are properly flushed so no telemetry data is lost during or after streamed responses.
 
