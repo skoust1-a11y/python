@@ -88,13 +88,13 @@ Implement asynchronous LLM invocation to enable non-blocking, concurrent operati
 
 Ensure you evaluate your solution against the below criteria:
 
-1.**LLM Setup**: Make sure your LLM models are initialized correctly using environment variables (GEMINI_API_KEY, GEMINI_MODEL_NAME, GEMINI_BASE_URL) and the main model includes settings like temperature=0.3 and max_retries=2.
-2.**Input Handling**: Make sure your FastAPI endpoints use Pydantic models to accept structured inputs and return clean JSON responses for all three tasks.
-3.**Task1 Prompting**: Make sure `/task1` builds the full itinerary prompt properly using destination, theme, and days, and generates the response synchronously using llm.invoke().
-4.**Task1 Output**: Make sure `/task1` extracts the LLM output correctly using result.content and handles errors with a clear HTTPException message.
-5.**Task2 Models**: Make sure `/task2` uses two different LLM configurations where the factual model has low temperature and the creative model has high temperature.
-6.**Task2 Responses**: Make sure `/task2` returns two separate responses (factual and creative) and both are generated using `.invoke()` with the same base prompt.
-7.**Async Logic**: Make sure `/task3` uses the asynchronous function correctly by calling await `llm.ainvoke()` inside generate_async_suggestion.
-8.**Async Execution**: Make sure `/task3` triggers the async call properly using `asyncio.run()` and returns the output in the AsyncSuggestionResponse format.
-9.**API Stability**: Make sure all three endpoints run without errors when starting the FastAPI application with uvicorn.
+1. **LLM Setup**: Make sure your LLM models are initialized correctly using environment variables (GEMINI_API_KEY, GEMINI_MODEL_NAME, GEMINI_BASE_URL) and the main model includes settings like temperature=0.3 and max_retries=2.
+2. **Input Handling**: Make sure your FastAPI endpoints use Pydantic models to accept structured inputs and return clean JSON responses for all three tasks.
+3. **Task1 Prompting**: Make sure `/task1` builds the full itinerary prompt properly using destination, theme, and days, and generates the response synchronously using llm.invoke().
+4. **Task1 Output**: Make sure `/task1` extracts the LLM output correctly using result.content and handles errors with a clear HTTPException message.
+5. **Task2 Models**: Make sure `/task2` uses two different LLM configurations where the factual model has low temperature and the creative model has high temperature.
+6. **Task2 Responses**: Make sure `/task2` returns two separate responses (factual and creative) and both are generated using `.invoke()` with the same base prompt.
+7. **Async Logic**: Make sure `/task3` uses the asynchronous function correctly by calling await `llm.ainvoke()` inside generate_async_suggestion.
+8. **Async Execution**: Make sure `/task3` triggers the async call properly using `asyncio.run()` and returns the output in the AsyncSuggestionResponse format.
+9. **API Stability**: Make sure all three endpoints run without errors when starting the FastAPI application with uvicorn.
 
