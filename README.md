@@ -59,10 +59,8 @@ Build a router chain that classifies user queries into categories (e.g., BOOKING
 
 Ensure you evaluate your solution against the below criteria:
 
-1. Multi-step LCEL chain correctly analyzes feedback and returns sentiment, urgency, and response strategy.
-2. Sentiment classification accurately categorizes feedback as POSITIVE, NEGATIVE, or NEUTRAL.
-3. Urgency assignment function correctly maps sentiment to urgency levels.
-4. Intent classification chain accurately categorizes queries into BOOKING, CANCELLATION, or GENERAL.
-5. Router correctly routes queries to the appropriate response chain based on intent classification.
-6. Booking, cancellation, and general chains generate appropriate responses for their respective query types.
-7. Both endpoints (`/analyze_feedback` and `/route_query`) correctly invoke their respective chains and return appropriate JSON responses.
+1. **LLM Setup**: Make sure the LLM is initialized using environment variables for model name, API key, and base URL, and verify that missing keys raise clear errors.
+2. **Prompt Design**: Ensure all ChatPromptTemplates (sentiment, strategy, intent, booking, cancellation, general) are structured correctly and use placeholders that match the incoming inputs.
+3. **Chain Logic**: Make sure the LCEL chains correctly compose each step—classification, parsing, branching, and final response generation—using RunnableLambda, RunnableBranch, and StrOutputParser.
+4. **Routing Behavior**: Ensure the router selects the correct branch (booking, cancellation, or general) based on the evaluated intent and falls back to the default chain when needed.
+5. **API Handling**: Make sure FastAPI endpoints accept validated Pydantic inputs and return clean JSON responses containing user input and the generated strategy or routed answer.
