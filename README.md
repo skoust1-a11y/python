@@ -117,6 +117,8 @@ Expose an API endpoint that accepts a document and triggers the multi-modal inge
 
 ## Evaluation Criteria
 
+Ensure you evaluate your solution against the below criteria:
+
 1. Multi-Modal Table Processing: Markdown tables are extracted, summarized, and indexed as separate nodes with `content_type="table_summary"`.
 2. Multi-Modal Image Processing: PDF images are extracted, captioned, and indexed as separate nodes with `content_type="image_caption"`.
 3. Metadata Preservation: Each node preserves consistent metadata (e.g., `source`, and table/image identifiers like `table_index`, `page`, `image_index`) to support traceability.
