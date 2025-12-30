@@ -163,6 +163,8 @@ Orchestrate the complete RAG pipeline: input validation → retrieval → answer
 
 ## Evaluation Criteria
 
+Ensure you evaluate your solution against the below criteria:
+
 1. **Fusion Retrieval Initialization**: The fusion retrieval system successfully initializes with both vector and BM25 retrievers (when nodes are available), combines them using QueryFusionRetriever with RRF mode, and creates a query engine.
 
 2. **Query and Retrieve Methods**: The query method returns string answers from the query engine, and the retrieve method returns a list of RetrievedChunk objects with proper text, score, and source extraction from node metadata.
