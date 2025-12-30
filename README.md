@@ -221,6 +221,8 @@ Create a FastAPI endpoint that accepts product review requests and returns struc
 
 ## Evaluation Criteria
 
+Ensure you evaluate your solution against the below criteria:
+
 1. **MCP Service Initialization**: The HuggingFaceMCPService successfully initializes with URL and token from environment variables, validates token presence, and sets up authorization headers correctly.
 
 2. **MCP Tools Loading**: The load_tools method successfully connects to the MCP server, creates BasicMCPClient and McpToolSpec instances, retrieves tools asynchronously, and handles filtering when allowed_tools is provided.
