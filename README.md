@@ -68,93 +68,58 @@ Build the tool functions that the agent will use to gather information and perfo
 
 **File:** `tools.py`
 
-## Task 4 — Initialize LLM with Tools
+## Task 4 — Build ReAct Graph
 
 ### Goal
 
-Set up the Azure OpenAI LLM instance with tools bound to it.
+Set up the LLM, implement graph nodes, routing logic, and construct the complete LangGraph workflow.
 
 ### Requirements
 
-1. Initialize `AzureChatOpenAI` with credentials from environment variables
-2. Set `temperature=0` and default model to "gpt-4o-mini"
-3. Bind tools `[get_account_info, calculate]` to the LLM using `.bind_tools()`
+1. **Initialize LLM with Tools:**
+   - Initialize `AzureChatOpenAI` with credentials from environment variables
+   - Set `temperature=0` and default model to "gpt-4o-mini"
+   - Bind tools `[get_account_info, calculate]` to the LLM using `.bind_tools()`
 
-**File:** `main.py` (in the initialization section)
+2. **Implement Reasoning Node:**
+   - Implement `reasoning_node(state: CustomerSupportState)` function that:
+     - Formats `REASONING_PROMPT` with state fields (thought_history, action_log, observation_results)
+     - Prepends `SystemMessage` with formatted prompt to messages
+     - Invokes LLM with messages
+     - Extracts thought from response if present, appends to `state["thought_history"]`, and logs it
+     - Sets `state["task_complete"] = True` if "FINAL ANSWER" in response content
+     - Returns `{"messages": [response]}`
 
-## Task 5 — Implement Reasoning Node
+3. **Implement Tool Execution Node:**
+   - Implement `tool_execution_node(state: CustomerSupportState)` function that:
+     - Gets last message from state and checks for `tool_calls`
+     - Loops through all `tool_calls`:
+       - Extracts tool name and args, creates action dict, appends to `state["action_log"]`, and logs action
+       - Executes appropriate tool (get_account_info or calculate)
+       - Appends result to `state["observation_results"]` and logs observation
+       - Creates `ToolMessage` with result and `tool_call_id`
+     - Returns `{"messages": tool_messages}`
 
-### Goal
+4. **Implement Loop Condition:**
+   - Implement `should_continue(state: CustomerSupportState) -> str` function that:
+     - Returns "end" if `task_complete` is True or "FINAL ANSWER" in last message content
+     - Returns "continue" if last message has `tool_calls` (check max 6 iterations)
+     - Returns "continue" if last message is a `ToolMessage`
+     - Returns "end" as default fallback
 
-Build the reasoning node that analyzes queries and decides next action or provides final answer.
-
-### Requirements
-
-1. Implement `reasoning_node(state: CustomerSupportState)` function that:
-   - Formats `REASONING_PROMPT` with state fields (thought_history, action_log, observation_results)
-   - Prepends `SystemMessage` with formatted prompt to messages
-   - Invokes LLM with messages
-   - Extracts thought from response if present, appends to `state["thought_history"]`, and logs it
-   - Sets `state["task_complete"] = True` if "FINAL ANSWER" in response content
-   - Returns `{"messages": [response]}`
+5. **Build the Graph:**
+   - Create `StateGraph` with `CustomerSupportState`
+   - Add nodes: "reasoning" and "tool_execution"
+   - Set entry point to "reasoning"
+   - Add conditional edges from "reasoning" using `should_continue` function:
+     - "continue" -> "tool_execution"
+     - "end" -> END
+   - Add edge from "tool_execution" back to "reasoning"
+   - Compile the graph
 
 **File:** `main.py`
 
-## Task 6 — Implement Tool Execution Node
-
-### Goal
-
-Build the tool execution node that executes selected tools and returns observations.
-
-### Requirements
-
-1. Implement `tool_execution_node(state: CustomerSupportState)` function that:
-   - Gets last message from state and checks for `tool_calls`
-   - Loops through all `tool_calls`:
-     - Extracts tool name and args, creates action dict, appends to `state["action_log"]`, and logs action
-     - Executes appropriate tool (get_account_info or calculate)
-     - Appends result to `state["observation_results"]` and logs observation
-     - Creates `ToolMessage` with result and `tool_call_id`
-   - Returns `{"messages": tool_messages}`
-
-**File:** `main.py`
-
-## Task 7 — Implement Loop Condition
-
-### Goal
-
-Build the conditional routing function that determines if the agent should continue or finish.
-
-### Requirements
-
-1. Implement `should_continue(state: CustomerSupportState) -> str` function that:
-   - Returns "end" if `task_complete` is True or "FINAL ANSWER" in last message content
-   - Returns "continue" if last message has `tool_calls` (check max 6 iterations)
-   - Returns "continue" if last message is a `ToolMessage`
-   - Returns "end" as default fallback
-
-**File:** `main.py`
-
-## Task 8 — Build the Graph
-
-### Goal
-
-Construct the LangGraph workflow with reasoning and tool execution nodes.
-
-### Requirements
-
-1. Create `StateGraph` with `CustomerSupportState`
-2. Add nodes: "reasoning" and "tool_execution"
-3. Set entry point to "reasoning"
-4. Add conditional edges from "reasoning" using `should_continue` function:
-   - "continue" -> "tool_execution"
-   - "end" -> END
-5. Add edge from "tool_execution" back to "reasoning"
-6. Compile the graph
-
-**File:** `main.py`
-
-## Task 9 — Implement FastAPI Endpoint
+## Task 5 — Implement FastAPI Endpoint
 
 ### Goal
 
@@ -162,7 +127,7 @@ Build REST API endpoint that processes customer queries and returns final answer
 
 ### Requirements
 
-1. Build graph using the graph construction code (from Task 8)
+1. Build graph using the graph construction code (from Task 4)
 2. Implement `POST /support/query` endpoint that:
    - Accepts `query: str` parameter
    - Initializes state with messages, thought_history, action_log, observation_results, task_complete
