@@ -5,11 +5,11 @@ description = "Travel Planner Advanced: FastAPI service demonstrating LangChain 
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-	"fastapi>=0.95.0",
-	"pydantic>=2.0",
-	"python-dotenv>=1.0.0",
-	"uvicorn[standard]>=0.22.0",
-	"langchain>=0.0.0",
-	"langchain-openai>=0.1.0",
-	"langfuse>=0.3.0"
+	"fastapi==0.121.0",
+	"pydantic==2.2.4",
+	"python-dotenv==1.2.1",
+	"uvicorn[standard]==0.38.0",
+	"langchain==1.0.0",
+	"langchain-openai==1.0.0",
+	"langfuse==3.9.1"
 ]
