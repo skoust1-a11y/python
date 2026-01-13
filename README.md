@@ -53,9 +53,11 @@ Create a FastAPI-based AI agent that remembers trip details across turns within 
 
 Ensure you evaluate your solution against the below criteria:
 
-1. Memory-aware prompt correctly includes `MessagesPlaceholder` and formats conversation history appropriately.
-2. Session management function correctly creates and retrieves unique chat message histories for different session IDs.
-3. Stateful chain is properly configured with `RunnableWithMessageHistory` and maintains conversation context within sessions.
-4. Agent remembers user details (e.g., destination, duration, preferences) across multiple turns within the same session.
+1. **LLM Initialization**: Make sure the ChatOpenAI model is initialized with the correct model name, API key, and base URL for consistent behavior across sessions.
+2. **Memory Prompting**: Ensure the prompt correctly uses MessagesPlaceholder to include chat history and maintain continuity in travel-related conversations.
+3. **Session Handling**: Make sure get_session_history correctly creates and retrieves ChatMessageHistory objects for unique session IDs.
+4. **Stateful Chain**: Ensure RunnableWithMessageHistory is properly configured to pass session-specific memory and preserve conversation state.
+5. **FastAPI Endpoints**: Make sure /new-session generates valid UUIDs and /chat correctly accepts input, session_id, and returns model responses tied to the correct session.
+6. **Manual Memory Demo**: Ensure the memory-aware prompt in trip_memory_prompt.py correctly appends HumanMessage and AIMessage entries to simulate persistent conversation context
 
 
