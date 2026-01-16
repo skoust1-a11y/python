@@ -18,8 +18,8 @@ Define the state schema that tracks documentation generation, reflection feedbac
 
 ### Requirements
 
-1. Import `TypedDict`, `Annotated`, `List` from `typing` and `operator`
-2. Create `DocumentationReflectionState` class extending `TypedDict` with fields: `messages` (Annotated[list, operator.add]), `task_description` (str), `draft_output` (str), `reflection_feedback` (Annotated[List[str], operator.add]), `iteration_count` (int), `quality_score` (float), `quality_threshold` (float), `max_iterations` (int), `output_approved` (bool)
+1. Import required types from `typing` and `operator`
+2. Create `DocumentationReflectionState` TypedDict with all required fields
 
 **File:** `state.py`
 
@@ -31,11 +31,10 @@ Set up Azure OpenAI LLM instance for generation, reflection, and refinement oper
 
 ### Requirements
 
-1. Import `AzureChatOpenAI` from `langchain_openai`, `load_dotenv` from `dotenv`, and `os`
-2. Call `load_dotenv()` to load environment variables
-3. Get Azure OpenAI credentials from environment: `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_MODEL`, `AZURE_OPENAI_API_VERSION`
-4. Create `AzureChatOpenAI` instance with api_key, azure_endpoint, model, api_version, temperature=0, max_retries=3, timeout=60
-5. Export as `llm` variable
+1. Import required modules
+2. Load environment variables
+3. Initialize AzureChatOpenAI with correct parameters
+4. Export as `llm`
 
 **File:** `llm.py`
 
@@ -47,8 +46,8 @@ Build a generation node that creates initial technical documentation in README.m
 
 ### Requirements
 
-1. Import `HumanMessage`, `SystemMessage` from `langchain_core.messages`, `DocumentationReflectionState` from `state`, and `llm` from `llm`
-2. Implement `generation_node(state: DocumentationReflectionState)` that extracts `task_description` from state, builds generation prompt requesting README.md format with project overview, installation instructions, usage examples, and API documentation, uses beginner-friendly language and markdown format, invokes `llm.invoke()` with SystemMessage (expert technical writer) and HumanMessage (prompt), extracts documentation from response.content, cleans markdown code fences (handles ```markdown and ```), stores documentation in `state["draft_output"]`, initializes `state["iteration_count"]` to 0, sets `state["output_approved"]` to False, and returns updated state
+1. Import required modules
+2. Implement `generation_node` that generates documentation, cleans markdown, and updates state
 
 **File:** `nodes/generation.py`
 
@@ -60,8 +59,8 @@ Build a reflection node that critically evaluates documentation on completeness,
 
 ### Requirements
 
-1. Import `json`, `SystemMessage`, `HumanMessage` from `langchain_core.messages`, `DocumentationReflectionState` from `state`, and `llm` from `llm`
-2. Implement `reflection_node(state: DocumentationReflectionState)` that extracts `task_description` and `draft_output` from state, builds critique prompt evaluating on three criteria (0-10 each): Completeness (all sections present: overview, installation, usage, API), Clarity (easy to understand, well-structured), Examples (sufficient working code examples), requests JSON format with scores, issues, suggestions, and overall_score, invokes `llm.invoke()` with SystemMessage (critical reviewer) and HumanMessage (critique prompt), parses JSON from response.content (removes ```json and ``` fences, handles JSONDecodeError), extracts `overall_score` from critique, creates feedback string with iteration number and summary, appends feedback to `state["reflection_feedback"]`, updates `state["quality_score"]` with overall_score, handles JSONDecodeError with fallback score 5.0, and returns updated state
+1. Import required modules
+2. Implement `reflection_node` that evaluates on three criteria, parses JSON response, and updates quality_score
 
 **File:** `nodes/reflection.py`
 
@@ -73,8 +72,8 @@ Build a refinement node that improves documentation based on reflection critique
 
 ### Requirements
 
-1. Import `SystemMessage`, `HumanMessage` from `langchain_core.messages`, `DocumentationReflectionState` from `state`, and `llm` from `llm`
-2. Implement `refinement_node(state: DocumentationReflectionState)` that extracts `task_description`, `draft_output`, and latest feedback from `state["reflection_feedback"][-1]`, builds refinement prompt with original task, current documentation, and critique, instructs to address all identified issues while keeping what works well, invokes `llm.invoke()` with SystemMessage (improvement specialist) and HumanMessage (refinement prompt), extracts refined documentation from response.content, cleans markdown code fences (handles ```markdown and ```), updates `state["draft_output"]` with refined documentation, increments `state["iteration_count"]`, and returns updated state
+1. Import required modules
+2. Implement `refinement_node` that improves documentation based on feedback and increments iteration_count
 
 **File:** `nodes/refinement.py`
 
@@ -86,8 +85,8 @@ Build routing logic that determines whether to approve documentation or continue
 
 ### Requirements
 
-1. Import `DocumentationReflectionState` from `state`
-2. Implement `should_continue(state: DocumentationReflectionState) -> str` that extracts `quality_score`, `iteration_count`, `max_iterations`, and `quality_threshold` from state, checks if `iteration_count >= max_iterations` (sets `state["output_approved"]` to True and returns "approve"), checks if `quality_score >= quality_threshold` (sets `state["output_approved"]` to True and returns "approve"), checks if `7.0 <= quality_score < quality_threshold` (sets `state["output_approved"]` to True and returns "approve" for borderline cases), otherwise returns "refine" to continue improving
+1. Import required modules
+2. Implement `should_continue` that returns "approve" or "refine" based on quality and iterations
 
 **File:** `routing.py`
 
@@ -99,8 +98,8 @@ Construct the complete LangGraph workflow with generation, reflection, and refin
 
 ### Requirements
 
-1. Import `StateGraph`, `END` from `langgraph.graph`, `DocumentationReflectionState` from `state`, and all node functions from `nodes` package, and `should_continue` from `routing`
-2. Implement `build_graph()` that creates `StateGraph` with `DocumentationReflectionState`, adds nodes: "generator" (generation_node), "reflector" (reflection_node), "refiner" (refinement_node), sets entry point to "generator", adds edge from "generator" to "reflector", adds conditional edges from "reflector" using `should_continue` function with mapping: "refine" -> "refiner", "approve" -> END, adds edge from "refiner" to "reflector" (loop back), compiles graph with `workflow.compile()`, and returns compiled app
+1. Import required modules
+2. Implement `build_graph()` that creates StateGraph, adds nodes and edges, and returns compiled app
 
 **File:** `graph.py`
 
@@ -112,14 +111,12 @@ Build REST API endpoint that processes documentation requests and returns struct
 
 ### Requirements
 
-1. Import `logging`, `time`, `asyncio`, `FastAPI`, `HTTPException` from `fastapi`, `BaseModel` from `pydantic`, `build_graph` from `graph`, and `uvicorn`
-2. Configure logging with StreamHandler and FileHandler('agent.log')
-3. Create FastAPI app with title, description, and version
-4. Build graph at startup and store in `doc_graph` variable
-5. Define `DocumentationRequest` BaseModel with `task_description` (str), `quality_threshold` (float, default 8.0), `max_iterations` (int, default 3)
-6. Define `DocumentationResponse` BaseModel with `status` (str), `task_description` (str), `generated_documentation` (str), `reflection_history` (list[str]), `iterations` (int), `final_quality_score` (float), `approved` (bool), `execution_time` (float)
-7. Implement `POST /generate` endpoint that accepts `DocumentationRequest`, validates task_description (raises HTTPException if empty), initializes state with all required fields, invokes graph with timeout using `asyncio.wait_for` and `asyncio.to_thread` (timeout 300 seconds, recursion_limit 50), handles `TimeoutError` and general `Exception`, creates `DocumentationResponse` with results, prints formatted output to console (task, status, metrics, documentation, reflection history), and returns response
-8. Implement `GET /health` endpoint that returns `{"status": "healthy", "service": "Technical Documentation Generator with Self-Correction"}`
+1. Import required modules
+2. Configure logging
+3. Create FastAPI app and build graph at startup
+4. Define `DocumentationRequest` and `DocumentationResponse` BaseModels
+5. Implement `POST /generate` endpoint
+
 
 **File:** `main.py`
 
