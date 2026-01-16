@@ -21,10 +21,10 @@ Build the tool functions that the agent will use to search the web and perform c
 
 ### Requirements
 
-1. Import `DuckDuckGoSearchRun` from `langchain_community.tools` and `tool` decorator from `langchain_core.tools`
-2. Initialize `DuckDuckGoSearchRun` with timeout parameter and store in `ddg_search` variable
-3. Implement `search_web(query: str) -> str` decorated with `@tool` that invokes `ddg_search.invoke(query)`, handles empty results and exceptions, and returns search result string
-4. Implement `calculate(expression: str) -> str` decorated with `@tool` that safely evaluates expression using `eval(expression, {"__builtins__": {}}, {})`, formats result as "Result: {round(result, 2)}", handles exceptions, and returns formatted result
+1. Import required modules
+2. Initialize DuckDuckGoSearchRun
+3. Implement `search_web` tool function
+4. Implement `calculate` tool function
 
 **File:** `tools/tools.py`
 
@@ -36,8 +36,8 @@ Build a planning node that decomposes user research queries into structured, exe
 
 ### Requirements
 
-1. Import `json`, `SystemMessage`, `HumanMessage` from `langchain_core.messages`, `MarketResearchState` from `state.state`, and `llm` from `llm`
-2. Implement `planning_node(state: MarketResearchState)` that extracts user_request from state messages, builds planning prompt instructing LLM to decompose into 3-5 steps with JSON format, invokes llm.invoke() with SystemMessage and HumanMessage, parses JSON from response.content (removes markdown fences, handles JSONDecodeError), normalizes plan format (handles dict/string items with defaults), limits to 5 steps, updates state with plan and initialization values, and returns updated state
+1. Import required modules
+2. Implement `planning_node` that extracts user request, builds planning prompt, invokes LLM, parses JSON response, normalizes plan format, and updates state
 
 **File:** `nodes/planner.py`
 
@@ -49,8 +49,8 @@ Build an execution node that executes individual steps from the plan using tools
 
 ### Requirements
 
-1. Import `HumanMessage`, `ToolMessage` from `langchain_core.messages`, `MarketResearchState` from `state.state`, `llm_with_tools` from `llm`, and `search_web`, `calculate` from `tools.tools`
-2. Implement `execution_node(state: MarketResearchState)` that performs safety check (sets task_complete if invalid), gets current step info from plan, creates execution message, invokes llm_with_tools.invoke() with messages, appends response to messages, handles no tool call case, executes tool (search_web or calculate) if tool call exists, stores execution result in execution_results, adds ToolMessage to messages, and returns updated state
+1. Import required modules
+2. Implement `execution_node` that gets current step, invokes llm_with_tools, executes tools, and stores results
 
 **File:** `nodes/executor.py`
 
@@ -62,8 +62,8 @@ Build a verification node that checks if executed steps met success criteria.
 
 ### Requirements
 
-1. Import `json`, `SystemMessage`, `HumanMessage` from `langchain_core.messages`, `MarketResearchState` from `state.state`, and `llm` from `llm`
-2. Implement `verification_node(state: MarketResearchState)` that performs safety checks (sets task_complete if invalid), gets step info and execution result, builds verification prompt comparing expected vs actual with JSON response format, invokes llm.invoke() for evaluation, parses JSON verification result (handles markdown fences and JSONDecodeError), stores verification status, handles FAIL status (sets needs_replanning), handles PASS status (advances step or marks complete), and returns updated state
+1. Import required modules
+2. Implement `verification_node` that evaluates step results, parses verification response, handles PASS/FAIL status, and updates state
 
 **File:** `nodes/verifier.py`
 
@@ -75,9 +75,9 @@ Build a replanning node that adjusts plans when steps fail verification.
 
 ### Requirements
 
-1. Import `json`, `SystemMessage`, `HumanMessage` from `langchain_core.messages`, `MarketResearchState` from `state.state`, and `llm` from `llm`
+1. Import required modules
 2. Define `MAX_REPLANS = 2` constant
-3. Implement `replanning_node(state: MarketResearchState)` that increments replan_attempts, checks max replan attempts (fail-forward if exceeded), gets failure context, builds replanning prompt with full context (original plan, failed step, failure reason, execution result), invokes llm.invoke() for replanning, parses revised plan JSON (handles markdown fences), normalizes revised plan format, updates state with revised plan (limit to 5 steps), handles JSONDecodeError with step simplification, and returns updated state
+3. Implement `replanning_node` that checks replan attempts, builds replanning prompt, invokes LLM, parses revised plan, and updates state
 
 **File:** `nodes/replanner.py`
 
@@ -89,10 +89,10 @@ Set up the routing logic and construct the complete LangGraph workflow with cond
 
 ### Requirements
 
-1. Import `StateGraph`, `END` from `langgraph.graph`, `MarketResearchState` from `state.state`, and all node functions from `nodes` package
-2. Define `MAX_STEPS = 10` constant for safety limit
-3. Implement `should_continue(state: MarketResearchState) -> str` that returns "complete" if task_complete or current_step > MAX_STEPS, returns "replan" if needs_replanning, otherwise returns "execute"
-4. Build the Graph by creating StateGraph with MarketResearchState, adding nodes (planner, executor, verifier, replanner), setting entry point to "planner", adding edges (planner->executor, executor->verifier, replanner->executor), adding conditional edges from "verifier" with should_continue mapping (execute->executor, replan->replanner, complete->END), and compiling graph to app_graph
+1. Import required modules
+2. Define `MAX_STEPS = 10` constant
+3. Implement `should_continue` routing function
+4. Build StateGraph with nodes, edges, and conditional routing
 
 **File:** `graph/graph.py`
 
@@ -104,10 +104,10 @@ Build REST API endpoint that processes research queries and returns structured r
 
 ### Requirements
 
-1. Import `FastAPI`, `Query` from `fastapi`, `HumanMessage` from `langchain_core.messages`, `app_graph` from `graph.graph`, `asyncio`, and `uvicorn`
-2. Create FastAPI app with title, description, and version
-3. Implement `POST /research` endpoint that accepts query parameter, validates query (returns error if empty), initializes state with all required fields, invokes graph with timeout using asyncio.wait_for and asyncio.to_thread, handles TimeoutError and general Exception, and returns success response with status, task_complete, plan, execution_results, and verification_status
-4. Implement `GET /health` endpoint that returns `{"status": "healthy"}`
+1. Import required modules
+2. Create FastAPI app
+3. Implement `POST /research` endpoint
+
 
 **File:** `main.py`
 
