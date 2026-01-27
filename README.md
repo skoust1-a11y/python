@@ -1,4 +1,4 @@
-# Banking Customer Support ReAct Agent - Sprint Practice
+# Banking Customer Support ReAct Agent 
 
 ## Project Context
 
