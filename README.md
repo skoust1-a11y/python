@@ -1,4 +1,4 @@
-# Product Manual RAG System
+# Product Manual RAG System - Human Handoff
 
 ## Project Context
 
