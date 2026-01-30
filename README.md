@@ -1,4 +1,4 @@
-# Product Manual RAG System
+# Product Manual RAG System - Evaluation Against SLO
 
 ## Project Context
 
