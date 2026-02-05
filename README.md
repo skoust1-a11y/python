@@ -1,4 +1,4 @@
-# Resume Screening & Candidate Routing Flow
+# Resume Screening & Candidate Routing
 
 A FastAPI-based service that uses a multi-crew orchestration system using CrewAI Flows to screen resumes, route them to specialized crews, and generate AI-driven hiring recommendations.
 
