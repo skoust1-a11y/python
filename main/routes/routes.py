@@ -183,21 +183,24 @@ async def upload_document(file: UploadFile = File(...)):
 
 @router.post("/query", response_model=QueryResponse)
 async def query_rag(request: QueryRequest, background_tasks: BackgroundTasks):
-    """
-    Query the RAG system with a question.
+    """Query RAG system with evaluation and human handoff logic."""
+    # TODO: Implement query endpoint with handoff logic
     
-    Returns answer and source nodes used for the response.
-    Also performs automatic evaluation (faithfulness + answer relevance) in Langfuse.
-    Implements human handoff when quality thresholds are not met.
+    # 1. Setup: Generate session_id, initialize conversation_flow
+    # 2. RAG Query: Get query engine, execute query, build full_chunks list
+    # 3. Langfuse: Start span, get trace_id
+    # 4. Evaluations: Run faithfulness, relevance, confidence, explicit request checks (all async)
+    # 5. Handoff Decision (priority order):
+    #    - Explicit request → high priority
+    #    - Confidence + risk → high priority
+    #    - Score-based → normal priority
+    # 6. If handoff triggered:
+    #    - Generate reference_id, build handoff_context with all fields
+    #    - Send email via background_tasks
+    #    - Return fallback message with reference_id
+    # 7. Normal response: Format source_nodes (truncate to 200 chars), return answer
+    # 8. Error handling: Wrap in try/except, log errors, raise HTTPException
     
-    Args:
-        request: QueryRequest with question and user_email
-        background_tasks: FastAPI background tasks for async email sending
-        
-    Returns:
-        QueryResponse with answer and source nodes (or handoff message if triggered)
-    """
-    # TODO: Implement query endpoint with human handoff logic
     raise NotImplementedError("Query endpoint with handoff logic needs to be implemented")
 
 
