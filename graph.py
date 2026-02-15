@@ -2,17 +2,30 @@ from langgraph.graph import StateGraph, END
 from state import DocumentationReflectionState
 from nodes.generation import generation_node
 from nodes.reflection import reflection_node
-from nodes.refinement import refinement_node
-from routing import should_continue
-
 # TODO: Build the reflection graph
-# - Create StateGraph with DocumentationReflectionState
-# - Add nodes: generator, reflector, refiner
-# - Set entry point: generator
-# - Add edge: generator → reflector
-# - Add conditional edge: reflector → (refine or approve)
-# - Add edge: refiner → reflector (loop back)
-# - Compile and return
+# 
+# INSTRUCTIONS:
+# 1. Initialize the StateGraph with DocumentationReflectionState
+# 
+# 2. Add nodes:
+#    - "generator": generation_node
+#    - "reflector": reflection_node
+# 
+# 3. Define the flow:
+#    - Set entry point to "generator"
+#    - Add edge from "generator" to "reflector"
+# 
+# 4. Add conditional edges from "reflector":
+#    - Use the `should_continue` function (you need to import it!)
+#    - Dictionary mapping:
+#      - "refine": "reflector" (Loop back)
+#      - "approve": END (Finish)
+# 
+# 5. Compile the graph
+# 
+# 6. Return the compiled app
+
+from routing import should_continue # Ensure this import is executed
 
 def build_graph():
     """Build and compile the documentation reflection graph."""

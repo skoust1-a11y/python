@@ -1,9 +1,17 @@
 # TODO: Implement should_continue function
-# Logic:
-# - If iteration_count >= max_iterations: approve
-# - If quality_score >= quality_threshold: approve
-# - If 7.0 <= quality_score < quality_threshold: approve (borderline)
-# - Otherwise: return "refine"
+# 
+# INSTRUCTIONS:
+# 1. Check the state for:
+#    - iteration_count
+#    - max_iterations
+#    - quality_score
+#    - quality_threshold
+# 
+# 2. Determine the path:
+#    - IF iteration_count >= max_iterations: return "approve"
+#    - IF quality_score >= quality_threshold: return "approve"
+#    - IF quality_score is close to threshold (e.g. >= 7.0): return "approve"
+#    - ELSE: return "refine"
 
 from state import DocumentationReflectionState
 

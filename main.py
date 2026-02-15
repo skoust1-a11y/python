@@ -33,13 +33,63 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # TODO: Create FastAPI app
+# 
+# INSTRUCTIONS:
+# 1. Initialize FastAPI app:
+#    - title="Technical Documentation Generator"
+#    - description="..."
+#    - version="0.1.0"
+
+app = FastAPI(
+    title="Technical Documentation Generator with Self-Correction",
+    description="AI agent that generates technical documentation for Python code and iteratively improves it through self-reflection",
+    version="0.1.0"
+)
 
 
 # TODO: Build graph at startup
-doc_graph = None
+# 
+# INSTRUCTIONS:
+# 1. Call build_graph() and assign to doc_graph
+# 2. Add logging to indicate startup
+
+logger.info("Building documentation generation graph...")
+doc_graph = build_graph()
+logger.info("Graph built successfully")
 
 
 # TODO: Implement DocumentationRequest and DocumentationResponse
+# 
+# INSTRUCTIONS:
+# 1. DocumentationRequest(BaseModel):
+#    - task_description: str (required)
+#    - quality_threshold: float (default 8.0)
+#    - max_iterations: int (default 3)
+# 
+# 2. DocumentationResponse(BaseModel):
+#    - status: str
+#    - task_description: str
+#    - generated_documentation: str
+#    - reflection_history: List[str]
+#    - iterations: int
+#    - final_quality_score: float
+#    - approved: bool
+#    - execution_time: float
+
+class DocumentationRequest(BaseModel):
+    task_description: str
+    quality_threshold: float = 8.0
+    max_iterations: int = 3
+
+class DocumentationResponse(BaseModel):
+    status: str
+    task_description: str
+    generated_documentation: str
+    reflection_history: list[str]
+    iterations: int
+    final_quality_score: float
+    approved: bool
+    execution_time: float
 
 
 # TODO: Implement POST /generate endpoint
@@ -47,6 +97,24 @@ doc_graph = None
 async def generate_documentation(request: DocumentationRequest):
     """Generate technical documentation for Python code."""
     # TODO: Implement endpoint logic
+    # 
+    # INSTRUCTIONS:
+    # 1. Initialize state dictionary with:
+    #    - task_description from request
+    #    - quality_threshold from request
+    #    - max_iterations from request
+    #    - default values for other fields
+    # 
+    # 2. Invoke the graph:
+    #    - Use `await asyncio.to_thread(doc_graph.invoke, ...)` to avoid blocking
+    #    - Handle timeouts (optional but recommended)
+    # 
+    # 3. Process result:
+    #    - Extract final state values
+    #    - Calculate execution time
+    # 
+    # 4. Return DocumentationResponse
+    
     raise HTTPException(status_code=501, detail="Not implemented")
 
 @app.get("/health")
