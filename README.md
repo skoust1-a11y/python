@@ -4,7 +4,7 @@ In earlier practice, you made your Trip & Travel Planner Agent interactive using
 However, it was still open to everyone — anyone with the URL could use it.  
 
 In this practice, you will secure your agent using **Auth0**.  
-You’ll configure user roles (admin), enable social logins (like Google), and protect your **FastAPI** backend so only authenticated and authorized users can access it.  
+You’ll configure user roles (admin, user), and protect your **FastAPI** backend so only authenticated and authorized users can access it.  
  
 
 ---
@@ -16,7 +16,7 @@ You’ll complete three main tasks corresponding to the three learning objective
 
 ---
 
-### **Task 1 — Configure Auth0 with Roles and Social Login**
+### **Task 1 — Configure Auth0 with Roles**
 
 #### Goal  
 Create and configure a secure identity layer in Auth0.
@@ -24,12 +24,11 @@ Create and configure a secure identity layer in Auth0.
 #### Requirements  
 1. Create an API in Auth0.    
 2. Create an application in Auth0.   
-3. Create **admin** role.
+3. Create **admin** and **user** role.
 4. Create users and assign roles manually. 
-5. Enable **Google Social Login** for default user.  
-6. Add one **Auth0 Actions**:  
+5. Add one **Auth0 Actions**:  
    - `add-roles-to-tokens` → adds roles to JWT.  
-7. Test login for different users and  roles.  
+6. Test login for different users and  roles.  
   
 
 ---
