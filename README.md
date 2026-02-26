@@ -43,7 +43,15 @@ Connect your React frontend to Auth0 for login/logout and role-based UI.
    ```bash
    npm install @auth0/auth0-react ```
 
-2. Update `.env` with required environment variable.  
+2. Create `.env` with required environment variable.
+
+   ``` 
+   VITE_AUTH0_DOMAIN=your-domain.auth0.com
+   VITE_AUTH0_CLIENT_ID=your-client-id
+   VITE_AUTH0_AUDIENCE=your-api-audience
+   VITE_AUTH0_ROLE_NAMESPACE=https://stateful-agent.com  
+
+   ```
 
 3. In `main.tsx` wrap your <App> component with the Auth0 provider.
 
@@ -71,6 +79,20 @@ Add a security middleware that validates Auth0 JWT tokens and permits only autho
 2. Complete the security.py file to handle JWT authentication and authorization.
   
 3. Protect the chat endpoint with JWT authentication.
+
+# Gemini API Configuration
+```
+
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+GEMINI_MODEL_NAME=gemini-2.5-flash
+```
+# Auth0 Configuration (for JWT authentication)
+```
+AUTH0_DOMAIN=your-auth0-domain.auth0.com
+API_AUDIENCE=your-api-audience-identifier
+ALGORITHMS=RS256
+```
 
 ### **Task 4 - In the frontend include the token in API call**
 
