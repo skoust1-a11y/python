@@ -1,4 +1,4 @@
-# C1 Wellbeing Coach
+# C1 HealthBeing Coach
 
 
 
@@ -15,14 +15,14 @@ Already a pro? Just edit this README.md and make it your own. Want to make it ea
 
 ```
 cd existing_repo
-git remote add origin https://gitlab.example.com/c1-wellbeing-coach/C1-Wellbeing-Coach.git
+git remote add origin https://gitlab.example.com/2005019_Jay/C1-HealthBeing-Coach.git
 git branch -M main
 git push -uf origin main
 ```
 
 ## Integrate with your tools
 
-- [ ] [Set up project integrations](https://gitlab.example.com/c1-wellbeing-coach/C1-Wellbeing-Coach/-/settings/integrations)
+- [ ] [Set up project integrations](https://gitlab.example.com/2005019_Jay/C1-HealthBeing-Coach/-/settings/integrations)
 
 ## Collaborate with your team
 
