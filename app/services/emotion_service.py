@@ -11,13 +11,17 @@ class EmotionService:
                 "intensity": "high"
             }
         
-        rule_result = self.rule_based_detection(text)
+        llm_result = self.llm_detect_emotion(text)
+        return llm_result
+        # rule_result = self.rule_based_detection(text)
 
-        if self.should_use_llm(rule_result):
-            llm_result = self.llm_detect_emotion(text)
-            return self.choose_better_emotion(rule_result, llm_result)
+        # if self.should_use_llm(rule_result):
+        #     llm_result = self.llm_detect_emotion(text)
+        #     return self.choose_better_emotion(rule_result, llm_result)
 
-        return rule_result
+
+
+        # return rule_result
 
 
     def rule_based_detection(self, text: str) -> dict:
