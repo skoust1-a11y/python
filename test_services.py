@@ -38,4 +38,5 @@ def test_services():
         print(f"Expected: {expected_rec}")
 
 if __name__ == "__main__":
+    print("Running Service Tests...")
     test_services()

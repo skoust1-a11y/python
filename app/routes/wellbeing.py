@@ -25,8 +25,8 @@ def analyze_emotion(
     emotion_service: EmotionService = Depends(get_emotion_service),
     recommendation_service: RecommendationService = Depends(get_recommendation_service),
 ):
-    emotion_result = emotion_service.analyze_emotion(user_input.text)
-    recommendations = recommendation_service.get_recommendations(emotion_result.get("emotion"))
+    emotion_result = emotion_service.detect_emotion(user_input.text)
+    recommendations = recommendation_service.generate_recommendation(emotion_result)
 
     return Response(
         emotion=emotion_result.get("emotion"),

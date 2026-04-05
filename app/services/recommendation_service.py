@@ -1,8 +1,25 @@
 from .llm_service import call_gemini_llm, call_gemma_llm
+from ..config import settings
 
 
 class RecommendationService:
-    def generate_recommendation(self, context: dict) -> dict:
+    def generate_recommendation(self, emotion_result: dict) -> dict:
+        if settings.get_env("TEST_WITH_MOCK_DATA", "false").lower() == "true":
+            # Return mock data
+            return {
+                "activity": "Mock activity: Take a deep breath",
+                "message": "This is a mock recommendation for testing."
+            }
+        
+        # Build context from emotion result
+        context = {
+            "mood": emotion_result.get("emotion", "neutral"),
+            "intensity": emotion_result.get("intensity", "medium"),
+            "trend": "stable",  # Default, could be derived if available
+            "preferences": [],  # Default empty
+            "avoid": []  # Default empty
+        }
+        
         prompt = build_prompt(context)
         try:
             llm_response = call_gemini_llm(prompt)

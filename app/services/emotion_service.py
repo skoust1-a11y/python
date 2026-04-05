@@ -1,5 +1,16 @@
+from ..config import settings
+
+
 class EmotionService:
     def detect_emotion(self, text: str) -> dict:
+        if settings.get_env("TEST_WITH_MOCK_DATA", "false").lower() == "true":
+            # Return mock data
+            return {
+                "emotion": "joy",  # Example mock emotion
+                "confidence": 0.9,
+                "intensity": "high"
+            }
+        
         rule_result = self.rule_based_detection(text)
 
         if self.should_use_llm(rule_result):
