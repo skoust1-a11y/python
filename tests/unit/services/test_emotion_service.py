@@ -2,6 +2,7 @@
 
 import pytest
 from unittest.mock import patch, MagicMock
+from fastapi import HTTPException
 from app.services.emotion_service import EmotionService
 
 
@@ -121,15 +122,19 @@ class TestEmotionService:
             assert happy_result["emotion"] == "joy"
 
     def test_llm_detect_emotion_fallback(self):
-        """Test LLM emotion detection fallback."""
+        """Test LLM path delegates to llm_detect_emotion when mock mode is off."""
         service = EmotionService()
-        
+
         with patch.dict('os.environ', {'TEST_WITH_MOCK_DATA': 'false'}):
-            result = service.detect_emotion("Test emotion")
-            
-            # Should return some result (neutral by default)
-            assert result is not None
-            assert "emotion" in result
+            with patch.object(service, 'llm_detect_emotion', return_value={
+                "emotion": "neutral",
+                "confidence": 0.7,
+                "intensity": "medium",
+            }) as mock_llm:
+                result = service.detect_emotion("Test emotion")
+
+                mock_llm.assert_called_once_with("Test emotion")
+                assert result["emotion"] == "neutral"
 
     def test_detect_emotion_unicode_text(self):
         """Test emotion detection with unicode characters."""
@@ -152,3 +157,42 @@ class TestEmotionService:
             
             assert result is not None
             assert "emotion" in result
+
+    def test_should_use_llm_true_for_low_confidence(self):
+        service = EmotionService()
+        assert service.should_use_llm({"confidence": 0.2}) is True
+
+    def test_should_use_llm_false_for_high_confidence(self):
+        service = EmotionService()
+        assert service.should_use_llm({"confidence": 0.9}) is False
+
+    def test_choose_better_emotion_prefers_higher_confidence(self):
+        service = EmotionService()
+        rule_result = {"emotion": "sadness", "confidence": 0.4}
+        llm_result = {"emotion": "anxiety", "confidence": 0.8}
+
+        chosen = service.choose_better_emotion(rule_result, llm_result)
+        assert chosen == llm_result
+
+    @patch("app.services.emotion_service.call_gemini_llm", return_value='{"emotion": "joy", "confidence": 0.95, "intensity": "high"}')
+    def test_llm_detect_emotion_gemini_success(self, mock_gemini):
+        service = EmotionService()
+        result = service.llm_detect_emotion("I feel amazing")
+        assert result["emotion"] == "joy"
+        mock_gemini.assert_called_once()
+
+    @patch("app.services.emotion_service.call_gemini_llm", side_effect=RuntimeError("gemini failed"))
+    @patch("app.services.emotion_service.call_gemma_llm", return_value='{"emotion": "neutral", "confidence": 0.7, "intensity": "medium"}')
+    def test_llm_detect_emotion_falls_back_to_gemma(self, mock_gemma, mock_gemini):
+        service = EmotionService()
+        result = service.llm_detect_emotion("I feel uncertain")
+        assert result["emotion"] == "neutral"
+        mock_gemma.assert_called_once()
+
+    @patch("app.services.emotion_service.call_gemini_llm", side_effect=RuntimeError("gemini failed"))
+    @patch("app.services.emotion_service.call_gemma_llm", side_effect=RuntimeError("gemma failed"))
+    def test_llm_detect_emotion_raises_http_exception_when_both_fail(self, mock_gemma, mock_gemini):
+        service = EmotionService()
+        with pytest.raises(HTTPException) as exc_info:
+            service.llm_detect_emotion("I feel confused")
+        assert "MISSING ENV KEYS FOR LLM MODELS" in exc_info.value.detail
