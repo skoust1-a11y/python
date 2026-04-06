@@ -3,6 +3,7 @@ from ..models.user_input import UserInput
 from ..models.response import Response
 from ..services.emotion_service import EmotionService
 from ..services.recommendation_service import RecommendationService
+from ..services.memory_service import MemoryService
 
 router = APIRouter(prefix="/wellbeing", tags=["wellbeing"])
 
@@ -15,6 +16,10 @@ def get_recommendation_service() -> RecommendationService:
     return RecommendationService()
 
 
+def get_memory_service() -> MemoryService:
+    return MemoryService()
+
+
 @router.get("/")
 def get_wellbeing_status():
     return {"status": "Wellbeing endpoint"}
@@ -24,16 +29,46 @@ def analyze_emotion(
     user_input: UserInput,
     emotion_service: EmotionService = Depends(get_emotion_service),
     recommendation_service: RecommendationService = Depends(get_recommendation_service),
+    memory_service: MemoryService = Depends(get_memory_service),
 ):
     emotion_result = emotion_service.detect_emotion(user_input.text)
     recommendations = recommendation_service.generate_recommendation(emotion_result)
 
+    interaction_id = memory_service.store_interaction(
+        {
+            "user_id": user_input.user_id,
+            "user_input": user_input.text,
+            "mood": emotion_result.get("emotion"),
+            "intensity": _safe_float(emotion_result.get("intensity")),
+            "confidence": _safe_float(emotion_result.get("confidence")),
+            "activity": recommendations.get("activity"),
+            "message": recommendations.get("message"),
+        }
+    )
+
     return Response(
+        interaction_id=interaction_id,
         emotion=emotion_result.get("emotion"),
         confidence=emotion_result.get("confidence"),
         message=f"Detected emotion: {emotion_result.get('emotion')}",
         recommendations=recommendations,
     )
+
+
+@router.get("/history/{user_id}")
+def get_user_history(
+    user_id: str,
+    memory_service: MemoryService = Depends(get_memory_service),
+):
+    history = memory_service.get_history(user_id)
+    return {"user_id": user_id, "history": history}
+
+
+def _safe_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 #----------------JUST TO TEST THE MOHIT'S WORK< LATER ON U CAN REMOVE IT-----------------

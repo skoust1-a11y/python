@@ -1,0 +1,56 @@
+# GitHub Actions CI/CD Configuration Example
+# Place this file at: .github/workflows/tests.yml
+
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ '3.12' ]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install uv
+      run: pip install uv
+    
+    - name: Sync dependencies
+      run: uv sync
+    
+    - name: Create test environment
+      run: |
+        # Use .env.test for CI/CD
+        cp .env.test .env
+        cat .env
+    
+    - name: Run unit tests with pytest
+      run: |
+        uv run python -m pytest tests/unit/services/ -v --tb=short --cov=app --cov-report=term
+    
+    - name: Run integration tests
+      run: |
+        uv run python -m pytest tests/integration/ -v --tb=short
+    
+    - name: Generate coverage report
+      run: |
+        uv run python -m pytest tests/ --cov=app --cov-report=html --cov-report=term
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        fail_ci_if_error: false
