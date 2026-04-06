@@ -1,5 +1,10 @@
 from ..config import settings
-
+from ..services.llm_service import call_gemini_llm,call_gemma_llm
+from openai import OpenAIError
+from fastapi import HTTPException
+import httpx
+from ..utils.prompts import WELLBEING_PROMPT
+import json
 
 class EmotionService:
     def detect_emotion(self, text: str) -> dict:
@@ -29,8 +34,40 @@ class EmotionService:
 
 
     def llm_detect_emotion(self, text: str) -> dict:
-        pass
-
+        try:
+            prompt = WELLBEING_PROMPT.get('get_emotion_state') + '\n' + WELLBEING_PROMPT.get('patient') + text
+            result = call_gemini_llm(prompt=prompt)
+            emotion_data = json.loads(result)
+            return emotion_data
+        except (RuntimeError,httpx.ConnectError,OpenAIError,Exception) as e:
+             # Log or print the error if needed
+            # print(f"Gemini LLM failed: {str(e)}")
+             print("Gemini failed:", str(e))
+        try:
+            prompt = WELLBEING_PROMPT.get('get_emotion_state','') + '\n' + WELLBEING_PROMPT.get('patient','') + text
+            result = call_gemma_llm(prompt=prompt)
+            emotion_data = json.loads(result)
+            return emotion_data
+        except RuntimeError as e:
+            raise HTTPException(
+                status_code=404,
+                detail=f'MISSING ENV KEYS FOR LLM MODELS {str(e)}'
+            )
+        except httpx.ConnectError as e:
+            raise HTTPException(
+                status_code=404,
+                detail=f'MISSING ENV KEYS FOR LLM MODELS {str(e)}'
+            )
+        except OpenAIError as e:
+             raise HTTPException(
+                status_code=404,
+                detail=f'MISSING ENV KEYS FOR LLM MODELS {str(e)}'
+            )
+        except Exception as e:
+              raise HTTPException(
+                status_code=404,
+                detail=f'MISSING ENV KEYS FOR LLM MODELS {str(e)}'
+            )
 
     def should_use_llm(self, rule_result: dict) -> bool:
         return rule_result["confidence"] < 0.65

@@ -34,3 +34,17 @@ def analyze_emotion(
         message=f"Detected emotion: {emotion_result.get('emotion')}",
         recommendations=recommendations,
     )
+
+
+#----------------JUST TO TEST THE MOHIT'S WORK< LATER ON U CAN REMOVE IT-----------------
+
+# @router.post('/mohit')
+# def mohit_soln(
+#     user_input : UserInput,
+#      emotion_service: EmotionService = Depends(get_emotion_service)
+# ):
+#     emotion = emotion_service.detect_emotion(user_input.text)
+#     return {
+#         'emotion_call' : emotion.get('emotion'),
+#         'emotion':emotion
+#     }
