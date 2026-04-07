@@ -107,8 +107,9 @@ class TestWellbeingRoutes:
         
         assert response.status_code == 200
         history = response.json()["history"]
-        # Should have at least 3 more interactions than before
-        assert len(history) >= initial_count + 3
+        # History endpoint is capped at 50 entries
+        expected_count = min(50, initial_count + 3)
+        assert len(history) >= expected_count
 
     def test_get_history_order_most_recent_first(self, client: TestClient):
         """Test that history returns most recent interactions first."""

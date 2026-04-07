@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import patch, MagicMock
-from app.services.recommendation_service import RecommendationService
+from app.services.recommendation_service import RecommendationService, build_prompt, parse_recommendation
 
 
 class TestRecommendationService:
@@ -213,3 +213,43 @@ class TestRecommendationService:
                 
                 # Should attempt LLM call
                 assert result is not None
+
+    @patch("app.services.recommendation_service.call_gemini_llm", side_effect=Exception("gemini down"))
+    @patch("app.services.recommendation_service.call_gemma_llm", return_value="Try a short mindful walk")
+    def test_generate_recommendation_fallback_to_gemma(self, mock_gemma, mock_gemini):
+        service = RecommendationService()
+        with patch.dict("os.environ", {"TEST_WITH_MOCK_DATA": "false"}):
+            result = service.generate_recommendation({"emotion": "stress", "intensity": "high"})
+
+        assert result["activity"] == "Try a short mindful walk"
+        mock_gemini.assert_called_once()
+        mock_gemma.assert_called_once()
+
+    @patch("app.services.recommendation_service.call_gemini_llm", side_effect=Exception("gemini down"))
+    @patch("app.services.recommendation_service.call_gemma_llm", side_effect=Exception("gemma down"))
+    def test_generate_recommendation_raises_when_both_llms_fail(self, mock_gemma, mock_gemini):
+        service = RecommendationService()
+        with patch.dict("os.environ", {"TEST_WITH_MOCK_DATA": "false"}):
+            with pytest.raises(Exception, match="gemma down"):
+                service.generate_recommendation({"emotion": "stress"})
+
+    def test_build_prompt_contains_context_values(self):
+        prompt = build_prompt(
+            {
+                "mood": "joy",
+                "intensity": "low",
+                "trend": "improving",
+                "preferences": ["walk"],
+                "avoid": ["screens"],
+            }
+        )
+        assert "User mood: joy" in prompt
+        assert "Intensity: low" in prompt
+        assert "Trend: improving" in prompt
+
+    def test_parse_recommendation_maps_response_to_both_fields(self):
+        parsed = parse_recommendation("Take five deep breaths")
+        assert parsed == {
+            "activity": "Take five deep breaths",
+            "message": "Take five deep breaths",
+        }
