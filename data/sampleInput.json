@@ -22,7 +22,7 @@
         "activity": "breathing",
         "message": "Try this breathing exercise...",
         "rating": 5,
-        "feedback": "helpful",
+       
         "comment": "felt better",
         "created_at": "timestamp"
 }

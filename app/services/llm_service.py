@@ -3,7 +3,8 @@ import logging
 from ..config.settings import settings
 from openai import OpenAI, OpenAIError
 from httpx import ConnectError
-from exceptions.Custom_Exceptions import MissingEnvVarError
+from typing import Iterator
+
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +23,7 @@ def prompt_generate(prompt: str):
 
 def require_env(var_name, value):
     if not value:
-        logger.error(f"Required environment variable '{var_name}' is missing or empty")
-        raise MissingEnvVarError(f"Required environment variable '{var_name}' is missing or empty.")
-    logger.debug(f"Environment variable '{var_name}' loaded successfully")
+        raise RuntimeError(f"Required environment variable '{var_name}' is missing or empty.")
     return value
 
 
@@ -45,10 +44,7 @@ def call_gemini_llm(prompt: str):
             messages=prompt_generate(prompt=prompt)
         )
         content = response.choices[0].message.content
-        logger.info("Gemini LLM call succeeded")
-        logger.debug(f"Gemini response (first 100 chars): '{content[:100]}'")
-    except MissingEnvVarError as e:
-        logger.error(f"Env config missing: {e}")
+    except RuntimeError as e:
         raise RuntimeError(f'Env config missing error : {str(e)}')
     except ConnectError as e:
         logger.error(f"Connection failed to Gemini endpoint: {e}")
@@ -77,11 +73,7 @@ def call_gemma_llm(prompt: str):
             model=ollama_model,
             messages=prompt_generate(prompt=prompt)
         )
-        content = response.choices[0].message.content
-        logger.info("Gemma LLM call succeeded")
-        logger.debug(f"Gemma response (first 100 chars): '{content[:100]}'")
-    except MissingEnvVarError as e:
-        logger.error(f"Env config missing: {e}")
+    except RuntimeError as e:
         raise RuntimeError(f'Env config missing error : {str(e)}')
     except ConnectError as e:
         logger.error(f"Connection failed to Ollama endpoint: {e}")
@@ -92,5 +84,69 @@ def call_gemma_llm(prompt: str):
     except Exception as e:
         logger.exception(f"Unexpected error during Gemma LLM call: {e}")
         raise Exception(f'ERROR :{str(e)}')
+        
+    return response.choices[0].message.content
 
-    return content
+
+def call_llm_gemini_stream(prompt: str) -> Iterator[str]:
+    try:
+        open_ai_key = require_env('OPENAI_API_KEY', settings.get_env("OPENAI_API_KEY"))
+        gemini_url = require_env('OPENAI_BASE_URL', settings.get_env("OPENAI_BASE_URL"))
+        gemini_model = require_env('OPENAI_MODEL', settings.get_env("OPENAI_MODEL"))
+
+        client = OpenAI(api_key=open_ai_key, base_url=gemini_url)
+        stream = client.chat.completions.create(
+            model=gemini_model,
+            messages=prompt_generate(prompt=prompt),
+            stream=True,
+        )
+    except RuntimeError as e:
+        raise RuntimeError(f'Env config missing error : {str(e)}')
+    except ConnectError as e:
+        raise ConnectError(f'Connection Failed : {str(e)}')
+    except OpenAIError as e:
+        raise OpenAIError(f'OPENAI SDK ERROR : {str(e)}')
+    except Exception as e:
+        raise Exception(f'ERROR :{str(e)}')
+
+    for chunk in stream:
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta
+        if not delta:
+            continue
+        content = delta.content
+        if content:
+            yield content
+
+
+def call_llm_gemma_stream(prompt: str) -> Iterator[str]:
+    try:
+        ollama_api_key = require_env('OLLAMA_API_KEY', settings.get_env("OLLAMA_API_KEY"))
+        ollama_model = require_env('OLLAMA_MODEL', settings.get_env("OLLAMA_MODEL"))
+        ollama_base_url = require_env('OLLAMA_BASE_URL', settings.get_env("OLLAMA_BASE_URL"))
+
+        client = OpenAI(api_key=ollama_api_key, base_url=ollama_base_url)
+        stream = client.chat.completions.create(
+            model=ollama_model,
+            messages=prompt_generate(prompt=prompt),
+            stream=True,
+        )
+    except RuntimeError as e:
+        raise RuntimeError(f'Env config missing error : {str(e)}')
+    except ConnectError as e:
+        raise ConnectError(f'Connection Failed : {str(e)}')
+    except OpenAIError as e:
+        raise OpenAIError(f'OPENAI SDK ERROR : {str(e)}')
+    except Exception as e:
+        raise Exception(f'ERROR :{str(e)}')
+
+    for chunk in stream:
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta
+        if not delta:
+            continue
+        content = delta.content
+        if content:
+            yield content

@@ -32,7 +32,15 @@ def analyze_emotion(
     memory_service: MemoryService = Depends(get_memory_service),
 ):
     emotion_result = emotion_service.detect_emotion(user_input.text)
-    recommendations = recommendation_service.generate_recommendation(emotion_result)
+
+    # Fetch last 10 interactions, reverse to chronological order, extract distinct moods
+    recent_history = memory_service.get_history(user_input.user_id)
+    last_10 = recent_history[:10][::-1]
+    mood_trend = list(dict.fromkeys(
+        entry["mood"] for entry in last_10 if entry.get("mood")
+    ))
+
+    recommendations = recommendation_service.generate_recommendation(emotion_result, mood_trend=mood_trend)
 
     interaction_id = memory_service.store_interaction(
         {
@@ -69,7 +77,6 @@ def _safe_float(value):
         return float(value)
     except (TypeError, ValueError):
         return None
-
 
 #----------------JUST TO TEST THE MOHIT'S WORK< LATER ON U CAN REMOVE IT-----------------
 
