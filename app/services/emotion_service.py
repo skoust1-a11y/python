@@ -3,14 +3,15 @@ import json
 import re
 
 from ..config.settings import settings
-from ..services.llm_service import call_gemini_llm,call_gemma_llm
-from ..exceptions import GibberishPromptError
+# from ..services.llm_service import call_gemini_llm,call_gemma_llm
+# from ..exceptions.Custom_Exceptions import GibberishPromptError
+from ..exceptions.Custom_Exceptions import LlmCallException
+from ..exceptions.Custom_Exceptions import GibberishPromptError
 from openai import OpenAIError
 from fastapi import HTTPException
 import httpx
 from ..utils.prompts import WELLBEING_PROMPT
-
-
+from .llm_service import call_gemini_llm,call_gemma_llm
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +40,15 @@ class EmotionService:
             return result
         
         logger.debug("Using LLM for emotion detection")
-        llm_result = self.llm_detect_emotion(text)
-        logger.debug(f"LLM emotion result: {llm_result}")
-        return llm_result
+        try:
+            llm_result = self.llm_detect_emotion(text)
+            logger.debug(f"LLM emotion result: {llm_result}")
+            return llm_result
+        except LlmCallException as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f'The LLM ERROR IS: {str(e)}'
+            )
         # rule_result = self.rule_based_detection(text)
 
         # if self.should_use_llm(rule_result):
@@ -65,10 +72,11 @@ class EmotionService:
             return emotion_data
         except GibberishPromptError:
             raise
-        except (RuntimeError,httpx.ConnectError,OpenAIError,Exception) as e:
+        except (Exception) as e:
              # Log or print the error if needed
             # print(f"Gemini LLM failed: {str(e)}")
-             print("Gemini failed:", str(e))
+            logger.warning(f'GEMINI MODEL FAILED FOR ERROR : {str(e)}')
+            print("Gemini failed:", str(e))
         try:
             prompt = WELLBEING_PROMPT.get('get_emotion_state','') + '\n' + WELLBEING_PROMPT.get('patient','') + text
             result = call_gemma_llm(prompt=prompt)
@@ -77,25 +85,13 @@ class EmotionService:
         except GibberishPromptError:
             raise
         except RuntimeError as e:
-            raise HTTPException(
-                status_code=404,
-                detail=f'MISSING ENV KEYS FOR LLM MODELS {str(e)}'
-            )
+            raise LlmCallException(f' The Error is : {str(e)}')
         except httpx.ConnectError as e:
-            raise HTTPException(
-                status_code=404,
-                detail=f'MISSING ENV KEYS FOR LLM MODELS {str(e)}'
-            )
+           raise LlmCallException(f' The Error is : {str(e)}')
         except OpenAIError as e:
-             raise HTTPException(
-                status_code=404,
-                detail=f'MISSING ENV KEYS FOR LLM MODELS {str(e)}'
-            )
+            raise LlmCallException(f' The Error is : {str(e)}')
         except Exception as e:
-              raise HTTPException(
-                status_code=404,
-                detail=f'MISSING ENV KEYS FOR LLM MODELS {str(e)}'
-            )
+             raise LlmCallException(f' The Error is : {str(e)}')
 
     def _parse_emotion_payload(self, raw_response: str) -> dict:
         emotion_data = json.loads(raw_response)

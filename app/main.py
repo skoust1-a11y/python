@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
-from .exceptions import GibberishPromptError
+from .exceptions.Custom_Exceptions import GibberishPromptError
 from .routes.wellbeing import router as wellbeing_router
 from .routes.feedback import router as feedback_router
 from .config.logging_config import logger

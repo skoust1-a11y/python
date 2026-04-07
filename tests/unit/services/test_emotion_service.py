@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from fastapi import HTTPException
-from app.exceptions import GibberishPromptError
+from app.exceptions.Custom_Exceptions import GibberishPromptError
 from app.services.emotion_service import EmotionService
 
 
