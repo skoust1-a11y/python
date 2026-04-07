@@ -19,5 +19,6 @@ else:
 os.environ["LOG_LEVEL"] = "DEBUG"
 os.environ["DATABASE_URL"] = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg://skoust:password123@localhost:5432/wellbeing_coach_test",
+    "postgresql+psycopg://mohit:mohit007@localhost:5432/wellbeing_coach_test",
 )
+# postgresql://postgres:mohit007@localhost:5432/llm_queries_db

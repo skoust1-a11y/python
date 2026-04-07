@@ -5,6 +5,7 @@ from openai import OpenAI, OpenAIError
 from httpx import ConnectError
 from typing import Iterator
 
+# from ..exceptions.Custom_Exceptions import MissingEnvVarError
 
 logger = logging.getLogger(__name__)
 
