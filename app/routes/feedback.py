@@ -14,10 +14,10 @@ def get_memory_service() -> MemoryService:
     return MemoryService()
 
 
-@router.get("/")
-def get_feedback():
-    logger.info("Feedback status endpoint accessed")
-    return {"status": "Feedback endpoint"}
+# @router.get("/")
+# def get_feedback():
+#     logger.info("Feedback status endpoint accessed")
+#     return {"status": "Feedback endpoint"}
 
 @router.post("/store")
 def submit_feedback(

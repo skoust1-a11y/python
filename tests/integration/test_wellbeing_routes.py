@@ -41,6 +41,15 @@ class TestWellbeingRoutes:
         
         assert response.status_code == 422  # Unprocessable Entity
 
+    def test_analyze_emotion_gibberish_returns_custom_error(self, client: TestClient):
+        response = client.post(
+            "/wellbeing/analyze",
+            json={"text": "@@@ 1234 !!! z", "user_id": "gibberish_user"}
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Unable to detect emotion from the input. Please enter a clear feeling or sentence."
+
     def test_analyze_emotion_returns_interaction_id(self, client: TestClient):
         """Test that emotion analysis returns valid interaction_id."""
         response = client.post(

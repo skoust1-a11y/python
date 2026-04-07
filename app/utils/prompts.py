@@ -7,7 +7,7 @@ You are an emotion detection assistant.
 Given the following patient message, output a JSON object with exactly three keys:
 
 {
-  "emotion": one of ["happy", "sad", "angry", "anxious", "calm"],
+  "emotion": one of ["happy", "sad", "angry", "anxious", "calm", "unknown"],
   "confidence": a float between 0 and 1,
   "intensity": one of ["low", "medium", "high"]
 }
@@ -17,6 +17,7 @@ Rules:
 - Do NOT include any text, explanation, or formatting outside the JSON.
 - Do NOT wrap the JSON in code blocks.
 - Ensure the JSON is syntactically correct and parsable.
+- If the message is gibberish, random characters, or too unclear to infer emotion, return "emotion": "unknown" with confidence 0.
 
 Return only the JSON object.
 ''',

@@ -1,11 +1,16 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from ..models.user_input import UserInput
 from ..models.response import Response
 from ..services.emotion_service import EmotionService
 from ..services.recommendation_service import RecommendationService
 from ..services.memory_service import MemoryService
+from ..config.settings import settings
 
 router = APIRouter(prefix="/wellbeing", tags=["wellbeing"])
+
+limiter = Limiter(key_func=get_remote_address)
 
 
 def get_emotion_service() -> EmotionService:
@@ -20,12 +25,14 @@ def get_memory_service() -> MemoryService:
     return MemoryService()
 
 
-@router.get("/")
-def get_wellbeing_status():
-    return {"status": "Wellbeing endpoint"}
+# @router.get("/")
+# def get_wellbeing_status():
+#     return {"status": "Wellbeing endpoint"}
 
 @router.post("/analyze", response_model=Response)
+@limiter.limit(lambda: f"{settings.get_env('RATE_LIMIT_PER_MINUTE', '10')}/minute")
 def analyze_emotion(
+    request: Request,
     user_input: UserInput,
     emotion_service: EmotionService = Depends(get_emotion_service),
     recommendation_service: RecommendationService = Depends(get_recommendation_service),
@@ -64,7 +71,9 @@ def analyze_emotion(
 
 
 @router.get("/history/{user_id}")
+@limiter.limit("30/minute")
 def get_user_history(
+    request: Request,
     user_id: str,
     memory_service: MemoryService = Depends(get_memory_service),
 ):

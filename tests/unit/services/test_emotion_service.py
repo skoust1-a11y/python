@@ -3,6 +3,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from fastapi import HTTPException
+from app.exceptions import GibberishPromptError
 from app.services.emotion_service import EmotionService
 
 
@@ -31,12 +32,19 @@ class TestEmotionService:
     def test_detect_emotion_empty_text(self):
         """Test emotion detection with empty text."""
         service = EmotionService()
-        
-        with patch.dict('os.environ', {'TEST_WITH_MOCK_DATA': 'true'}):
-            result = service.detect_emotion("")
-            
-            assert result is not None
-            assert "emotion" in result
+
+        with pytest.raises(GibberishPromptError) as exc_info:
+            service.detect_emotion("")
+
+        assert "Unable to detect emotion" in str(exc_info.value)
+
+    def test_detect_emotion_gibberish_text_raises_custom_exception(self):
+        service = EmotionService()
+
+        with pytest.raises(GibberishPromptError) as exc_info:
+            service.detect_emotion("@@@ 1234 !!! z")
+
+        assert "Unable to detect emotion" in str(exc_info.value)
 
     def test_detect_emotion_long_text(self):
         """Test emotion detection with long text."""
