@@ -58,7 +58,7 @@ Uses:
 #Design data models to validate input for asynchronous LLM calls and structure the corresponding response
 
 
-#Implement a FastAPI POST route that constructs a prompt, invokes the async LLM function with asyncio.run, 
+#Implement a FastAPI GET route that constructs a prompt, invokes the async LLM function with asyncio.run, 
 # and wraps the output in a Pydantic response model with error handling.
 
 
