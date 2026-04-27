@@ -1,22 +1,31 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import List
+from dataclasses import dataclass,field
+import random
 
-class StudentModel(BaseModel):
-    name: str = Field(..., min_length=1)
-    age: int = Field(..., gt=0, lt=120)
-    marks: float = Field(..., ge=0, le=100)
-    guardian_number: str
+@dataclass
+class Student:
+    name : str
+    course : str
+    age : int = 18
+    marks : int = 0
+    unique_id : int = field(init=False)
 
-    @field_validator('name')
-    @classmethod
-    def name_must_not_be_empty(cls, v):
-        if not v.strip():
-            raise ValueError('Name cannot be empty or just whitespace')
-        return v
+    def __post_init__(self):
+        self.unique_id = random.randint(1,9999)
+    
+    def grade_eval(self):
+        if(self.marks > 85):
+            return 'A+'
+        elif(self.marks > 75):
+            return 'A'
+        elif(self.marks > 60 and self.marks <= 75):
+            return 'B'
+        elif(self.marks > 40 and self.marks <= 60):
+            return 'C'
+        elif(self.marks > 30 and self.marks <= 40):
+            return 'D'
+        else:
+            return 'E'
+    
+    def view_students(self):
+        print(f'Dataclass Record: {self.name}, Grade: {self.grade_eval()}, ID: STU-{self.unique_id}')
 
-    @field_validator('guardian_number')
-    @classmethod
-    def validate_phone(cls, v):
-        if len(v) < 10:
-            raise ValueError('Guardian number must be at least 10 digits')
-        return v
