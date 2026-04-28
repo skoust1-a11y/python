@@ -14,6 +14,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from .schemas import ConceptRequest, ExplanationResponse
+from .db_operations import init_db, insert_query_record
 
 
 logging.basicConfig(
@@ -73,17 +74,28 @@ app.add_middleware(
 )
 @limiter.limit("2/minute")  # 2 requests per minute per IP address
 def get_explanation(request: Request, concept_request: ConceptRequest):
-   
+    """Generate a concise explanation for a concept using the configured Gemini model."""
+
     try:
         logger.info(f"Processing explanation request for concept: {concept_request.concept}")
         # Call AI model
+        query_text = f"Explain {concept_request.concept} in Agentic AI clearly and concisely for a beginner."
         messages = [{
             "role": "user",
-            "content": f"Explain {concept_request.concept} in Agentic AI clearly and concisely for a beginner."
+            "content": query_text
         }]
         
         response = CLOUD_CLIENT.chat.completions.create(model=CLOUD_MODEL, messages=messages)
         explanation = response.choices[0].message.content
+
+        # Persist each query and generated explanation for later analysis.
+        insert_query_record(
+            concept=concept_request.concept,
+            query_text=query_text,
+            explanation=explanation,
+            model=CLOUD_MODEL,
+        )
+
         logger.info(f"Successfully generated explanation for concept: {concept_request.concept}")
         
         return ExplanationResponse(
@@ -110,21 +122,25 @@ def get_explanation(request: Request, concept_request: ConceptRequest):
 )
 @limiter.limit("2/minute")  # 2 requests per minute per IP address
 def get_explanation_stream(request: Request, concept_request: ConceptRequest):
-   
+    """Stream explanation chunks in SSE format for live UI rendering."""
+
     def format_sse(data: dict) -> str:
-       
+        """Format a dictionary payload as a server-sent event."""
+
         return f"data: {json.dumps(data)}\n\n"
     
     async def generate_stream():
         try:
             logger.info(f"Streaming explanation for: {concept_request.concept}")
+            query_text = f"Explain {concept_request.concept} in Agentic AI clearly and concisely for a beginner."
+            full_explanation_parts = []
             
             # Get streaming response from AI model
             stream = CLOUD_CLIENT.chat.completions.create(
                 model=CLOUD_MODEL,
                 messages=[{
                     "role": "user",
-                    "content": f"Explain {concept_request.concept} in Agentic AI clearly and concisely for a beginner."
+                    "content": query_text
                 }],
                 stream=True
             )
@@ -140,7 +156,15 @@ def get_explanation_stream(request: Request, concept_request: ConceptRequest):
             for chunk in stream:
                 content = chunk.choices[0].delta.content
                 if content:
+                    full_explanation_parts.append(content)
                     yield format_sse({"type": "content", "content": content})
+
+            insert_query_record(
+                concept=concept_request.concept,
+                query_text=query_text,
+                explanation="".join(full_explanation_parts),
+                model=CLOUD_MODEL,
+            )
             
             # Send completion signal
             yield format_sse({"type": "done"})
@@ -168,7 +192,8 @@ def get_explanation_stream(request: Request, concept_request: ConceptRequest):
 
 @app.get("/", tags=["System"], summary="API Information")
 def root():
-   
+    """Return API metadata and available endpoint paths."""
+
     return {
         "name": "AI Tutor API",
         "version": "2.0.0",
@@ -182,3 +207,9 @@ def root():
             "explain/stream": "/explain/stream"
         }
     }
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    """Ensure database tables exist before handling traffic."""
+    init_db()
