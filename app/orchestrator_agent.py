@@ -9,13 +9,26 @@ Coordinates all AI services:
 
 import logging
 from typing import Dict, Any, Optional
+
+import grpc
 from openai import OpenAI
+
+from app.proto import (
+    ollama_service_pb2,
+    ollama_service_pb2_grpc,
+    prompts_pb2,
+    prompts_pb2_grpc,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class OrchestratorAgent:
     """Coordinates all AI services and manages workflow."""
+
+    DEFAULT_SYSTEM_PROMPT = (
+        "You are a helpful AI tutor. Explain concepts clearly and use practical examples."
+    )
     
     def __init__(
         self,
@@ -27,8 +40,16 @@ class OrchestratorAgent:
     ):
         """Initialize connections to all services."""
         logger.info("Initializing Orchestrator Agent")
+        self.gemini_client = gemini_client
+        self.gemini_model = gemini_model
+        self.ollama_model = ollama_model
         
         # Write code to Connect to services
+        self.prompt_channel = grpc.insecure_channel(prompt_manager_address)
+        self.ollama_channel = grpc.insecure_channel(ollama_service_address)
+
+        self.prompt_stub = prompts_pb2_grpc.PromptManagerStub(self.prompt_channel)
+        self.ollama_stub = ollama_service_pb2_grpc.OllamaServiceStub(self.ollama_channel)
         
         # Once connected, log success messages
         logger.info(f"Connected to Prompt Manager: {prompt_manager_address}")
@@ -37,10 +58,19 @@ class OrchestratorAgent:
     def get_system_prompt(self, prompt_type: str = "personalize") -> str:
         """Fetch system prompt from Prompt Manager."""
         # Implement gRPC call to fetch prompt
-       
+        try:
+            response = self.prompt_stub.GetPrompt(
+                prompts_pb2.PromptRequest(prompt_name=prompt_type),
+                timeout=5,
+            )
+            if response.found and response.prompt_text:
+                return response.prompt_text
+            logger.warning("Prompt lookup failed for '%s', using fallback", prompt_type)
+            return self.DEFAULT_SYSTEM_PROMPT
         # Handle gRPC errors
-        # Remove the below line and implement the method logic
-        pass
+        except grpc.RpcError as exc:
+            logger.error("Prompt Manager gRPC error: %s", exc)
+            return self.DEFAULT_SYSTEM_PROMPT
     
     def call_gemini(self, user_query: str) -> Dict[str, Any]:
         """Call Gemini API."""
@@ -81,6 +111,22 @@ class OrchestratorAgent:
             "error_message": ""
         }
         # Implement gRPC call to Ollama Service
+        try:
+            response = self.ollama_stub.GenerateExplanation(
+                ollama_service_pb2.GenerateRequest(
+                    model=self.ollama_model,
+                    prompt=prompt,
+                ),
+                timeout=120,
+            )
+
+            result["model"] = response.model or self.ollama_model
+            result["explanation"] = response.explanation
+            result["success"] = response.success
+            result["error_message"] = response.error_message
+        except grpc.RpcError as exc:
+            result["error_message"] = f"{exc.code().name}: {exc.details()}"
+            logger.error("Ollama gRPC error: %s", exc)
                 
         # Return suceess or failure result dict
           
@@ -101,18 +147,35 @@ class OrchestratorAgent:
         logger.info(f"Processing dual explanation: {concept}")
         
         # Get system prompt
+        system_prompt = self.get_system_prompt("personalize")
       
         # Construct user query
+        user_query = (
+            f"{system_prompt}\n\n"
+            f"Concept: {concept}\n"
+            "Provide a concise explanation suitable for a beginner."
+        )
                 
         # Call both models
+        gemini_response = self.call_gemini(user_query)
+        ollama_response = self.call_ollama(user_query)
       
         
         logger.info(f"Dual explanation completed for concept: {concept}")
         
         # return combined results
+        return {
+            "concept": concept,
+            "gemini_response": gemini_response,
+            "ollama_response": ollama_response,
+        }
       
     
     def close(self):
         """Close all gRPC connections."""
         logger.info("Closing Orchestrator connections")
         # Close gRPC channels if open
+        if hasattr(self, "prompt_channel"):
+            self.prompt_channel.close()
+        if hasattr(self, "ollama_channel"):
+            self.ollama_channel.close()

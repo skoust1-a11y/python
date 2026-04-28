@@ -5,6 +5,12 @@ Wraps Ollama HTTP API and exposes it via gRPC for microservices communication.
 """
 
 import logging
+from concurrent import futures
+
+import grpc
+import requests
+
+from app.proto import ollama_service_pb2
 from app.proto import ollama_service_pb2_grpc
 
 logging.basicConfig(
@@ -24,27 +30,66 @@ class OllamaServiceServicer(ollama_service_pb2_grpc.OllamaServiceServicer):
     def GenerateExplanation(self, request, context):
         """Generate explanation using Ollama."""
         # Call Ollama HTTP API
-        
-        # return the response
-        
-        # Handle exceptions and return failure response
-        # Remove the below line and implement the method logic
-        pass
+        try:
+            model = request.model or "gemma3:270m"
+            payload = {
+                "model": model,
+                "prompt": request.prompt,
+                "stream": False,
+            }
+
+            response = requests.post(
+                f"{self.ollama_url}/api/generate",
+                json=payload,
+                timeout=90,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            explanation = data.get("response", "").strip()
+            if not explanation:
+                return ollama_service_pb2.GenerateResponse(
+                    model=model,
+                    explanation="",
+                    success=False,
+                    error_message="Ollama returned an empty response",
+                )
+
+            # return the response
+            return ollama_service_pb2.GenerateResponse(
+                model=model,
+                explanation=explanation,
+                success=True,
+                error_message="",
+            )
+        except Exception as exc:
+            # Handle exceptions and return failure response
+            logger.error("Ollama service error: %s", exc)
+            return ollama_service_pb2.GenerateResponse(
+                model=request.model or "gemma3:270m",
+                explanation="",
+                success=False,
+                error_message=str(exc),
+            )
  
 def serve(port=50052):
     """Start the Ollama gRPC server."""
     # Step 1: Create a gRPC server with thread pool
     # max_workers=10 means it can handle 10 concurrent requests
-  
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     
     # Step 2: Register our service implementation with the server
-   
+    ollama_service_pb2_grpc.add_OllamaServiceServicer_to_server(
+        OllamaServiceServicer(),
+        server,
+    )
     
     # Step 3: Bind to port 50052
     # [::]:50052 means listen on all network interfaces
-   
+    server.add_insecure_port(f'[::]:{port}')
     
     # Step 4: Start the server
+    server.start()
     
     logger.info("=" * 60)
     logger.info("OLLAMA GRPC SERVICE STARTED")
@@ -55,6 +100,11 @@ def serve(port=50052):
     logger.info("Press Ctrl+C to stop")
     
     # Step 5: Keep the server running until interrupted
+    try:
+        server.wait_for_termination()
+    except KeyboardInterrupt:
+        logger.info("Shutting down Ollama gRPC service")
+        server.stop(0)
 
 if __name__ == '__main__':
     serve()

@@ -4,31 +4,14 @@ gRPC Server - AI Tutor Prompt Manager
 
 This microservice manages system prompts for the AI Tutor using gRPC protocol.
 It provides prompts for different AI tasks (explain, personalize, tutor).
-
-What is gRPC?
-- gRPC = Google Remote Procedure Call
-- High-performance RPC framework
-- Uses binary protocol (Protocol Buffers) instead of JSON
-- 10x faster than REST for service-to-service communication
-- Perfect for microservices architecture
-
-Why use gRPC for prompts?
-- Centralized prompt management
-- Fast communication between services
-- Type-safe API (defined in .proto file)
-- Easy to update prompts without changing code
-
-How to use this server:
-1. Generate Python code from .proto file:
-   python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. prompts.proto
-2. Run this server: python grpc_server.py
-3. Server listens on port 50051
-4. Main app can fetch prompts via gRPC
 """
 
-
 import logging
-from app.proto import prompts_pb2_grpc
+from concurrent import futures
+
+import grpc
+
+from app.proto import prompts_pb2, prompts_pb2_grpc
 
 # ============================================================================
 # CONFIGURATION & SETUP
@@ -62,6 +45,7 @@ Your role is to guide learners through concepts step-by-step.
 Encourage questions, provide clear examples, and adapt explanations to the learner's level.""",
 }
 
+
 # ============================================================================
 # GRPC SERVICE IMPLEMENTATION
 # ============================================================================
@@ -69,41 +53,35 @@ Encourage questions, provide clear examples, and adapt explanations to the learn
 class PromptManagerServicer(prompts_pb2_grpc.PromptManagerServicer):
     """
     gRPC Service Implementation for Prompt Management.
-    
-    This class implements the PromptManager service defined in prompts.proto.
-    Think of this as the "backend logic" for our gRPC microservice.
-    
-    When a client (main API) requests a prompt, this class handles:
-    1. Receives prompt_name from client
-    2. Looks up prompt in database
-    3. Returns prompt text to client
     """
-    
-    # Implemenmt the GetPrompt RPC method
+
+    # Implement the GetPrompt RPC method
     def GetPrompt(self, request, context):
-        """
-        Handle GetPrompt RPC requests from clients.
-        
-        This is the main method that clients call to fetch prompts.
-        It's defined in prompts.proto as:
-            rpc GetPrompt(PromptRequest) returns (PromptResponse) {}
-        
-        Args:
-            request: PromptRequest object containing prompt_name
-            context: gRPC context (for error handling, metadata, etc.)
-            
-        Returns:
-            PromptResponse object with prompt_text
-        """
+        """Handle GetPrompt RPC requests from clients."""
         # Extract prompt name from request
-        
+        prompt_name = request.prompt_name.strip().lower()
+
         # Look up the prompt in our database
-       
-        
+        prompt_text = PROMPTS.get(prompt_name)
+
         # Create and return the response
-        
-        # Remove thes below line and implement the method logic
-        pass
+        if prompt_text:
+            logger.info("Prompt requested: %s", prompt_name)
+            return prompts_pb2.PromptResponse(
+                prompt_name=prompt_name,
+                prompt_text=prompt_text,
+                found=True,
+                error_message="",
+            )
+
+        logger.warning("Prompt not found: %s", prompt_name)
+        return prompts_pb2.PromptResponse(
+            prompt_name=prompt_name,
+            prompt_text="",
+            found=False,
+            error_message=f"Prompt '{prompt_name}' not found",
+        )
+
 
 # ============================================================================
 # SERVER STARTUP
@@ -113,7 +91,7 @@ class PromptManagerServicer(prompts_pb2_grpc.PromptManagerServicer):
 def serve():
     """
     Start the gRPC server and keep it running.
-    
+
     This function:
     1. Creates a gRPC server with thread pool
     2. Registers our PromptManager service
@@ -123,18 +101,18 @@ def serve():
     """
     # Step 1: Create a gRPC server with thread pool
     # max_workers=10 means it can handle 10 concurrent requests
-  
-    
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+
     # Step 2: Register our service implementation with the server
-   
-    
+    prompts_pb2_grpc.add_PromptManagerServicer_to_server(PromptManagerServicer(), server)
+
     # Step 3: Bind to port 50051 (standard gRPC port)
     # [::]:50051 means listen on all network interfaces
-   
-    
+    server.add_insecure_port('[::]:50051')
+
     # Step 4: Start the server
-    
-    
+    server.start()
+
     # Print startup information
     logger.info("=" * 60)
     logger.info("AI TUTOR GRPC SERVER STARTED")
@@ -150,9 +128,14 @@ def serve():
     logger.info("=" * 60)
     logger.info("Waiting for requests... (Press Ctrl+C to stop)")
     logger.info("=" * 60)
-    
+
     # Step 5: Keep the server running until interrupted
-    
+    try:
+        server.wait_for_termination()
+    except KeyboardInterrupt:
+        logger.info("Shutting down Prompt Manager gRPC server")
+        server.stop(0)
+
 
 if __name__ == '__main__':
     serve()

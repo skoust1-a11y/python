@@ -17,7 +17,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 # Import schemas from schemas module
-from .schemas import ConceptRequest, DualExplanationResponse
+from .schemas import ConceptRequest, DualExplanationResponse, ModelResponse
 
 # Import Orchestrator Agent
 from .orchestrator_agent import OrchestratorAgent
@@ -115,8 +115,30 @@ def get_dual_explanation(request: Request, concept_request: ConceptRequest):
     logger.info(f"Processing DUAL explanation request for concept: {concept_request.concept}")
     
     # Delegate to Orchestrator Agent (This is the key - orchestrator does all coordination)
+    try:
+        orchestration_result = orchestrator.orchestrate_dual_explanation(concept_request.concept)
     
-    # Convert dict responses to ModelResponse objects
-  
-    # return the combined response
+        # Convert dict responses to ModelResponse objects
+        gemini_response = ModelResponse(**orchestration_result["gemini_response"])
+        ollama_response = ModelResponse(**orchestration_result["ollama_response"])
+
+        # return the combined response
+        return DualExplanationResponse(
+            concept=orchestration_result["concept"],
+            gemini_response=gemini_response,
+            ollama_response=ollama_response,
+        )
+    except APIError as exc:
+        logger.error(f"Gemini API error: {exc}")
+        raise HTTPException(status_code=502, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Unexpected error while processing dual explanation")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.on_event("shutdown")
+def shutdown_event():
+    """Ensure gRPC channels are closed when FastAPI shuts down."""
+    orchestrator.close()
+
    
