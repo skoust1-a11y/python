@@ -6,23 +6,12 @@ from ..models.response import Response
 from ..services.emotion_service import EmotionService
 from ..services.recommendation_service import RecommendationService
 from ..services.memory_service import MemoryService
+from ..services.service_factory import ServiceFactory
 from ..config.settings import settings
 
 router = APIRouter(prefix="/wellbeing", tags=["wellbeing"])
 
 limiter = Limiter(key_func=get_remote_address)
-
-
-def get_emotion_service() -> EmotionService:
-    return EmotionService()
-
-
-def get_recommendation_service() -> RecommendationService:
-    return RecommendationService()
-
-
-def get_memory_service() -> MemoryService:
-    return MemoryService()
 
 
 # @router.get("/")
@@ -34,9 +23,9 @@ def get_memory_service() -> MemoryService:
 def analyze_emotion(
     request: Request,
     user_input: UserInput,
-    emotion_service: EmotionService = Depends(get_emotion_service),
-    recommendation_service: RecommendationService = Depends(get_recommendation_service),
-    memory_service: MemoryService = Depends(get_memory_service),
+    emotion_service: EmotionService = Depends(ServiceFactory.get_emotion_service),
+    recommendation_service: RecommendationService = Depends(ServiceFactory.get_recommendation_service),
+    memory_service: MemoryService = Depends(ServiceFactory.get_memory_service),
 ):
     emotion_result = emotion_service.detect_emotion(user_input.text)
 
@@ -47,7 +36,11 @@ def analyze_emotion(
         entry["mood"] for entry in last_10 if entry.get("mood")
     ))
 
-    recommendations = recommendation_service.generate_recommendation(emotion_result, mood_trend=mood_trend)
+    recommendations = recommendation_service.generate_recommendation(
+        emotion_result,
+        mood_trend=mood_trend,
+        history=recent_history,
+    )
 
     interaction_id = memory_service.store_interaction(
         {
@@ -75,7 +68,7 @@ def analyze_emotion(
 def get_user_history(
     request: Request,
     user_id: str,
-    memory_service: MemoryService = Depends(get_memory_service),
+    memory_service: MemoryService = Depends(ServiceFactory.get_memory_service),
 ):
     history = memory_service.get_history(user_id)
     return {"user_id": user_id, "history": history}
