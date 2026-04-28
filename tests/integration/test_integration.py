@@ -1,352 +1,139 @@
+from collections.abc import AsyncGenerator
+
 import pytest
-import time
-from unittest.mock import patch,MagicMock
-import httpx
-from openai import OpenAIError
-@pytest.mark.integration
-@patch('app.main.OpenAI')
-def test_explain_real_api(mock_openai, api_client, disable_rate_limit, monkeypatch):
-
-    # Set env variables so validation doesn't fail
-    monkeypatch.setenv('GEMINI_API_KEY', 'test')
-    monkeypatch.setenv('GEMINI_BASE_URL', 'test')
-    monkeypatch.setenv('GEMINI_MODEL_NAME', 'test-model')
-
-    # Mock response structure
-    mock_response = MagicMock()
-    mock_response.choices = [
-        MagicMock(message=MagicMock(content="AI is the simulation of human intelligence."))
-    ]
-
-    # Mock OpenAI client
-    mock_client = MagicMock()
-    mock_client.chat.completions.create.return_value = mock_response
-    mock_openai.return_value = mock_client
-
-    # Call API
-    response = api_client.post('/explain', json={
-        "prompt": "Explain what is AI in one sentence"
-    })
-
-    # Assertions
-    assert response.status_code == 200
-
-    data = response.json()
-
-    assert "response" in data
-    assert isinstance(data["response"], str)
-    assert len(data["response"]) > 0
-
-@pytest.mark.integration
-@patch('app.main.OpenAI')
-def test_personalize_real_api(mock_openai, api_client, disable_rate_limit, monkeypatch):
-
-    # Set env variables
-    monkeypatch.setenv('API_KEY_FOR_LOCAL','test')
-    monkeypatch.setenv('BASE_URL_LOCAL','test')
-    monkeypatch.setenv('LOCAL_MODEL','test-model')
-
-    # Mock response
-    mock_response = MagicMock()
-    mock_response.choices = [
-        MagicMock(message=MagicMock(content="Cricket is a popular sport played worldwide."))
-    ]
-
-    # Mock OpenAI client
-    mock_client = MagicMock()
-    mock_client.chat.completions.create.return_value = mock_response
-    mock_openai.return_value = mock_client
-
-    # Call API
-    response = api_client.post('/personalize', json={
-        "prompt": "Tell me about cricket"
-    })
-
-    # Assertions
-    assert response.status_code == 200
-
-    data = response.json()
-
-    assert "response" in data
-    assert isinstance(data["response"], str)
-    assert len(data["response"]) > 0
-
-    # Optional stronger assertions (recommended)
-    assert data["response"] == "Cricket is a popular sport played worldwide."
-    assert data["status"] == 200
-    assert data["message"] == "Success"
+from fastapi import HTTPException, status
 
-    
-@pytest.mark.integration
-def test_streaming_endpoint_format(api_client):
-    """Test that streaming endpoint follows SSE format"""
-    time.sleep(65)  # Avoid rate limit
-    
-    request_data = {"prompt": "Say hello"}
-    
-    with api_client.stream("POST", "/explain/stream", json=request_data) as response:
-        # Verify response started successfully
-        assert response.status_code == 200
-        assert response.headers.get("content-type") == "text/event-stream; charset=utf-8"
-        
-        # Collect and verify SSE format
-        lines = []
-        for line in response.iter_lines():
-            if line:  # Skip empty lines
-                lines.append(line)
-                # Assert each data line starts with "data: "
-                if line.strip():  # Non-empty lines
-                    assert line.startswith('data: '), \
-                        f"Line should start with 'data: ' but got: {line}"
-        
-        # Verify we received content
-        assert len(lines) > 0, "Should receive at least one data line"
-        
-        # Verify content (extract data after "data: " prefix)
-        full_content = ''.join([line.replace('data: ', '') for line in lines])
-        assert len(full_content) > 0, "Should have actual content after 'data: ' prefix"
+from app import main
 
 
-@pytest.mark.integration
-def test_explain_validation_error(api_client):
+pytestmark = pytest.mark.integration
 
-    response = api_client.post('/explain', json={})
 
-    assert response.status_code == 422
+def test_explain_endpoint_returns_expected_payload(client, concept_payload, monkeypatch) -> None:
+	async def fake_explain(concept: str, learning_level: str, context: str | None = None) -> str:
+		assert concept == concept_payload["concept"]
+		assert learning_level == concept_payload["learning_level"]
+		assert context == concept_payload["context"]
+		return "Plants convert sunlight into usable energy"
 
-@pytest.mark.integration
-def test_personalize_validation_error(api_client):
+	monkeypatch.setattr(main.tutor, "explain_with_cloud_model", fake_explain)
 
-    response = api_client.post('/personalize', json={})
+	response = client.post("/explain", json=concept_payload)
 
-    assert response.status_code == 422
+	assert response.status_code == status.HTTP_200_OK
+	body = response.json()
+	assert body["concept"] == concept_payload["concept"]
+	assert body["learning_level"] == concept_payload["learning_level"]
+	assert body["model_used"] == main.CLOUD_MODEL
+	assert body["tokens_used"] == 6
 
-@pytest.mark.integration
-def test_explain_missing_env(api_client,monkeypatch):
-    import os
 
-    monkeypatch.setenv('GEMINI_API_KEY','')
-    monkeypatch.setenv('GEMINI_BASE_URL','')
-    monkeypatch.setenv('GEMINI_MODEL_NAME','')
+def test_explain_endpoint_returns_assignment_style_validation_error(client) -> None:
+	response = client.post(
+		"/explain",
+		json={"concept": "", "learning_level": "expert", "context": "short"},
+	)
 
-    response = api_client.post('/explain', json={
-        "prompt": "Hello"
-    })
+	assert response.status_code == status.HTTP_400_BAD_REQUEST
+	body = response.json()
+	assert body["error"] == "ValidationError"
+	assert body["status_code"] == status.HTTP_400_BAD_REQUEST
+	assert "learning_level" in body["detail"] or "concept" in body["detail"]
 
-    assert response.status_code == 400
 
-@pytest.mark.integration
-def test_explain_rate_limit(api_client):
-    import time
+def test_personalize_endpoint_surfaces_service_errors(client, concept_payload, monkeypatch) -> None:
+	async def fake_personalize(concept: str, context: str | None = None) -> str:
+		raise HTTPException(
+			status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+			detail="Ollama is unavailable",
+		)
 
-    # Reset window
-    time.sleep(65)
+	monkeypatch.setattr(main.tutor, "personalize_with_local_model", fake_personalize)
 
-    for _ in range(3):
-        api_client.post('/explain', json={"prompt": "Hi"})
+	response = client.post("/personalize", json=concept_payload)
 
-    response = api_client.post('/explain', json={"prompt": "Hi"})
+	assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+	body = response.json()
+	assert body["error"] == "Service Unavailable"
+	assert body["detail"] == "Ollama is unavailable"
 
-    assert response.status_code == 429
 
+def test_explain_endpoint_returns_500_for_unexpected_errors(client, concept_payload, monkeypatch) -> None:
+	async def broken_explain(concept: str, learning_level: str, context: str | None = None) -> str:
+		raise RuntimeError("cloud failure")
 
-@pytest.mark.integration
-def test_personalize_missing_env(api_client,monkeypatch):
-    import os
+	monkeypatch.setattr(main.tutor, "explain_with_cloud_model", broken_explain)
 
+	response = client.post("/explain", json=concept_payload)
 
-    monkeypatch.setenv('API_KEY_FOR_LOCAL','')
-    monkeypatch.setenv('BASE_URL_LOCAL','')
-    monkeypatch.setenv('LOCAL_MODEL','')
+	assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+	body = response.json()
+	assert body["error"] == "Internal Server Error"
+	assert "cloud failure" in body["detail"]
 
-    response = api_client.post('/personalize', json={
-        "prompt": "Hello"
-    })
 
-    assert response.status_code == 400
+def test_personalize_endpoint_returns_500_for_unexpected_errors(client, concept_payload, monkeypatch) -> None:
+	async def broken_personalize(concept: str, context: str | None = None) -> str:
+		raise RuntimeError("local failure")
 
-@pytest.mark.integration
-def test_stream_validation_error(api_client):
+	monkeypatch.setattr(main.tutor, "personalize_with_local_model", broken_personalize)
 
-    response = api_client.post('/explain/stream', json={})
+	response = client.post("/personalize", json=concept_payload)
 
-    content = response.text
+	assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+	body = response.json()
+	assert body["error"] == "Internal Server Error"
+	assert "local failure" in body["detail"]
 
-    # Streaming returns error inside data, not status code
-    assert "ERROR" in content
 
-@pytest.mark.integration
-def test_stream_missing_env(api_client,monkeypatch):
-    import os
-    import time
+def test_stream_endpoint_returns_sse_chunks(client, concept_payload, monkeypatch) -> None:
+	async def fake_stream(
+		concept: str,
+		learning_level: str,
+		context: str | None = None,
+	) -> AsyncGenerator[str, None]:
+		yield 'data: {"chunk":"first","chunk_index":0,"is_complete":false}\n\n'
+		yield 'event: done\ndata: {"chunk":"","chunk_index":1,"is_complete":true}\n\n'
 
-    time.sleep(65)  # avoid rate limit
+	monkeypatch.setattr(main.tutor, "stream_explanation", fake_stream)
 
-    monkeypatch.setenv('GEMINI_API_KEY','')
-    monkeypatch.setenv('GEMINI_BASE_URL','')
-    monkeypatch.setenv('GEMINI_MODEL_NAME','')
+	with client.stream("POST", "/explain/stream", json=concept_payload) as response:
+		body = "".join(response.iter_text())
 
-    response = api_client.post('/explain/stream', json={
-        "prompt": "Hello"
-    })
+	assert response.status_code == status.HTTP_200_OK
+	assert response.headers["content-type"].startswith("text/event-stream")
+	assert "data:" in body
+	assert "event: done" in body
 
-    content = response.text
 
-    # Streaming returns error inside data, not status code
-    assert "ERROR" in content
+def test_stream_endpoint_returns_500_for_unexpected_errors(client, concept_payload, monkeypatch) -> None:
+	def broken_stream(concept: str, learning_level: str, context: str | None = None):
+		raise RuntimeError("stream failure")
 
+	monkeypatch.setattr(main.tutor, "stream_explanation", broken_stream)
 
-@pytest.mark.integration
-def test_explain_env_validation_400(api_client,monkeypatch):
-    import os
+	response = client.post("/explain/stream", json=concept_payload)
 
-    monkeypatch.setenv('GEMINI_API_KEY','')
-    monkeypatch.setenv('GEMINI_BASE_URL','')
-    monkeypatch.setenv('GEMINI_MODEL_NAME','')
+	assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+	body = response.json()
+	assert body["error"] == "Internal Server Error"
+	assert "stream failure" in body["detail"]
 
-    response = api_client.post('/explain', json={
-        "prompt": "Hello"
-    })
 
-    assert response.status_code == 400
-    assert "NOT FOUND" in response.json()["detail"]
+def test_explain_endpoint_enforces_rate_limit(client, concept_payload, monkeypatch) -> None:
+	async def fake_explain(concept: str, learning_level: str, context: str | None = None) -> str:
+		return "short answer"
 
-@pytest.mark.integration
-def test_personalize_env_validation_400(api_client,monkeypatch):
-    import os
+	monkeypatch.setattr(main.tutor, "explain_with_cloud_model", fake_explain)
 
-    monkeypatch.setenv('API_KEY_FOR_LOCAL','')
-    monkeypatch.setenv('BASE_URL_LOCAL','')
-    monkeypatch.setenv('LOCAL_MODEL','')
+	for _ in range(3):
+		response = client.post("/explain", json=concept_payload)
+		assert response.status_code == status.HTTP_200_OK
 
-    response = api_client.post('/personalize', json={
-        "prompt": "Hello"
-    })
+	response = client.post("/explain", json=concept_payload)
 
-    assert response.status_code == 400
-
-@pytest.mark.integration
-def test_stream_env_error(api_client,monkeypatch):
-    import os
-
-    monkeypatch.setenv('GEMINI_API_KEY','')
-    
-    response = api_client.post('/explain/stream', json={
-        "prompt": "Hello"
-    })
-
-    assert "ERROR" in response.text
-
-
-@pytest.mark.integration
-@patch('app.main.OpenAI')
-def test_gemini_response_model(mock_openai, api_client,disable_rate_limit,monkeypatch):
-
-    """
-    #Set env variables so validation doesn't fail
-    # Mock response structure
-    # Mock OpenAI instance
-    #Call API
-    #Assertions"""
-    import os
-    monkeypatch.setenv('GEMINI_API_KEY','test')
-    monkeypatch.setenv('GEMINI_BASE_URL','test')
-    monkeypatch.setenv('GEMINI_MODEL_NAME','test-model')
-
-
-    
-    mock_response = MagicMock()
-    mock_response.choices = [
-        MagicMock(message=MagicMock(content="FAKE AI RESPONSE"))
-    ]
-
-   
-    mock_client = MagicMock()
-    mock_client.chat.completions.create.return_value = mock_response
-
-    mock_openai.return_value = mock_client
-
-  
-    response = api_client.post('/explain', json={
-        "prompt": "Hello World"
-    })
-
-   
-    assert response.status_code == 200
-
-    data = response.json()
-
-    assert data["response"] == "FAKE AI RESPONSE"
-    assert data["status"] == 200
-    assert data["message"] == "Success"
-
-@pytest.mark.integration
-@patch('app.main.load_dotenv')
-def test_gemini_model_missing_env(mock_dotenv, api_client,disable_rate_limit,monkeypatch):
-    import os
-
-    monkeypatch.setenv('GEMINI_API_KEY','')
-    monkeypatch.setenv('GEMINI_BASE_URL','')
-    monkeypatch.setenv('GEMINI_MODEL_NAME','')
-
-    response = api_client.post('/explain', json={
-        "prompt": "Hello"
-    })
-
-    assert response.status_code == 400
-    assert "NOT FOUND" in response.json()["detail"]
-
-
-
-@pytest.mark.integration
-@patch('app.main.OpenAI')
-def test_gemini_model_openai_error(mock_openai, api_client,disable_rate_limit,monkeypatch):
-    import os
-
-    monkeypatch.setenv('GEMINI_API_KEY','')
-    monkeypatch.setenv('GEMINI_BASE_URL','')
-    monkeypatch.setenv('GEMINI_MODEL_NAME','')
-
-    mock_client = mock_openai.return_value
-    mock_client.chat.completions.create.side_effect = OpenAIError("API down")
-
-    response = api_client.post('/explain', json={
-        "prompt": "Hello"
-    })
-
-    assert response.status_code == 502
-    assert "not working" in response.json()["detail"]
-
-@pytest.mark.integration
-@patch('app.main.OpenAI')
-def test_gemini_model_generic_error(mock_openai, api_client,disable_rate_limit,monkeypatch):
-    import os
-
-    monkeypatch.setenv('GEMINI_API_KEY','test')
-    monkeypatch.setenv('GEMINI_BASE_URL','test')
-    monkeypatch.setenv('GEMINI_MODEL_NAME','test')
-
-    mock_client = mock_openai.return_value
-    mock_client.chat.completions.create.side_effect = Exception("Something broke")
-
-    response = api_client.post('/explain', json={
-        "prompt": "Hello"
-    })
-
-    assert response.status_code == 500
-
-@pytest.mark.integration
-@patch("app.main.OpenAI")
-def test_httpx_connection_error(mock_openai, api_client,disable_rate_limit,monkeypatch):
-    import os
-
-    monkeypatch.setenv('GEMINI_API_KEY','test')
-    monkeypatch.setenv('GEMINI_BASE_URL','test')
-    monkeypatch.setenv('GEMINI_MODEL_NAME','test')
-
-    mock_client = mock_openai.return_value
-    mock_client.chat.completions.create.side_effect = httpx.ConnectError("Network down")
-
-    response = api_client.post('/explain', json={"prompt": "Hi"})
-
-    assert response.status_code == 502
+	assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+	body = response.json()
+	assert body["error"] == "RateLimitExceeded"
+	assert body["status_code"] == status.HTTP_429_TOO_MANY_REQUESTS
+	assert body["retry_after"] == 60

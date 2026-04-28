@@ -1,252 +1,107 @@
+import asyncio
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-from app.main import validate_env, build_messages,call_openai
-import pytest
-from openai import OpenAIError
-# import httpx
-import os
-import pytest
-from unittest.mock import patch, MagicMock
-from openai import OpenAIError
-import httpx
-from app.main import stream_response_func
+import requests
+from fastapi import HTTPException, status
 
-# -------------------------------
-# validate_env tests
-# -------------------------------
-@pytest.mark.unit
-def test_validate_env_success():
-    # Should not raise an exception
-    validate_env("key", "url", "model")
+from app.main import TutorAI
 
 
-@pytest.mark.unit
-def test_validate_env_failure_missing_key():
-    # Missing API key
-    with pytest.raises(ValueError) as exc:
-        validate_env("", "url", "model")
-    assert "API_KEY" in str(exc.value)
+pytestmark = pytest.mark.unit
 
 
-@pytest.mark.unit
-def test_validate_env_failure_missing_all():
-    # Missing all inputs
-    with pytest.raises(ValueError) as exc:
-        validate_env("", "", "")
-    error_msg = str(exc.value)
-    assert "API_KEY" in error_msg or "BASE_URL" in error_msg or "MODEL" in error_msg
+def test_explain_with_cloud_model_returns_trimmed_content() -> None:
+	service = TutorAI()
+	create_completion = AsyncMock(
+		return_value=SimpleNamespace(
+			choices=[SimpleNamespace(message=SimpleNamespace(content="  Clear answer  "))]
+		)
+	)
+	service.cloud_model = "test-cloud-model"
+	service.cloud_client = SimpleNamespace(
+		chat=SimpleNamespace(
+			completions=SimpleNamespace(create=create_completion),
+		)
+	)
+
+	result = asyncio.run(
+		service.explain_with_cloud_model(
+			concept="Recursion",
+			learning_level="beginner",
+			context="Use short examples",
+		)
+	)
+
+	assert result == "Clear answer"
+	assert create_completion.await_count == 1
+	request_kwargs = create_completion.await_args.kwargs
+	assert request_kwargs["model"] == "test-cloud-model"
+	assert "Learner context: Use short examples" in request_kwargs["messages"][1]["content"]
 
 
-# -------------------------------
-# build_messages tests
-# -------------------------------
-@pytest.mark.unit
-def test_build_messages_success():
-    msg = build_messages("Hello")
-    assert isinstance(msg, list)
-    assert len(msg) > 0
-    assert msg[0]["content"] == "Hello"
+def test_explain_with_cloud_model_raises_unauthorized_without_client() -> None:
+	service = TutorAI()
+	service.cloud_client = None
+
+	with pytest.raises(HTTPException) as exc_info:
+		asyncio.run(service.explain_with_cloud_model("Recursion", "beginner"))
+
+	assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
+	assert "OPENAI_API_KEY" in exc_info.value.detail
 
 
-@pytest.mark.unit
-def test_build_messages_empty_prompt():
-    # Should still return a message structure even if prompt is empty
-    msg = build_messages("")
-    assert isinstance(msg, list)
-    assert msg[0]["content"] == ""
+def test_personalize_with_local_model_returns_trimmed_content() -> None:
+	service = TutorAI()
+	service.ollama_url = "http://localhost:11434"
+	service.ollama_model = "llama3"
+
+	response = Mock(status_code=200)
+	response.json.return_value = {"response": "  Personalized answer  "}
+
+	with patch.object(service, "_validate_ollama_connection", return_value=True):
+		with patch("app.main.requests.post", return_value=response) as post_mock:
+			result = asyncio.run(
+				service.personalize_with_local_model(
+					concept="Binary Search",
+					context="I like game examples",
+				)
+			)
+
+	assert result == "Personalized answer"
+	assert post_mock.call_count == 1
+	request_json = post_mock.call_args.kwargs["json"]
+	assert request_json["model"] == "llama3"
+	assert request_json["stream"] is False
 
 
-@pytest.mark.unit
-def test_build_messages_none_prompt():
-    # Passing None should raise TypeError
-    with pytest.raises(TypeError):
-        build_messages(None)
+def test_personalize_with_local_model_raises_timeout() -> None:
+	service = TutorAI()
+	service.ollama_url = "http://localhost:11434"
+	service.ollama_model = "llama3"
+
+	with patch.object(service, "_validate_ollama_connection", return_value=True):
+		with patch("app.main.requests.post", side_effect=requests.exceptions.Timeout):
+			with pytest.raises(HTTPException) as exc_info:
+				asyncio.run(service.personalize_with_local_model("Sorting"))
+
+	assert exc_info.value.status_code == status.HTTP_504_GATEWAY_TIMEOUT
+	assert "timed out" in exc_info.value.detail.lower()
 
 
+def test_stream_explanation_yields_sse_chunks_and_done_event() -> None:
+	service = TutorAI()
+	service.cloud_client = object()
+	service.explain_with_cloud_model = AsyncMock(return_value="alpha beta")
 
+	async def collect_chunks() -> list[str]:
+		with patch("app.main.asyncio.sleep", new=AsyncMock()):
+			return [chunk async for chunk in service.stream_explanation("Trees", "beginner")]
 
+	chunks = asyncio.run(collect_chunks())
 
-# -------------------------------
-# OpenAI response success
-# -------------------------------
-
-@pytest.mark.unit
-def test_gemini_model_missing_env_unit(disable_rate_limit,monkeypatch):
-    monkeypatch.setenv('GEMINI_API_KEY','')
-    monkeypatch.setenv('GEMINI_BASE_URL','')
-    monkeypatch.setenv('GEMINI_MODEL_NAME','')
-
-    with pytest.raises(ValueError) as exc:
-        call_openai("Hello")
-    assert "NOT FOUND" in str(exc.value)
-
-
-# -------------------------------
-# OpenAI API down (OpenAIError)
-# -------------------------------
-@pytest.mark.unit
-@patch("app.main.OpenAI")
-def test_gemini_model_openai_error_unit(mock_openai,disable_rate_limit,monkeypatch):
-    monkeypatch.setenv('GEMINI_API_KEY','test')
-    monkeypatch.setenv('GEMINI_BASE_URL','test')
-    monkeypatch.setenv('GEMINI_MODEL_NAME','test')
-
-    mock_client = mock_openai.return_value
-    mock_client.chat.completions.create.side_effect = OpenAIError("API down")
-
-    with pytest.raises(OpenAIError) as exc:
-        call_openai("Hello")
-    assert "API down" in str(exc.value)
-
-
-# -------------------------------
-# Generic exception
-# -------------------------------
-@pytest.mark.unit
-@patch("app.main.OpenAI")
-def test_gemini_model_generic_error_unit(mock_openai,disable_rate_limit,monkeypatch):
-    monkeypatch.setenv('GEMINI_API_KEY','test')
-    monkeypatch.setenv('GEMINI_BASE_URL','test')
-    monkeypatch.setenv('GEMINI_MODEL_NAME','test')
-
-    mock_client = mock_openai.return_value
-    mock_client.chat.completions.create.side_effect = Exception("Something broke")
-
-    with pytest.raises(Exception) as exc:
-        call_openai("Hello")
-    assert "Something broke" in str(exc.value)
-
-
-# -------------------------------
-# HTTPX connection error
-# -------------------------------
-@pytest.mark.unit
-@patch("app.main.OpenAI")
-def test_httpx_connection_error_unit(mock_openai,disable_rate_limit,monkeypatch):
-    monkeypatch.setenv('GEMINI_API_KEY','test')
-    monkeypatch.setenv('GEMINI_BASE_URL','test')
-    monkeypatch.setenv('GEMINI_MODEL_NAME','test')
-
-    mock_client = mock_openai.return_value
-    mock_client.chat.completions.create.side_effect = httpx.ConnectError("Network down")
-
-    with pytest.raises(httpx.ConnectError) as exc:
-        call_openai("Hi")
-    assert "Network down" in str(exc.value)
-
-
-
-
-# -------------------------------
-# ✅ Helper: Fake streaming chunk
-# -------------------------------
-class FakeChunk:
-    def __init__(self, content):
-        self.choices = [
-            MagicMock(delta=MagicMock(content=content))
-        ]
-
-
-# -------------------------------
-# ✅ Test: Successful Streaming
-# -------------------------------
-@patch("app.main.OpenAI")
-@patch("app.main.os.getenv")
-def test_stream_success(mock_getenv, mock_openai):
-    # Mock environment variables
-    mock_getenv.side_effect = lambda key: {
-        "GEMINI_API_KEY": "test_key",
-        "GEMINI_BASE_URL": "test_url",
-        "GEMINI_MODEL_NAME": "test_model"
-    }.get(key)
-
-    # Mock streaming response
-    fake_stream = [
-        FakeChunk("Hello"),
-        FakeChunk(" "),
-        FakeChunk("World")
-    ]
-
-    mock_client = MagicMock()
-    mock_client.chat.completions.create.return_value = fake_stream
-    mock_openai.return_value = mock_client
-
-    # Call generator
-    result = list(stream_response_func("Test prompt"))
-
-    # Assertions
-    assert result == [
-        "data: Hello\n\n",
-        "data:  \n\n",
-        "data: World\n\n",
-        "\n\n"
-    ]
-
-
-# -------------------------------
-# ✅ Test: Missing ENV variables
-# -------------------------------
-@patch("app.main.os.getenv")
-def test_stream_missing_env(mock_getenv):
-    # Simulate missing API key
-    mock_getenv.return_value = None
-
-    result = list(stream_response_func("Test"))
-
-    assert result == [
-        "data: [ERROR: VENDOR API_KEY NOT FOUND..]\n\n"
-    ]
-
-
-# -------------------------------
-# ✅ Test: OpenAI Exception
-# -------------------------------
-@patch("app.main.OpenAI")
-@patch("app.main.os.getenv")
-def test_stream_openai_exception(mock_getenv, mock_openai):
-    # Mock valid env
-    mock_getenv.side_effect = lambda key: {
-        "GEMINI_API_KEY": "test_key",
-        "GEMINI_BASE_URL": "test_url",
-        "GEMINI_MODEL_NAME": "test_model"
-    }.get(key)
-
-    # Mock exception from API
-    mock_client = MagicMock()
-    mock_client.chat.completions.create.side_effect = Exception("API failure")
-    mock_openai.return_value = mock_client
-
-    result = list(stream_response_func("Test"))
-
-    assert result == [
-        "data: [ERROR: API failure]\n\n"
-    ]
-
-
-# -------------------------------
-# ✅ Test: Empty chunks ignored
-# -------------------------------
-@patch("app.main.OpenAI")
-@patch("app.main.os.getenv")
-def test_stream_empty_chunks(mock_getenv, mock_openai):
-    mock_getenv.side_effect = lambda key: {
-        "GEMINI_API_KEY": "test_key",
-        "GEMINI_BASE_URL": "test_url",
-        "GEMINI_MODEL_NAME": "test_model"
-    }.get(key)
-
-    fake_stream = [
-        FakeChunk(None),
-        FakeChunk("Hi"),
-        FakeChunk("")
-    ]
-
-    mock_client = MagicMock()
-    mock_client.chat.completions.create.return_value = fake_stream
-    mock_openai.return_value = mock_client
-
-    result = list(stream_response_func("Test"))
-
-    assert result == [
-        "data: Hi\n\n",
-        "\n\n"
-    ]
+	assert chunks[0].startswith("data: ")
+	assert '"chunk":"alpha"' in chunks[0]
+	assert '"chunk":"beta"' in chunks[1]
+	assert chunks[-1].startswith("event: done")
