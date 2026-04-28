@@ -1,31 +1,39 @@
-from dataclasses import dataclass,field
-import random
+from dataclasses import dataclass, field
 
 @dataclass
-class Student:
-    name : str
-    course : str
-    age : int = 18
-    marks : int = 0
-    unique_id : int = field(init=False)
+class StudentRecord:
+    name: str
+    age: int
+    course: str
+    marks: float
+
+    # Auto-generated fields
+    enrollment_id: int = field(init=False)
+    grade: str = field(init=False)
+
+    # Class variable to keep track of IDs
+    _id_counter: int = 1000
 
     def __post_init__(self):
-        self.unique_id = random.randint(1,9999)
-    
-    def grade_eval(self):
-        if(self.marks > 85):
-            return 'A+'
-        elif(self.marks > 75):
-            return 'A'
-        elif(self.marks > 60 and self.marks <= 75):
-            return 'B'
-        elif(self.marks > 40 and self.marks <= 60):
-            return 'C'
-        elif(self.marks > 30 and self.marks <= 40):
-            return 'D'
-        else:
-            return 'E'
-    
-    def view_students(self):
-        print(f'Dataclass Record: {self.name}, Grade: {self.grade_eval()}, ID: STU-{self.unique_id}')
+        # Generate unique enrollment ID
+        self.enrollment_id = StudentRecord._id_counter
+        StudentRecord._id_counter += 1
 
+        # Assign grade
+        self.grade = self.calculate_grade()
+
+    def calculate_grade(self):
+        if self.marks >= 90:
+            return "A+"
+        elif self.marks >= 75:
+            return "A"
+        elif self.marks >= 60:
+            return "B"
+        elif self.marks >= 50:
+            return "C"
+        else:
+            return "F"
+
+    def __str__(self):
+        return (f"ID: {self.enrollment_id}, Name: {self.name}, "
+                f"Course: {self.course}, Marks: {self.marks}, Grade: {self.grade}")
