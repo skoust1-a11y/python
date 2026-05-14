@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from langchain_core.runnables import RunnableWithMessageHistory
 from start.orchestrators.estate_orchestrator import orchestartor_LCEL
-# from chat_history.inMemory import get_session_history
+from chat_history.inMemory import get_session_history
 from start.chat_history.inMemory import get_session_history
 from langchain.agents import create_agent
 from start.bots.location import location_agent_runnbale 
