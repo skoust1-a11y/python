@@ -1,8 +1,15 @@
 from langchain.tools import tool
 import requests
+import json
+from pydantic import BaseModel
 
-@tool
-def nominatim_geocode(place: str) -> list:
+
+
+class PlaceInput(BaseModel):
+    place: str
+
+@tool(args_schema=PlaceInput)
+def nominatim_geocode(place: str):
     """
     Convert place name into latitude and longitude.
     """
@@ -19,22 +26,25 @@ def nominatim_geocode(place: str) -> list:
         "User-Agent": "my-ai-agent"
     }
 
-    response = requests.get(
-        url,
-        params=params,
-        headers=headers
-    )
+    try:
+        response = requests.get(
+            url,
+            params=params,
+            headers=headers
+        )
 
-    response.raise_for_status()
+        response.raise_for_status()
 
-    data = response.json()
+        data = response.json()
 
-    result = [
-        {
-            "lat": item["lat"],
-            "lon": item["lon"]
+        if not data:
+            return {"error": "Location not found"}
+
+        return {
+            "lat": float(data[0]["lat"]),
+            "lon": float(data[0]["lon"])
         }
-        for item in data
-    ]
-
-    return result
+    except requests.exceptions.RequestException as e:
+        return json.dumps({"error": f"Network error fetching location: {e}"})
+    except Exception as e:
+        return json.dumps({"error":f"Server error: {e}"})

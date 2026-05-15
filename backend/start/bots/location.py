@@ -2,6 +2,7 @@ from llm_machine.llm_setup import llm
 from langchain.agents import create_agent
 from langchain_core.runnables import RunnableLambda
 from start.bots.tools.loc_tool import nominatim_geocode
+import json
 
 agent_prompt =  """You are a helpful latitude and longitude generator using given user city/area finding assistant.
 

@@ -1,4 +1,4 @@
-from classifiers.intent_classifier import classify_chain
+from start.classifiers.intent_classifier import classify_chain
 from langchain_core.runnables import RunnableLambda
 
 def input_orchestrator(input_dict : dict) -> dict:
