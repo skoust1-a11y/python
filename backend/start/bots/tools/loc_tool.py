@@ -9,7 +9,7 @@ class PlaceInput(BaseModel):
     place: str
 
 @tool(args_schema=PlaceInput)
-def nominatim_geocode(place: str):
+def nominatim_geocode(place: str) -> dict:
     """
     Convert place name into latitude and longitude.
     """
