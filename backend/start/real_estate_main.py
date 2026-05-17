@@ -8,9 +8,10 @@ from start.orchestrators.supervisor import supervisor_runnable
 from callbacks.langfuse_callback import get_langfuse_manager
 from auth.jwt_validator import verify_jwt
 from start.bots.fetch_locations import fetch_areas_runnable
-from start.bots.tools.fetch_opentrip_tool import fetch_tool, opentripmap_fetch
+from langchain_core.runnables import RunnableLambda,RunnableBranch
+from start.bots.tools.fetch_opentrip_tool import fetch_tool,opentripmap_fetch
 from start.bots.tools.loc_tool import nominatim_geocode
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
 from llm_machine.llm_setup import llm
 from langchain_core.output_parsers import StrOutputParser, PydanticOutputParser
 
@@ -19,57 +20,43 @@ from langchain_core.output_parsers import StrOutputParser, PydanticOutputParser
 # ---------------------------------------------------------------------------
 router = APIRouter()
 
-# ---------------------------------------------------------------------------
-# Main Chain with History
-# ---------------------------------------------------------------------------
-
-# The stateful chain wraps the master supervisor agent directly
-stateful_chain = RunnableWithMessageHistory(
-    runnable=supervisor_runnable,
-    get_session_history=get_session_history,
-    input_messages_key='query',
-    history_messages_key='chat_history'
-)
-
-# ---------------------------------------------------------------------------
-# API Endpoints
-# ---------------------------------------------------------------------------
-
-class ChatRequest(BaseModel):
-    query: str
-    session_id: str
-
-class ChatResponse(BaseModel):
-    response: Any
-    intent_detected: Optional[str] = "multi-step-workflow"  # Hardcoded default
+# full_chain = orchestartor_LCEL | branchDecider # we will branch plz wait
 
 
-@router.post('/chat', response_model=ChatResponse)
-def chat_endpoint(request: ChatRequest, token_payload: dict = Depends(verify_jwt)):
-    """
-    Main conversational endpoint.
-    Requires a valid Auth0 JWT in the Authorization header.
-    """
-    langfuse_handler = get_langfuse_manager().get_callback_handler(
-        session_id=request.session_id,
-        user_id=token_payload.get("sub", "unknown")
-    )
+intent_prompt = ChatPromptTemplate.from_messages([
+        ("system", """Classify user intent into one of:
+        - location_lookup: User mentions a city/area
+        - property_search: User asks for home recommendations
+        - amenity_search: User asks about nearby facilities
+        - commute_analysis: User asks about travel time
+        - lifestyle_match: User asks for family/professional areas
+        - general_conversation: Other queries"""),
+        ("user", "{query}")
+    ])
 
-    callbacks = [langfuse_handler] if langfuse_handler else []
+# branchDecider = RunnableBranch(
+#     (isLocation,geo_loc_chain),
+#     (isProperty,property_chain),
+#     (isAmenity,amenity_chain),
+#     (isCommute,commute_analysis_chain),
+#     (isLifestyle,lifestyle_chain),
+#     general_chain
+# )
 
-    try:
-        # Run the full stateful agent workflow
-        result = stateful_chain.invoke(
-            {"query": request.query},
-            config={
-                "configurable": {"session_id": request.session_id},
-                "callbacks": callbacks
-            }
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-    return ChatResponse(response=result, intent_detected=None)
+# location_agent_runnbale | 
+
+# stateful_chain = RunnableWithMessageHistory(
+#     runnable=full_chain,
+#     get_session_history=get_session_history,
+#     input_messages_key='query',
+#     history_messages_key='chat_history'
+# )
+
+
+
+
+
 
 
 prompt = ChatPromptTemplate.from_messages([
@@ -83,7 +70,6 @@ area_spotter_chain = prompt | llm | StrOutputParser()
 
 def loaction_trimmer(place: str):
     return place
-
 
 extract_place = RunnableLambda(loaction_trimmer)
 
