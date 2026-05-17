@@ -1,119 +1,131 @@
-"""
-Auth0 JWT Validation Middleware
--------------------------------
-Validates RS256-signed JWTs issued by Auth0 before processing any agent request.
-
-Flow:
-  1. Extract Bearer token from the Authorization header.
-  2. Download the JWKS (public keys) from Auth0's well-known endpoint.
-  3. Match the token's kid to the correct public key.
-  4. Decode and verify the token (audience, issuer, expiry).
-  5. Return the decoded payload (contains sub, email, etc.).
-"""
-
+# auth.py
+import os
+import time
 import requests
-from typing import Optional
+from typing import Dict, Any, Optional
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
-from fastapi import HTTPException, Security, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from settings.env_config import config
-import functools
 
-# ---------------------------------------------------------------------------
-# Config
-# ---------------------------------------------------------------------------
+from dotenv import load_dotenv
+from observability import observe
 
-AUTH0_DOMAIN: Optional[str] = config.require_env("AUTH0_DOMAIN")
-AUTH0_AUDIENCE: Optional[str] = config.require_env("AUTH0_AUDIENCE")
-ALGORITHMS = ["RS256"]
+load_dotenv()
 
-security = HTTPBearer()
+AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN")
+API_AUDIENCE = os.getenv("API_AUDIENCE")
+ALGORITHMS = [os.getenv("ALGORITHMS", "RS256")]
 
-# ---------------------------------------------------------------------------
-# JWKS fetching — cached so we don't hit Auth0 on every request
-# ---------------------------------------------------------------------------
+if not AUTH0_DOMAIN or not API_AUDIENCE:
+    raise RuntimeError("AUTH0_DOMAIN and API_AUDIENCE must be set in environment")
 
-@functools.lru_cache(maxsize=1)
-def _get_jwks() -> dict:
-    """Download and cache Auth0 JWKS public keys."""
-    if not AUTH0_DOMAIN:
-        raise HTTPException(status_code=500, detail="AUTH0_DOMAIN is not configured.")
-    url = f"https://{AUTH0_DOMAIN}/.well-known/jwks.json"
-    try:
-        resp = requests.get(url, timeout=10)
+JWKS_URL = f"https://{AUTH0_DOMAIN}/.well-known/jwks.json"
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token") 
+
+
+_jwks_cache: Dict[str, Any] = {"keys": [], "fetched_at": 0}
+JWKS_CACHE_SECONDS = 60 * 60  # 1 hour
+
+## Task 1 : Add decorator for observability
+
+def _fetch_jwks(force: bool = False) -> Dict[str, Any]:
+    """Fetch JWKS from Auth0 with simple caching."""
+    now = time.time()
+    if force or not _jwks_cache["keys"] or (now - _jwks_cache["fetched_at"] > JWKS_CACHE_SECONDS):
+        resp = requests.get(JWKS_URL, timeout=5)
         resp.raise_for_status()
-        return resp.json()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch JWKS from Auth0: {e}")
+        _jwks_cache["keys"] = resp.json().get("keys", [])
+        _jwks_cache["fetched_at"] = now
+    return _jwks_cache
 
 
-def _find_rsa_key(jwks: dict, kid: str) -> Optional[dict]:
-    """Find the matching RSA public key from JWKS by key ID (kid)."""
+def _get_rsa_key(unverified_header: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    jwks = _fetch_jwks()
     for key in jwks.get("keys", []):
-        if key.get("kid") == kid:
+        if key.get("kid") == unverified_header.get("kid"):
             return {
-                "kty": key["kty"],
-                "kid": key["kid"],
-                "use": key["use"],
-                "n": key["n"],
-                "e": key["e"],
+                "kty": key.get("kty"),
+                "kid": key.get("kid"),
+                "use": key.get("use"),
+                "n": key.get("n"),
+                "e": key.get("e"),
             }
     return None
 
-
-# ---------------------------------------------------------------------------
-# JWT verification dependency
-# ---------------------------------------------------------------------------
-
-def verify_jwt(
-    credentials: HTTPAuthorizationCredentials = Security(security),
-) -> dict:
+## Task 1 : Add decorator for observability
+@observe()
+def get_user_email_from_auth0(token: str) -> Optional[str]:
     """
-    FastAPI dependency — validates the Auth0 JWT and returns the decoded payload.
-
-    Usage:
-        @router.post("/chat")
-        def chat(request: ChatRequest, payload: dict = Depends(verify_jwt)):
-            user_id = payload.get("sub")
+    Fetch user email from Auth0's userinfo endpoint using the access token.
     """
-    if not AUTH0_DOMAIN or not AUTH0_AUDIENCE:
-        raise HTTPException(
-            status_code=500,
-            detail="Auth0 is not configured on the server. Set AUTH0_DOMAIN and AUTH0_AUDIENCE.",
-        )
+    try:
+        userinfo_url = f"https://{AUTH0_DOMAIN}/userinfo"
+        headers = {"Authorization": f"Bearer {token}"}
+        response = requests.get(userinfo_url, headers=headers, timeout=5)
+        response.raise_for_status()
+        userinfo = response.json()
+        return userinfo.get("email")
+    except Exception:
+        return None
 
-    token = credentials.credentials
 
+@observe()
+def validate_token(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
+    """
+    FastAPI dependency to validate a JWT from Auth0.
+    Returns the decoded payload (claims) if validation succeeded.
+    Raises HTTPException(401) on failure.
+    """
     try:
         unverified_header = jwt.get_unverified_header(token)
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token header.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token header.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-    jwks = _get_jwks()
-    rsa_key = _find_rsa_key(jwks, unverified_header.get("kid", ""))
-
+    rsa_key = _get_rsa_key(unverified_header)
     if not rsa_key:
-        # Invalidate cache and retry once (keys may have rotated)
-        _get_jwks.cache_clear()
-        jwks = _get_jwks()
-        rsa_key = _find_rsa_key(jwks, unverified_header.get("kid", ""))
-
-    if not rsa_key:
-        raise HTTPException(status_code=401, detail="Unable to find a matching public key.")
+        
+        _fetch_jwks(force=True)
+        rsa_key = _get_rsa_key(unverified_header)
+        if not rsa_key:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Unable to find appropriate key",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     try:
         payload = jwt.decode(
             token,
             rsa_key,
             algorithms=ALGORITHMS,
-            audience=AUTH0_AUDIENCE,
+            audience=API_AUDIENCE,
             issuer=f"https://{AUTH0_DOMAIN}/",
         )
-        return payload
-    except JWTError as e:
-        raise HTTPException(status_code=401, detail=f"Token validation failed: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.JWTClaimsError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect claims. Check audience and issuer.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unable to parse authentication token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-
-__all__ = ["verify_jwt"]
+    
+    payload["_raw_token"] = token
+    return payload
