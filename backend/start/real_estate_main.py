@@ -13,11 +13,6 @@ from start.bots.tools.loc_tool import nominatim_geocode
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from llm_machine.llm_setup import llm
 from langchain_core.output_parsers import StrOutputParser, PydanticOutputParser
-from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
-from llm_machine.llm_setup import llm
-from langchain_core.output_parsers import StrOutputParser
-from pydantic import BaseModel,Field
-from langchain_core.output_parsers import PydanticOutputParser
 
 # ---------------------------------------------------------------------------
 # Router setup
@@ -46,7 +41,8 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: Any
-    intent_detected: Optional[str] = "multi-step-workflow" # Hardcoded since the agent handles intents dynamically now
+    intent_detected: Optional[str] = "multi-step-workflow"  # Hardcoded default
+
 
 @router.post('/chat', response_model=ChatResponse)
 def chat_endpoint(request: ChatRequest, token_payload: dict = Depends(verify_jwt)):
@@ -58,7 +54,7 @@ def chat_endpoint(request: ChatRequest, token_payload: dict = Depends(verify_jwt
         session_id=request.session_id,
         user_id=token_payload.get("sub", "unknown")
     )
-    
+
     callbacks = [langfuse_handler] if langfuse_handler else []
 
     try:
@@ -70,21 +66,22 @@ def chat_endpoint(request: ChatRequest, token_payload: dict = Depends(verify_jwt
                 "callbacks": callbacks
             }
         )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-
+    return ChatResponse(response=result, intent_detected=None)
 
 
 prompt = ChatPromptTemplate.from_messages([
-    ('system','You are a City/Area/Region finder in a  user query.\n'
-    'Respond to The User By Giving the only location related details found in the query and truncating the rest of the user query in a word/sentence.'),
-    ('user',"Query : {original_query}")
-
+    ('system', 'You are a City/Area/Region finder in a  user query.\n'
+               'Respond to The User By Giving the only location related details found in the query and truncating the rest of the user query in a word/sentence.'),
+    ('user', "Query : {original_query}")
 ])
 
 area_spotter_chain = prompt | llm | StrOutputParser()
 
 
-def loaction_trimmer(place : str):
+def loaction_trimmer(place: str):
     return place
 
 
@@ -94,8 +91,10 @@ extract_place = RunnableLambda(loaction_trimmer)
 def get_coordinates(place):
     return nominatim_geocode.invoke({"place": place})
 
+
 def get_nearby_places(coords):
     return fetch_tool.invoke(coords)
+
 
 class AmenityScore(BaseModel):
     family_friendliness: int = Field(description="Score from 1-10")
@@ -103,6 +102,7 @@ class AmenityScore(BaseModel):
     connectivity: int = Field(description="Score from 1-10")
     entertainment: int = Field(description="Score from 1-10")
     summary: str
+
 
 parser = PydanticOutputParser(pydantic_object=AmenityScore)
 
@@ -123,7 +123,7 @@ neighborhood_chain = (
 )
 
 
-#---------------------------------------NeighBouhood Amenities List--------------------
+# ---------------------------------------NeighBouhood Amenities List--------------------
 dummy_chain = (
     area_spotter_chain
     | extract_place
@@ -134,8 +134,6 @@ dummy_chain = (
 # -----------------------------------------------------------------------------------
 
 
-
-
 # ------------------Neighbourhood Amneties House Recommedatin Score-------------------
 # dummy_chain = (
 #     area_spotter_chain
@@ -144,18 +142,18 @@ dummy_chain = (
 #     | neighborhood_chain
 # )
 
-#---------------------------------------------------------
+# ---------------------------------------------------------
 
 
-#below code Just for demonstration purpose only
+# below code Just for demonstration purpose only
 
 
 @router.get('/check')
 def check():
     response = dummy_chain.invoke({
-        'original_query':'I am in Nagole,Hyderabad'
+        'original_query': 'I am in Nagole,Hyderabad'
     })
     result = response
-    print(result,flush=True)
+    print(result, flush=True)
     print('-----------------')
     return result
