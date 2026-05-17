@@ -40,6 +40,31 @@ def fetch_tool(lat: float, lon: float, radius: int = 5000):
     return response.json()
 
 
+class OpenTripInput(BaseModel):
+    lat: float
+    lon: float
+
+@tool(args_schema=OpenTripInput)
+def opentripmap_fetch(lat : float ,lon :float) -> dict:
+    """
+    Fetch nearby amenities from OpenTripMap API for a given place.
+    """
+    lats, lons = lat, lon
+    base = "https://api.opentripmap.com/0.1/en/places/radius"
+    categories = ["accomodations", "transport", "health", "education", "sport"]
+    results = {}
+    for cat in categories:
+        resp = requests.get(base, params={
+            "radius": 3000, "lon": lons, "lat": lats,
+            "kinds": cat, "limit": 5,
+            "apikey": api_key_open_trip
+        })
+        results[cat] = resp.json().get("features", [])
+    return {"amenities": results}
+
+
+
+
 
 
 
