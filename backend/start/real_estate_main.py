@@ -64,14 +64,19 @@ def isLifestyle(input_type : dict) -> bool:
 
 
 
+# branchDecider = RunnableBranch(
+#     (isLocation,loc_parsing_chain),
+#     (isAmenity,neighbourhood_total_chain),
+#     (isLifestyle or isProperty,ai_agent_chain),
+#     general_chain
+# )
+
 branchDecider = RunnableBranch(
-    (isLocation,loc_parsing_chain),
-    (isAmenity,neighbourhood_total_chain),
-    (isLifestyle or isProperty,ai_agent_chain),
+    (isLocation, loc_parsing_chain),
+    (isAmenity, neighbourhood_total_chain),
+    (lambda x: isLifestyle(x) or isProperty(x), ai_agent_chain),
     general_chain
 )
-
-
 
 web_chain = web_search | StrOutputParser()
 
@@ -240,7 +245,7 @@ class TestInput(BaseModel):
     input: str
 
 @router.post('/check')
-def check(payload: TestInput):
+def check(payload: ChatInput):
     # response = property_search_tool.invoke({
     #     'query': payload.input
     # })
@@ -248,7 +253,7 @@ def check(payload: TestInput):
     async def event_generator():
         try:
             # Use .astream() for non-blocking streaming in an async context
-            async for chunk in full_chain.astream({"query": payload.input}):
+            async for chunk in stateful_chain.astream({"query": payload.input},config={"configurable": {"session_id": payload.session_id}}):
                 yield f"data: {chunk}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as e:

@@ -1,7 +1,7 @@
 from langchain.agents import create_agent
 from start.bots.tools.web_search_tool import web_search,property_search_tool,lifestyle_analysis_tool
 from llm_machine.llm_setup import llm
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
 from pydantic import BaseModel,Field
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnableLambda
@@ -102,25 +102,53 @@ bunch_of_tools=[property_search_tool,lifestyle_analysis_tool]
 estate_agent = create_agent(
     model=llm,
     system_prompt=agent_prompt,
-    tools=bunch_of_tools,
+    tools=[property_search_tool, lifestyle_analysis_tool],
     debug=True,
 )
 
+# -----------------------------
+# CHAT PROMPT TEMPLATE
+# -----------------------------
 
-def handle_agent(input_dict: dict) -> str:
-    """Handle agent-based queries using the agent"""
-    query = input_dict.get('original_query', '')
-    
+plain_prompt = ChatPromptTemplate.from_messages([
+    (
+        "system",
+        "You are a professional real estate assistant."
+    ),
+
+    # Previous conversation history
+    MessagesPlaceholder(variable_name="chat_history"),
+
+    (
+        "human",
+        "{original_query}"
+    )
+])
+
+# -----------------------------
+# AGENT HANDLER
+# -----------------------------
+
+def handle_agent(inputs: dict):
+
     try:
-        result = estate_agent.invoke(
-            {"messages": [
-                {"role": "user", "content": query}
-                ]
-            }
-            )
-        response = result['messages'][-1].content
-        return str(response)
+        prompt_value = plain_prompt.invoke({
+            "chat_history": inputs["chat_history"],
+            "original_query": inputs["original_query"]
+        })
+
+        result = estate_agent.invoke({
+            "messages": prompt_value.messages
+        })
+
+       
+        response = result["messages"][-1].content
+
+        return response
+
     except Exception as e:
-        return f"Error processing location query: {str(e)}"
+        return f"Error processing query: {str(e)}"
+    
+
 
 ai_agent_chain = RunnableLambda(handle_agent)

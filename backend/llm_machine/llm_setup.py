@@ -1,5 +1,6 @@
 from langchain_openai import ChatOpenAI
 from settings.env_config import config
+from langchain_groq import ChatGroq
 
 if not config.require_env('GEMINI_API_KEY'):
     raise ValueError('LLM API KEY NOT FOUND')

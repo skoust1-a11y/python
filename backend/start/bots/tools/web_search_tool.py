@@ -84,72 +84,46 @@ def property_search_tool(query: str):
 @tool(args_schema=QueryModel)
 def lifestyle_analysis_tool(query: str):
     """
-    Analyzes residential locations based on lifestyle suitability,
-    amenities, connectivity, safety, and living standards.
-
-    This tool is useful for identifying:
-    - Family-friendly areas
-    - Professional-friendly areas
-    - Budget-friendly zones
-    - Luxury residential zones
+    Analyze residential areas based on lifestyle suitability.
     """
 
     tavily_query = f"""
-    Analyze the best residential areas for the following user requirement:
-
-    User Query:
+    Best residential areas for:
     {query}
 
-    Provide a structured lifestyle analysis covering:
-
-    1. Family-friendly areas
-       - Good schools
-       - Parks
-       - Hospitals
-       - Safety
-       - Peaceful environment
-
-    2. Professional-friendly areas
-       - Near IT hubs
-       - Office connectivity
-       - Metro/public transport
-       - Coworking spaces
-       - Traffic conditions
-
-    3. Budget-friendly zones
-       - Affordable housing
-       - Low rent/property prices
-       - Daily living affordability
-       - Public transport access
-
-    4. Luxury zones
-       - Premium gated communities
-       - High-end apartments/villas
-       - Shopping malls
-       - Fine dining
-       - Premium lifestyle amenities
-
-    Also include:
-    - Nearby amenities
+    Include:
+    - Family friendliness
     - Connectivity
-    - Popular landmarks
-    - Overall lifestyle suitability summary
+    - Safety
+    - Nearby amenities
+    - Lifestyle score
     """
 
-
-    client = TavilyClient(config.require_env('WEB_SEARCH_TAVILY'))
-
+    client = TavilyClient(config.require_env("WEB_SEARCH_TAVILY"))
 
     response = client.search(
-    query=tavily_query,
-    search_depth="advanced",
-    max_results=5
+        query=tavily_query,
+        search_depth="advanced",
+        max_results=5
     )
+
     results = response.get("results", [])
 
-    combined_text = "\n---------------------------\n".join(
-        [r.get("content", "") for r in results]
-    )
+    if not results:
+        return "No lifestyle data found."
 
-    return combined_text
+    summaries = []
+
+    for r in results:
+        content = r.get("content", "")[:500]
+
+        summaries.append(content)
+
+    final_summary = "\n\n".join(summaries)
+
+    return f"""
+    Lifestyle Analysis Result:
+
+    {final_summary}
+    """
 

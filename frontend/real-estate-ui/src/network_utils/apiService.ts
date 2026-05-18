@@ -6,7 +6,7 @@
 // const SESSION_ID = API_BASE_URL + '/new-session'
 
 // src/apiService.ts
-const API_URL = 'http://localhost:8000/chat';
+const API_URL = 'http://localhost:9000/chat';
 
 interface ChatRequestBody {
   input: string;
