@@ -19,5 +19,6 @@ llm = ChatOpenAI(
     api_key=api_key,
     base_url=llm_url,
     model=model,
-    max_retries=3
+    max_retries=3,
+    temperature=0.1
 )

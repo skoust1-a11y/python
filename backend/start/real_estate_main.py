@@ -6,10 +6,9 @@ from langchain_core.runnables import RunnableWithMessageHistory, RunnableLambda
 from start.chat_history.inMemory import get_session_history
 from start.orchestrators.supervisor import supervisor_runnable
 from callbacks.langfuse_callback import get_langfuse_manager
-from auth.jwt_validator import verify_jwt
-from start.bots.fetch_locations import fetch_areas_runnable
+# from start.bots.fetch_locations import fetch_areas_runnable
 from langchain_core.runnables import RunnableLambda,RunnableBranch
-from start.bots.tools.fetch_opentrip_tool import fetch_tool,opentripmap_fetch
+from start.bots.tools.fetch_opentrip_tool import fetch_tool,opentripmap_fetch,nearby_homes
 from start.bots.tools.loc_tool import nominatim_geocode
 from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
 from llm_machine.llm_setup import llm
@@ -19,6 +18,14 @@ import uuid
 from observability import flush_langfuse
 from auth.jwt_validator import get_user_email_from_auth0,validate_token
 from start.orchestrators.estate_orchestrator import orchestartor_LCEL
+from langchain_core.prompts import ChatPromptTemplate
+from start.bots.chains.location_chain import loc_parsing_chain
+from start.bots.chains.location_chain import extract_place,area_spotter_chain,get_coordinates
+from start.bots.tools.web_search_tool import web_search
+from start.bots.estate_agent_basic import ai_agent_chain
+from start.bots.chains.general_chain import general_chain
+from start.bots.chains.neighbourhood_chain import neighbourhood_total_chain
+from start.bots.tools.web_search_tool import property_search_tool
 
 # ---------------------------------------------------------------------------
 # Router setup
@@ -28,112 +35,59 @@ router = APIRouter()
 
 
 
-intent_prompt = ChatPromptTemplate.from_messages([
-        ("system", """Classify user intent into one of:
-        - location_lookup: User mentions a city/area
-        - property_search: User asks for home recommendations
-        - amenity_search: User asks about nearby facilities
-        - commute_analysis: User asks about travel time
-        - lifestyle_match: User asks for family/professional areas
-        - general_conversation: Other queries"""),
-        ("user", "{query}")
-    ])
-
-# branchDecider = RunnableBranch(
-#     (isLocation,geo_loc_chain),
-#     (isProperty,property_chain),
-#     (isAmenity,amenity_chain),
-#     (isCommute,commute_analysis_chain),
-#     (isLifestyle,lifestyle_chain),
-#     general_chain
-# )
-
-
-# location_agent_runnbale | 
-
-# stateful_chain = RunnableWithMessageHistory(
-#     runnable=full_chain,
-#     get_session_history=get_session_history,
-#     input_messages_key='query',
-#     history_messages_key='chat_history'
-# )
-
-prompt = ChatPromptTemplate.from_messages([
-    ('system', 'You are a City/Area/Region finder in a  user query.\n'
-               'Respond to The User By Giving the only location related details found in the query and truncating the rest of the user query in a word/sentence.'),
-    ('user', "Query : {original_query}")
-])
-
-area_spotter_chain = prompt | llm | StrOutputParser()
+def isLocation(input_type : dict) -> bool:
+    classification : str = input_type.get('classification')
+    if classification.strip().lower() == 'location_lookup':
+        return True
+    else:
+        return False
+def isProperty(input_type : dict) -> bool:
+    classification : str = input_type.get('classification')
+    if classification.strip().lower() == 'property_search':
+        return True
+    else:
+        return False
+def isAmenity(input_type : dict) -> bool:
+    classification : str = input_type.get('classification')
+    if classification.strip().lower() == 'amenity_search':
+        return True
+    else:
+        return False
+    
+def isLifestyle(input_type : dict) -> bool:
+    classification : str = input_type.get('classification')
+    if classification.strip().lower() == 'lifestyle_match':
+        return True
+    else:
+        return False
 
 
-def loaction_trimmer(place: str):
-    return place
-
-extract_place = RunnableLambda(loaction_trimmer)
 
 
-def get_coordinates(place):
-    return nominatim_geocode.invoke({"place": place})
-
-
-def get_nearby_places(coords):
-    return fetch_tool.invoke(coords)
-
-
-class AmenityScore(BaseModel):
-    family_friendliness: int = Field(description="Score from 1-10")
-    professional_convenience: int = Field(description="Score from 1-10")
-    connectivity: int = Field(description="Score from 1-10")
-    entertainment: int = Field(description="Score from 1-10")
-    summary: str
-
-
-parser = PydanticOutputParser(pydantic_object=AmenityScore)
-
-amenity_score_prompt = ChatPromptTemplate.from_template(
-    "Given these nearby amenities: {amenities}, score this neighborhood (1-10) for: "
-    "family-friendliness, professional-convenience, connectivity, entertainment. "
-    "Output JSON with scores and a summary." \
-    "{format_instructions}"
-)
-
-neighborhood_chain = (
-    opentripmap_fetch
-    | amenity_score_prompt.partial(
-        format_instructions=parser.get_format_instructions()
-    )
-    | llm
-    | parser
+branchDecider = RunnableBranch(
+    (isLocation,loc_parsing_chain),
+    (isAmenity,neighbourhood_total_chain),
+    (isLifestyle or isProperty,ai_agent_chain),
+    general_chain
 )
 
 
-# ---------------------------------------NeighBouhood Amenities List--------------------
-dummy_chain = (
-    area_spotter_chain
-    | extract_place
-    | RunnableLambda(get_coordinates)
-    | opentripmap_fetch
+
+web_chain = web_search | StrOutputParser()
+
+
+
+full_chain = orchestartor_LCEL | branchDecider
+
+
+
+
+stateful_chain = RunnableWithMessageHistory(
+    runnable=full_chain,
+    get_session_history=get_session_history,
+    input_messages_key='query',
+    history_messages_key='chat_history'
 )
-
-# -----------------------------------------------------------------------------------
-
-
-# ------------------Neighbourhood Amneties House Recommedatin Score-------------------
-# dummy_chain = (
-#     area_spotter_chain
-#     | extract_place
-#     | RunnableLambda(get_coordinates)
-#     | neighborhood_chain
-# )
-
-# ---------------------------------------------------------
-
-
-
-
-
-full_chain = orchestartor_LCEL | branchDecider # we will branch plz wait
 
 
 # below code DONE outerpart  we need to build the LOGIC NOW.
@@ -281,12 +235,25 @@ async def shutdown_event():
     flush_langfuse()
 
 
-@router.get('/check')
-def check():
-    response = dummy_chain.invoke({
-        'original_query': 'I am in Nagole,Hyderabad'
-    })
-    result = response
-    print(result, flush=True)
-    print('-----------------')
-    return result
+
+class TestInput(BaseModel):
+    input: str
+
+@router.post('/check')
+def check(payload: TestInput):
+    # response = property_search_tool.invoke({
+    #     'query': payload.input
+    # })
+    # return response
+    async def event_generator():
+        try:
+            # Use .astream() for non-blocking streaming in an async context
+            async for chunk in full_chain.astream({"query": payload.input}):
+                yield f"data: {chunk}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            # Log the full error for debugging
+            print(f"Error during stream: {e}")
+            yield f"data: Error: {str(e)}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")

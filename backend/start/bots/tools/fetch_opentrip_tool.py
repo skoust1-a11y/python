@@ -44,23 +44,90 @@ class OpenTripInput(BaseModel):
     lat: float
     lon: float
 
+
+# ---------OLD TOOL------------------
+
+# @tool(args_schema=OpenTripInput)
+# def opentripmap_fetch(lat : float ,lon :float) -> dict:
+#     """
+#     Fetch nearby amenities from OpenTripMap API for a given place.
+#     """
+#     lats, lons = lat, lon
+#     base = "https://api.opentripmap.com/0.1/en/places/radius"
+#     categories = ["accommodations", "transport", "health", "education", "sport"]
+#     results = {}
+#     for cat in categories:
+#         resp = requests.get(base, params={
+#             "radius": 3000, "lon": lons, "lat": lats,
+#             "kinds": cat, "limit": 5,
+#             "apikey": api_key_open_trip
+#         })
+#         results[cat] = resp.json().get("features", [])
+#     return {"amenities": results}
+
 @tool(args_schema=OpenTripInput)
-def opentripmap_fetch(lat : float ,lon :float) -> dict:
+def opentripmap_fetch(lat: float, lon: float) -> dict:
     """
     Fetch nearby amenities from OpenTripMap API for a given place.
     """
-    lats, lons = lat, lon
+
     base = "https://api.opentripmap.com/0.1/en/places/radius"
-    categories = ["accomodations", "transport", "health", "education", "sport"]
+
+    categories = {
+        "accommodations": "other_hotels",
+        "transport": "fuel,car_rentals,bus_stations",
+        "health": "hospitals,pharmacy,clinics",
+        "education": "schools,universities",
+        "sport": "sport"
+    }
+
     results = {}
-    for cat in categories:
-        resp = requests.get(base, params={
-            "radius": 3000, "lon": lons, "lat": lats,
-            "kinds": cat, "limit": 5,
-            "apikey": api_key_open_trip
-        })
-        results[cat] = resp.json().get("features", [])
+
+    for label, kinds in categories.items():
+        resp = requests.get(
+            base,
+            params={
+                "radius": 3000,
+                "lon": lon,
+                "lat": lat,
+                "kinds": kinds,
+                "limit": 5,
+                "apikey": api_key_open_trip
+            }
+        )
+
+        data = resp.json()
+        results[label] = data.get("features", [])
+
     return {"amenities": results}
+
+
+@tool(args_schema=OpenTripInput)
+def nearby_homes(lat : float , lon : float):
+    """
+        Fetch nearby Houses from GeoApify API for a given place.
+    """
+
+    API_KEY = "c246df0edcd6454f901ffd100079112b"
+
+    url = "https://api.geoapify.com/v2/places"
+
+
+    params = {
+        "categories": "building,accommodation.apartment",
+        "filter": f"circle:{lon},{lat},3000",
+        "bias": f"proximity:{lon},{lat}",
+        "limit": 20,
+        "apiKey": API_KEY
+    }
+
+    response = requests.get(url, params=params)
+
+    return {
+        'places_geo': response.json()
+    }
+
+
 
 
 

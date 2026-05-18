@@ -1,6 +1,6 @@
 
 import { useAuth0 } from '@auth0/auth0-react';
-import ChatComponent from "./ChatComponent";
+import ChatComponent from "./components/ChatComponent";
 
 const ROLE_NAMESPACE = import.meta.env.VITE_AUTH0_ROLE_NAMESPACE || "https://stateful-agent.com/roles";
 

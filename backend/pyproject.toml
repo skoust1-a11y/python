@@ -17,4 +17,5 @@ dependencies = [
     "opentelemetry-api==1.38.0",
     "opentelemetry-exporter-otlp==1.38.0",
     "fastapi==0.121.0",
+    "tavily-python>=0.7.24",
 ]
