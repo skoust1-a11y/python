@@ -61,7 +61,7 @@ def property_search_tool(query: str):
     response = client.search(
         query=tavily_query,
         search_depth="advanced",
-        max_results=7   
+        max_results=20   
     )
 
     results = response.get("results", [])

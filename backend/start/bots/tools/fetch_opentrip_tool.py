@@ -91,7 +91,7 @@ def opentripmap_fetch(lat: float, lon: float) -> dict:
                 "lon": lon,
                 "lat": lat,
                 "kinds": kinds,
-                "limit": 5,
+                "limit": 20,
                 "apikey": api_key_open_trip
             }
         )

@@ -221,7 +221,7 @@ async def chat(payload: ChatInput, token_payload: dict = Depends(validate_token)
     async def event_generator():
         try:
             # Use .astream() for non-blocking streaming in an async context
-            async for chunk in stateful_chain.astream({"input": payload.input}, config=config):
+            async for chunk in stateful_chain.astream({"query": payload.input}, config=config):
                 yield f"data: {chunk}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as e:
@@ -245,9 +245,9 @@ class TestInput(BaseModel):
     input: str
 
 @router.post('/check')
-def check(payload: ChatInput):
-    # response = property_search_tool.invoke({
-    #     'query': payload.input
+def check(payload : ChatInput):
+    # response = nominatim_geocode.invoke({
+    #     'place': 'GachiBowli'
     # })
     # return response
     async def event_generator():

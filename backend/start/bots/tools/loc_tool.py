@@ -45,6 +45,7 @@ def nominatim_geocode(place: str) -> dict:
             "lon": float(data[0]["lon"])
         }
     except requests.exceptions.RequestException as e:
-        return json.dumps({"error": f"Network error fetching location: {e}"})
+        return {"error": f"Network error fetching location: {e}"}
+
     except Exception as e:
-        return json.dumps({"error":f"Server error: {e}"})
+        return {"error": f"Server error: {e}"}

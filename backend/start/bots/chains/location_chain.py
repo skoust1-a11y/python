@@ -9,7 +9,7 @@ from start.bots.tools.fetch_opentrip_tool import fetch_tool, nearby_homes
 
 prompt = ChatPromptTemplate.from_messages([
     ('system', 'You are a City/Area/Region finder in a  user query.\n'
-               'Respond to The User By Giving the only location related details found in the query and truncating the rest of the user query in a word/sentence.'),
+               'Respond to The User By Giving the only exact location alone found in the query and truncating the rest of the user query in a word/sentence.'),
                 MessagesPlaceholder(variable_name='chat_history'),
     ('user', "Query : {original_query}")
 ])
@@ -20,7 +20,7 @@ area_spotter_chain = prompt | llm | StrOutputParser()
 def loaction_trimmer(place: str):
     return place
 
-extract_place = RunnableLambda(loaction_trimmer)
+extract_place = RunnableLambda(loaction_trimmer)    
 
 
 def get_coordinates(place):
