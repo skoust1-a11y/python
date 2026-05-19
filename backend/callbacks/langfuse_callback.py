@@ -20,7 +20,7 @@ class LangFuseCallBackHandler:
     ):
         self.public_key = public_key or os.getenv("LANGFUSE_PUBLIC_KEY")
         self.secret_key = secret_key or os.getenv("LANGFUSE_SECRET_KEY")
-        self.host = host or os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+        self.host = host or os.getenv("LANGFUSE_BASE_URL", "https://cloud.langfuse.com")
 
     def get_callback_handler(
         self,

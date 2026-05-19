@@ -6,7 +6,7 @@
 // const SESSION_ID = API_BASE_URL + '/new-session'
 
 // src/apiService.ts
-const API_URL = 'http://localhost:8000/chat';
+const API_URL = 'http://localhost:9000/chat';
 
 interface ChatRequestBody {
   input: string;
@@ -108,3 +108,58 @@ export async function streamChatMessage(
   }
 }
 
+
+type RequestBody = Record<string, any>;
+
+
+type ApiResponse<T = any> = {
+  ok: boolean;
+  status: number;
+  data: T;
+};
+
+const postWithoutHeaders = async(url : string ,requestBody : RequestBody) : Promise<ApiResponse> => {
+    try {
+        const response = await fetch(url,{
+            method : 'POST',
+            credentials : 'include',
+            body : JSON.stringify(requestBody),
+            headers:{
+                'Content-Type':'application/json'
+            }
+        });
+        const responseData = await response.json()
+        return {
+            ok: response.ok,
+            status: response.status,
+            data: responseData,
+            };
+
+    }catch(err){
+        console.log('Error in networkPost:',err)
+    }
+}
+
+const getWithoutHeaders = async(url : string) : Promise<ApiResponse> => {
+    try {
+        const response = await fetch(url,{
+            method : 'GET',
+            credentials : 'include',
+            headers:{
+                'Content-Type':'application/json'
+            }
+        });
+        const responseData = await response.json()
+            return {
+            ok: response.ok,
+            status: response.status,
+            data: responseData,
+            };
+
+    }catch(err){
+        console.log('Error in networkPost:',err)
+    }
+}
+
+
+export {postWithoutHeaders,getWithoutHeaders}

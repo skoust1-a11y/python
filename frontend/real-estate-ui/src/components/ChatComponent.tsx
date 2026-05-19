@@ -4,6 +4,8 @@ import ReactMarkdown from 'react-markdown';
 import { useAuth0 } from '@auth0/auth0-react';
 import { type ChatMessage, apiService, type PropertyData } from '../apiService';
 import { PropertyCard } from './PropertyCard';
+import { getWithoutHeaders } from '../network_utils/apiService';
+import { fetchSessions } from '../network_utils/URL_CONSTANTS';
 
 export const ChatComponent: React.FC = () => {
   const { getAccessTokenSilently } = useAuth0();
@@ -14,7 +16,30 @@ export const ChatComponent: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const sessionId = useMemo(() => window.crypto?.randomUUID?.() ?? `session-${Date.now()}`, []);
+  // const sessionIdNew = useMemo(() => window.crypto?.randomUUID?.() ?? `session-${Date.now()}`, []);
+  const[sessionId,setSessionId] = useState("")
+
+
+  useEffect(()=>{
+  const gen_id = async() => {
+    try{
+      const res = await getWithoutHeaders(fetchSessions)
+      if (res.ok){
+        setSessionId(res.data.session_id)
+      }
+      else{
+        setSessionId("")
+      }    
+
+    }
+    catch(error){
+      console.log("The Generate Id Error:",error)
+    }
+  }
+  gen_id()
+
+  },[])
+
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

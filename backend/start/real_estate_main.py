@@ -26,6 +26,7 @@ from start.bots.estate_agent_basic import ai_agent_chain
 from start.bots.chains.general_chain import general_chain
 from start.bots.chains.neighbourhood_chain import neighbourhood_total_chain
 from start.bots.tools.web_search_tool import property_search_tool
+from observability import observe
 
 # ---------------------------------------------------------------------------
 # Router setup
@@ -210,6 +211,8 @@ def new_session():
     """Generate a new chat session ID."""
     return {"session_id": str(uuid.uuid4())}
 
+
+@observe()
 @router.post("/chat")
 async def chat(payload: ChatInput, token_payload: dict = Depends(validate_token)):
     """
