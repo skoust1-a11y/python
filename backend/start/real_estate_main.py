@@ -75,7 +75,8 @@ def isLifestyle(input_type : dict) -> bool:
 branchDecider = RunnableBranch(
     (isLocation, loc_parsing_chain),
     (isAmenity, neighbourhood_total_chain),
-    (lambda x: isLifestyle(x) or isProperty(x), ai_agent_chain),
+    (isProperty, ai_agent_chain),
+    (isLifestyle,ai_agent_chain),
     general_chain
 )
 
@@ -102,7 +103,6 @@ class ChatInput(BaseModel):
     input: str
     session_id: str
 
-## Task 2 : Setup Langfuse callback handler and configure chain execution config
 def setup_langfuse_callback(session_id: str, token_payload: dict) -> Tuple[dict, Optional[Any]]:
     """
     Setup Langfuse callback handler and configure chain execution config.
@@ -168,6 +168,7 @@ def setup_langfuse_callback(session_id: str, token_payload: dict) -> Tuple[dict,
 
 
 ## Task 2:  Flush Langfuse traces. 
+## Task 2:  Flush Langfuse traces. 
 async def flush_langfuse_traces(callback_handler) -> None:
     """
     Flush Langfuse traces.
@@ -203,7 +204,6 @@ async def flush_langfuse_traces(callback_handler) -> None:
         await asyncio.sleep(1.0)
     except Exception:
         pass
-
    
 
 @router.get("/new-session")
@@ -212,7 +212,7 @@ def new_session():
     return {"session_id": str(uuid.uuid4())}
 
 
-@observe()
+
 @router.post("/chat")
 async def chat(payload: ChatInput, token_payload: dict = Depends(validate_token)):
     """

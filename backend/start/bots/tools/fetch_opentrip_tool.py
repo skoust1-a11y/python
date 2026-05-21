@@ -4,6 +4,7 @@ from pydantic import BaseModel,Field
 from settings.env_config import config
 from langchain.tools import tool
 import json
+from observability import observe
 
 api_key_open_trip = config.require_env('OPEN_TRIP_API',None)
 
@@ -15,6 +16,7 @@ class Coordinate(BaseModel):
     lat : float
     lon : float
     radius : int = 5000
+
 
 @tool(args_schema=Coordinate)
 def fetch_tool(lat: float, lon: float, radius: int = 5000):

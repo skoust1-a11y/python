@@ -30,6 +30,8 @@ def get_coordinates(place):
 def get_nearby_places(coords):
     return fetch_tool.invoke(coords)
 
+def nearby_homes_parser(my_dict : dict) -> str:
+    return str(my_dict)
 
 
 geo_loc_chain = (
@@ -37,7 +39,7 @@ geo_loc_chain = (
     | extract_place
     | RunnableLambda(get_coordinates)
     | nearby_homes
-    | RunnableLambda(lambda x: str(x))
+    | RunnableLambda(nearby_homes_parser)
     | StrOutputParser()
 )
 

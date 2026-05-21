@@ -45,8 +45,6 @@ neighborhood_chain_demo = (
     | llm
     | parser
 )
-
-
 def simplify_amenities(data):
     simplified = {}
 
@@ -72,11 +70,16 @@ def merge_output(inputs):
         "amenities": inputs["amenities"]
     }
 
+
+def amenity_spotter(my_dict : dict):
+    return my_dict['amenities']
+    
+
 neighborhood_chain = (
     opentripmap_fetch
     | RunnableLambda(simplify_amenities)
     | RunnableParallel(
-        amenities=RunnableLambda(lambda x: x["amenities"]),
+        amenities=RunnableLambda(amenity_spotter),
         analysis=analysis_chain
     )
     | RunnableLambda(merge_output)
@@ -113,9 +116,15 @@ response_chain = (
     | StrOutputParser()
 )
 
+
+def final_ans_parse(x):
+    return {
+        "data" : x
+    }
+
 neighbourhood_total_chain = (
     full_chain
-    | RunnableLambda(lambda x: {"data": x})
+    | RunnableLambda(final_ans_parse)
     | response_chain
 )
 

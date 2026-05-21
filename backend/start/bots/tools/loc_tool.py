@@ -2,6 +2,7 @@ from langchain.tools import tool
 import requests
 import json
 from pydantic import BaseModel
+from observability import observe
 
 
 
