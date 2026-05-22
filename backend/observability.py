@@ -7,7 +7,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
 
 
-## Task 1: Setup OpenTelemetry Tracer Provider and add ConsoleSpanExporter
+
 
 def intialize_opentelemetry():
     provider = TracerProvider()

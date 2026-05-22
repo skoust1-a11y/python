@@ -23,11 +23,3 @@ llm = ChatOpenAI(
     max_retries=3,
     temperature=0.1
 )
-
-
-# llm = ChatGroq(
-#     model="llama-3.1-8b-instant",
-#     temperature=0,
-#     api_key='***REMOVED***',
-#     max_retries=3
-# )

@@ -34,7 +34,6 @@ This module provides a centralized Langfuse callback handler for tracing
 LangChain chain executions in the Langfuse dashboard.
 """
 
-## Task 2: Add Observability with Langfuse Callback Handler (Chat API)
 
 class LangfuseCallbackManager:
     def __init__(
@@ -57,14 +56,13 @@ class LangfuseCallbackManager:
         trace_name: Optional[str] = None,
     ) -> Optional[CallbackHandler]:
         if not self.public_key or not self.secret_key:
-            # Return None if credentials are not provided (optional observability)
             return None
         effective_session_id = session_id or self.session_id
         effective_user_id = user_id or self.user_id
         os.environ["LANGFUSE_PUBLIC_KEY"] = self.public_key
         os.environ["LANGFUSE_SECRET_KEY"] = self.secret_key
         os.environ["LANGFUSE_HOST"] = self.host
-        os.environ["LANGFUSE_BASE_URL"] = self.host  # Set both for compatibility
+        os.environ["LANGFUSE_BASE_URL"] = self.host  # Setting both for compatibility
         try:
             langfuse_client = Langfuse(
                 secret_key=self.secret_key,

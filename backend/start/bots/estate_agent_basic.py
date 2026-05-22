@@ -6,7 +6,7 @@ from pydantic import BaseModel,Field
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnableLambda
 
-# Step 1: Define JSON Schema
+
 class PropertySearch(BaseModel):
     budget: str = Field(description="User property budget")
     location: str = Field(description="Preferred location")
@@ -14,11 +14,11 @@ class PropertySearch(BaseModel):
     property_type: str = Field(description="Type of property",default='homes')
 
 
-# Step 2: JSON Parser
+
 parser = PydanticOutputParser(pydantic_object=PropertySearch)
 
 
-# Step 3: Prompt Template
+
 prompt = ChatPromptTemplate.from_messages([
     (
         "system",
@@ -37,13 +37,13 @@ prompt = ChatPromptTemplate.from_messages([
 ])
 
 
-# Step 4: Partial Variables
+
 final_prompt = prompt.partial(
     format_instructions=parser.get_format_instructions()
 )
 
 
-# Step 5: LCEL Chain
+
 chain = final_prompt | llm | parser
 
 

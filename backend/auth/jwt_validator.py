@@ -28,7 +28,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 _jwks_cache: Dict[str, Any] = {"keys": [], "fetched_at": 0}
 JWKS_CACHE_SECONDS = 60 * 60  # 1 hour
 
-## Task 1 : Add decorator for observability
 
 def _fetch_jwks(force: bool = False) -> Dict[str, Any]:
     """Fetch JWKS from Auth0 with simple caching."""
@@ -54,7 +53,7 @@ def _get_rsa_key(unverified_header: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             }
     return None
 
-## Task 1 : Add decorator for observability
+
 @observe()
 def get_user_email_from_auth0(token: str) -> Optional[str]:
     """

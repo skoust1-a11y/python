@@ -146,11 +146,11 @@ def setup_langfuse_callback(session_id: str, token_payload: dict) -> Tuple[dict,
             config["metadata"]["user_id"] = user_email
             config["metadata"]["langfuse_user_id"] = user_email
             config["metadata"]["user_email"] = user_email  # Also store as email for clarity
-        # Add trace name and tags
+        
         config["metadata"]["trace_name"] = "chat"
         config["metadata"]["langfuse_tags"] = ["chat"]
         
-        # Also try setting metadata directly on the handler if supported
+
         if hasattr(callback_handler, 'set_trace_metadata'):
             try:
                 callback_handler.set_trace_metadata(
@@ -167,8 +167,7 @@ def setup_langfuse_callback(session_id: str, token_payload: dict) -> Tuple[dict,
    
 
 
-## Task 2:  Flush Langfuse traces. 
-## Task 2:  Flush Langfuse traces. 
+ 
 async def flush_langfuse_traces(callback_handler) -> None:
     """
     Flush Langfuse traces.
@@ -179,7 +178,6 @@ async def flush_langfuse_traces(callback_handler) -> None:
     try:
         client = None
 
-        # Try to find the Langfuse client
         for attr in [
             "_explicit_langfuse_client",
             "_langfuse_client",
@@ -197,7 +195,7 @@ async def flush_langfuse_traces(callback_handler) -> None:
         if not client:
             return
 
-        # Flush pending traces first
+        # Flushing pending traces 
         client.flush()
 
         import asyncio
@@ -223,16 +221,13 @@ async def chat(payload: ChatInput, token_payload: dict = Depends(validate_token)
 
     async def event_generator():
         try:
-            # Use .astream() for non-blocking streaming in an async context
             async for chunk in stateful_chain.astream({"query": payload.input}, config=config):
                 yield f"data: {chunk}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as e:
-            # Log the full error for debugging
             print(f"Error during stream: {e}")
             yield f"data: Error: {str(e)}\n\n"
         finally:
-            # Ensure traces are flushed at end of stream
             await flush_langfuse_traces(callback_handler)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
