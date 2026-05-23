@@ -12,12 +12,11 @@ Uses:
 """
 
 # Import essential libraries, load environment variables, and set up FastAPI with LangChain support
-from fastapi import FastAPI,HTTPException,Query
+from fastapi import FastAPI,HTTPException,Depends
 from langchain_openai import ChatOpenAI
 from config import settings
-from pydantic_models.reqModels import iternaryReq,promptQues
+from pydantic_models.reqModels import iternaryReq,promptQues,queryPrompt
 from pydantic_models.resModels import SuggestionResponse,LLMResponse,AsyncSuggestionResponse
-import asyncio
 # -----------------------------------------------------
 # Load API credentials from the .env file and set up the FastAPI app with a project title
 
@@ -142,13 +141,13 @@ async def  async_gen_response(prompt : str) -> str:
     except Exception as e:
         raise Exception(f'Error generating async res: {str(e)}')
 #Design data models to validate input for asynchronous LLM calls and structure the corresponding response
-#Implement a FastAPI GET route that accepts a query parameter, constructs a prompt, invokes the async LLM function with asyncio.run,
+#Implement a FastAPI GET route that accepts a query parameter via Pydantic validation, constructs a prompt, invokes the async LLM helper,
 # and wraps the output in a Pydantic response model with error handling.
 @app.get('/task3', response_model=AsyncSuggestionResponse)
-def async_chat(query: str = Query(..., min_length=1, description='User travel query to process asynchronously')) -> AsyncSuggestionResponse:
+async def async_chat(query_request: queryPrompt = Depends()) -> AsyncSuggestionResponse:
     try:
-        prompt = f'You are a Helpful Travel Assistant. Please respond to the user message : {query}'
-        response = asyncio.run(async_gen_response(prompt))
+        prompt = f'You are a Helpful Travel Assistant. Please respond to the user message : {query_request.query}'
+        response = await async_gen_response(prompt)
         return AsyncSuggestionResponse(
             response=response,
             execution_type='async'
