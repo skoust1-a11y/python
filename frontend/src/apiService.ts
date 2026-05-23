@@ -16,6 +16,9 @@ export async function streamChatMessage(
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
  
 // Task 3 - Add Authorization header with Bearer token
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
 
 

@@ -8,8 +8,12 @@ function App() {
  
 // Task 2 - Use Auth0 hook to get authentication state and user info
 // Task 2 - Determine if the user has the 'admin' role
+ const { isAuthenticated, isLoading, user, loginWithRedirect, logout, getAccessTokenSilently } = useAuth0();
 
-
+if (isLoading) return <div>Loading...</div>;
+const idTokenRoles = (user && (user[`${ROLE_NAMESPACE}/roles`] as string[])) || [];
+const isAdmin = idTokenRoles.includes("admin");
+console.log(isAdmin);
   return (
     <div>
       {/* HEADER */}
@@ -20,9 +24,13 @@ function App() {
         </div>
         <div>
           {!isAuthenticated ? (
-            <button onClick={() => loginWithRedirect()}>Log In</button>
+            <button onClick={() => loginWithRedirect({
+      authorizationParams: {
+        prompt: "login",
+      },
+    })}>Log In</button>
           ) : (
-            <button onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
+            <button onClick={() => logout({ logoutParams: { returnTo: 'http://localhost:5173' } })}>
               Log Out
             </button>
           )}

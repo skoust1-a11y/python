@@ -58,6 +58,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ getAccessTokenSilently })
     try {
       
       // Task 3 - Get access token silently
+      const token = await getAccessTokenSilently();
 
 
       

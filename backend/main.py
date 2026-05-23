@@ -97,6 +97,34 @@ def new_session():
 
 
 ## Task 3 - Protect the chat endpoint with JWT authentication.
+@app.post("/chat")
+async def route_query(data: ChatInput, token_payload: dict = Depends(validate_token)):
+    """
+    Protected endpoint. validate_token dependency will raise 401 if token invalid.
+    token_payload is the decoded JWT payload.
+    Admins are not allowed to access this endpoint. All other authenticated users can access.
+    """
+    # Role-based check: block admins, allow all other users
+    roles_claim = token_payload.get("https://stateful-agent.com/roles", [])
+    if roles_claim and "admin" in roles_claim:
+        raise HTTPException(status_code=403, detail="Admin users are not allowed to access this endpoint.")
+
+
+    config = {"configurable": {"session_id": data.session_id}}
+    # ## CHANGED: Use async for and astream for true asynchronous streaming
+    async def event_generator():
+        try:
+            # Use .astream() for non-blocking streaming in an async context
+            async for chunk in stateful_chain.astream({"input": data.input}, config=config):
+                yield f"data: {chunk}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            # Log the full error for debugging
+            print(f"Error during stream: {e}")
+            yield f"data: Error: {str(e)}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
 
 
 # -------------------------------
