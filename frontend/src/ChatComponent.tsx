@@ -44,6 +44,7 @@ const ChatComponent: React.FC = () => {
 
     const userMessage: Message = { role: "user", content: input };
     setMessages((prev) => [...prev, userMessage]);
+    const userInput = input;
     setInput("");
     setIsLoading(true);
 
@@ -54,6 +55,73 @@ const ChatComponent: React.FC = () => {
 
 // Task 1 : Display streaming AI responses received from backend 
 // and handle errors gracefully.
+// Task 1 : Display streaming AI responses received from backend 
+// and handle errors gracefully.
+  const contentRef = { current: '' };
+
+    const updateContent = (newChunk: string) => {
+      contentRef.current += newChunk;
+      
+      // Update immediately using the ref to avoid stale closures
+      setMessages((prev) => {
+        const updated = [...prev];
+        // Find the last assistant message and update it with accumulated content
+        for (let i = updated.length - 1; i >= 0; i--) {
+          if (updated[i].role === 'assistant') {
+            updated[i] = {
+              ...updated[i],
+              content: contentRef.current, // Use ref value, not closure
+            };
+            break;
+          }
+        }
+        return updated;
+      });
+    };
+
+    try {
+      await streamChatMessage(userInput, sessionId, (chunk) => {
+        // Skip if chunk is "[DONE]" or "done"
+        const normalizedChunk = chunk.toLowerCase().replace(/[\[\]]/g, '');
+        if (normalizedChunk === 'done') {
+          // Final update when done to ensure all content is displayed
+          setMessages((prev) => {
+            const updated = [...prev];
+            for (let i = updated.length - 1; i >= 0; i--) {
+              if (updated[i].role === 'assistant') {
+                updated[i] = {
+                  ...updated[i],
+                  content: contentRef.current,
+                };
+                break;
+              }
+            }
+            return updated;
+          });
+          return;
+        }
+        
+        updateContent(chunk);
+      });
+    } catch (error) {
+      setMessages((prev) => {
+        const updated = [...prev];
+        // Replace the last assistant message with error message
+        for (let i = updated.length - 1; i >= 0; i--) {
+          if (updated[i].role === 'assistant') {
+            updated[i] = {
+              ...updated[i],
+              content: 'Something went wrong while streaming the response.',
+            };
+            break;
+          }
+        }
+        return updated;
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 
 

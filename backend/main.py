@@ -12,6 +12,8 @@ import uuid
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import uvicorn
+import logging
+from pathlib import Path
 # -------------------------------
 # Environment Setup
 # -------------------------------
@@ -31,6 +33,18 @@ app = FastAPI(title="Stateful Travel & Trip Planner Agent")
 
 
 # Task1 : Enable CORS for secure frontend-backend communication on localhost.
+origins = [
+    'http://localhost:5173',
+    'http://localhost:3000'  
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # -------------------------------
 # LLM Setup
@@ -55,9 +69,9 @@ prompt = ChatPromptTemplate.from_messages([
 # -------------------------------
 store = {}
 
-def get_session_history(session_id: str) -> ChatMessageHistory:
+def get_session_history(session_id: str) -> InMemoryChatMessageHistory:
     if session_id not in store:
-        store[session_id] = ChatMessageHistory()
+        store[session_id] = InMemoryChatMessageHistory()
     return store[session_id]
 
 # -------------------------------
@@ -74,6 +88,28 @@ stateful_chain = RunnableWithMessageHistory(
     input_messages_key="input",
     history_messages_key="chat_history"
 )
+
+def setup_logger():
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+
+    if not logger.handlers:
+        log_dir = Path("logs")
+        log_dir.mkdir(exist_ok=True)
+
+        file_handler = logging.FileHandler(log_dir / "AI_MODELS.log")
+
+        formatter = logging.Formatter(
+            "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+            datefmt="%d-%m-%Y %H:%M:%S",
+        )
+
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
+    return logger
+
+log = setup_logger()
 
 # -------------------------------
 # FastAPI Endpoint
@@ -99,11 +135,13 @@ async def chat(payload: ChatInput):
     async def event_generator():
         try:
             # Use .astream() for non-blocking streaming in an async context
+            log.debug(f"Started streaming..")
             async for chunk in stateful_chain.astream({"input": payload.input}, config=config):
                 yield f"data: {chunk}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as e:
             # Log the full error for debugging
+            log.error(f"Error during stream: {e}")
             print(f"Error during stream: {e}")
             yield f"data: Error: {str(e)}\n\n"
 
