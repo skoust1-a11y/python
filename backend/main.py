@@ -7,6 +7,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.runnables import RunnablePassthrough,RunnableBranch
 from langchain_core.output_parsers import StrOutputParser
 from pydantic import BaseModel
 import uuid
@@ -105,6 +106,56 @@ def setup_langfuse_callback(session_id: str, token_payload: dict) -> Tuple[dict,
     Returns:
         Tuple of (config dict, callback_handler) where config is ready for chain execution
     """
+    langfuse_manager = get_langfuse_manager()
+    
+    # Extract user email from token payload or fetch from Auth0 userinfo endpoint
+    # Auth0 access tokens typically don't include email, so we fetch it from userinfo
+    user_email = token_payload.get("email")
+    
+    if not user_email:
+        raw_token = token_payload.get("_raw_token")
+        if raw_token:
+            user_email = get_user_email_from_auth0(raw_token)
+    
+    if not user_email:
+        user_email = token_payload.get("sub")
+    
+    callback_handler = langfuse_manager.get_callback_handler(
+        session_id=session_id,
+        user_id=user_email,  # Use email as user identifier
+        trace_name="chat",
+    )
+    
+    config = {"configurable": {"session_id": session_id}}
+    
+    if callback_handler:
+        config["callbacks"] = [callback_handler]
+        config["metadata"] = {}
+        if session_id:
+            config["metadata"]["session_id"] = session_id
+            config["metadata"]["langfuse_session_id"] = session_id
+        if user_email:
+            config["metadata"]["user_id"] = user_email
+            config["metadata"]["langfuse_user_id"] = user_email
+            config["metadata"]["user_email"] = user_email  # Also store as email for clarity
+        # Add trace name and tags
+        config["metadata"]["trace_name"] = "chat"
+        config["metadata"]["langfuse_tags"] = ["chat"]
+        
+        # Also try setting metadata directly on the handler if supported
+        if hasattr(callback_handler, 'set_trace_metadata'):
+            try:
+                callback_handler.set_trace_metadata(
+                    session_id=session_id,
+                    user_id=user_email,
+                    trace_name="route_query"
+                )
+            except:
+                pass
+    
+    return config, callback_handler
+
+
    
 
 
@@ -113,6 +164,38 @@ async def flush_langfuse_traces(callback_handler) -> None:
     """
     Flush Langfuse traces.
     """
+    if not callback_handler:
+        return
+
+    try:
+        client = None
+
+        # Try to find the Langfuse client
+        for attr in [
+            "_explicit_langfuse_client",
+            "_langfuse_client",
+            "client",
+            "langfuse",
+            "_client",
+            "langfuse_client",
+        ]:
+            if hasattr(callback_handler, attr):
+                potential_client = getattr(callback_handler, attr)
+                if potential_client and hasattr(potential_client, "flush"):
+                    client = potential_client
+                    break
+
+        if not client:
+            return
+
+        # Flush pending traces first
+        client.flush()
+
+        import asyncio
+        await asyncio.sleep(1.0)
+    except Exception:
+        pass
+
    
 
 @app.get("/new-session")

@@ -55,7 +55,7 @@ def _get_rsa_key(unverified_header: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     return None
 
 ## Task 1 : Add decorator for observability
-
+@observe()
 def get_user_email_from_auth0(token: str) -> Optional[str]:
     """
     Fetch user email from Auth0's userinfo endpoint using the access token.
@@ -71,7 +71,7 @@ def get_user_email_from_auth0(token: str) -> Optional[str]:
         return None
 
 
-
+@observe()
 def validate_token(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
     """
     FastAPI dependency to validate a JWT from Auth0.
