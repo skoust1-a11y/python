@@ -1,92 +1,280 @@
-# C3-LegalDoc-Navigator
+# C3 LegalDoc Navigator
 
+Production-grade **AI Legal Document Analysis System** built with Python 3.12, FastAPI, LlamaIndex, PostgreSQL 16 + pgvector, and a React frontend. Upload legal documents, ask natural-language questions, and receive grounded answers with citations—routed automatically through RAG, structured SQL, or hybrid retrieval.
 
+For detailed architecture diagrams (system, sequence, class, ER, RAG pipeline, query router, hybrid retrieval, guardrails, deployment), see **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
-## Getting started
+## Tech Stack
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+| Layer | Technology |
+|---|---|
+| Runtime | Python 3.12 |
+| API | FastAPI + Uvicorn |
+| RAG | LlamaIndex |
+| Database | PostgreSQL 16 + pgvector |
+| ORM | SQLAlchemy 2.0 (async) |
+| LLMs | OpenAI (primary), Anthropic (fallback) |
+| Safety | Guardrails AI |
+| Observability | Langfuse (optional) |
+| Frontend | React 19 + Vite + Tailwind CSS 4 |
+| Containers | Docker + Docker Compose |
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## Features
 
-## Add your files
+- **Document ingestion** — PDF, DOCX, and TXT parsing with structure-aware chunking and OCR for scanned PDFs
+- **Semantic search** — pgvector cosine similarity over OpenAI embeddings
+- **Intelligent routing** — LLM classifies queries into RAG, SQL, or hybrid retrieval paths
+- **Hybrid retrieval** — Parallel vector + SQL + optional MCP external search with RRF merge
+- **Guardrails** — Pre-query validation and post-response safety checks with legal disclaimers
+- **Human handoff** — Automatic escalation for low-confidence or high-risk queries
+- **Feedback & evaluation** — User ratings and offline RAGAS benchmarks
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+## Prerequisites
+
+- **Python 3.12+**
+- **Node.js 20+** (for the frontend)
+- **Docker & Docker Compose** (for PostgreSQL + pgvector)
+- **OpenAI API key** (required for embeddings and chat)
+- **Anthropic API key** (optional, used as LLM fallback)
+
+## Quick Start
+
+### 1. Clone and configure environment
+
+```bash
+git clone <repository-url>
+cd c3-legaldoc-navigator
+
+cp .env.example .env
+```
+
+Edit `.env` and set at minimum:
+
+```env
+OPENAI_API_KEY=sk-your-openai-api-key
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key   # optional fallback
+DATABASE_URL=postgresql+asyncpg://legaldoc:legaldoc_secret@localhost:5432/legaldoc_navigator
+DATABASE_SYNC_URL=postgresql+psycopg2://legaldoc:legaldoc_secret@localhost:5432/legaldoc_navigator
+```
+
+### 2. Start PostgreSQL
+
+```bash
+docker compose up -d postgres
+```
+
+Wait for the health check to pass:
+
+```bash
+docker compose ps
+```
+
+### 3. Install Python dependencies
+
+```bash
+python -m venv .venv
+
+# Linux / macOS
+source .venv/bin/activate
+
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+
+pip install -r requirements.txt
+```
+
+### 4. Run database migrations
+
+```bash
+alembic upgrade head
+```
+
+### 5. Start the API server
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Verify the API is running:
+
+- Health check: http://localhost:8000/health
+- Swagger UI: http://localhost:8000/docs
+
+### 6. Start the frontend (optional)
+
+In a separate terminal:
+
+```bash
+cd frontend
+cp .env.example .env    # if present; defaults work with Vite proxy
+npm install
+npm run dev
+```
+
+Open http://localhost:3000 — the Vite dev server proxies API calls to port 8000.
+
+### 7. Upload a sample document
+
+```bash
+curl -X POST http://localhost:8000/upload \
+  -F "file=@data/uploads/sample_contract.txt"
+```
+
+### 8. Ask a question
+
+```bash
+curl -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What are the key terms in this contract?"}'
+```
+
+## Docker (Full Stack)
+
+Run both the API and PostgreSQL in containers:
+
+```bash
+cp .env.example .env
+# Edit .env with your API keys
+
+docker compose up --build
+```
+
+This starts:
+
+| Service | Container | Port |
+|---|---|---|
+| API | `legaldoc-api` | 8000 |
+| PostgreSQL | `legaldoc-postgres` | 5432 |
+
+Run migrations inside the API container:
+
+```bash
+docker compose exec api alembic upgrade head
+```
+
+Upload storage is persisted via volume mount at `./data/uploads`.
+
+## Project Structure
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.example.com/c3-legaldoc-navigator/c3-legaldoc-navigator.git
-git branch -M main
-git push -uf origin main
+c3-legaldoc-navigator/
+├── app/
+│   ├── main.py                 # FastAPI application entry point
+│   ├── api/                    # HTTP route handlers
+│   ├── router/                 # Route aggregation
+│   ├── services/               # Application / use-case layer
+│   ├── ingestion/              # Document parsing & chunking
+│   ├── rag/                    # RAG & hybrid retrieval pipelines
+│   ├── routing/                # LLM query router
+│   ├── guardrails/             # Input/output safety validation
+│   ├── handoff/                # Human escalation logic
+│   ├── mcp/                    # MCP external legal search
+│   ├── evaluation/             # RAGAS benchmarks & tracing
+│   ├── models/                 # ORM entities & Pydantic schemas
+│   ├── database/               # DB engine & sessions
+│   ├── prompts/                # LLM prompt templates
+│   └── core/                   # Config, exceptions, logging
+├── frontend/                   # React + Vite UI
+├── alembic/                    # Database migrations
+├── data/
+│   ├── uploads/                # Uploaded document storage
+│   └── evaluation/             # Benchmark datasets & results
+├── docs/
+│   └── ARCHITECTURE.md         # Architecture documentation (Mermaid)
+├── scripts/                    # DB init scripts
+├── docker-compose.yml
+├── Dockerfile
+├── requirements.txt
+└── .env.example
 ```
 
-## Integrate with your tools
+## API Endpoints
 
-- [ ] [Set up project integrations](https://gitlab.example.com/c3-legaldoc-navigator/c3-legaldoc-navigator/-/settings/integrations)
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/health` | Service health check |
+| `POST` | `/upload` | Upload and index a legal document (PDF, DOCX, TXT) |
+| `GET` | `/documents` | List indexed documents (paginated) |
+| `GET` | `/document/{document_id}` | Get document details |
+| `POST` | `/query` | Ask a question (RAG / SQL / hybrid) |
+| `POST` | `/feedback` | Submit user rating (1–5) |
+| `POST` | `/handoff` | Evaluate or create human escalation |
 
-## Collaborate with your team
+Interactive API docs: http://localhost:8000/docs
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+## Environment Variables
 
-## Test and Deploy
+See [`.env.example`](.env.example) for the complete list. Key variables:
 
-Use the built-in continuous integration in GitLab.
+| Variable | Description | Default |
+|---|---|---|
+| `DATABASE_URL` | Async PostgreSQL connection string | — |
+| `DATABASE_SYNC_URL` | Sync URL for Alembic migrations | — |
+| `OPENAI_API_KEY` | OpenAI API key (embeddings + chat) | — |
+| `ANTHROPIC_API_KEY` | Anthropic API key (fallback chat) | — |
+| `VECTOR_DIMENSION` | Embedding vector size | 1536 |
+| `CHUNK_SIZE` / `CHUNK_OVERLAP` | Ingestion chunking parameters | 1024 / 128 |
+| `TOP_K_RETRIEVAL` | Chunks retrieved per query | 5 |
+| `SIMILARITY_THRESHOLD` | Minimum cosine similarity | 0.7 |
+| `ENABLE_GUARDRAILS` | Toggle safety validation | true |
+| `MCP_ENABLED` | Enable external MCP legal search | false |
+| `ENABLE_LANGFUSE` | Enable observability tracing | false |
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+## Development
 
-***
+### Linting
 
-# Editing this README
+```bash
+ruff check app/
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!).  Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+### Tests
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+```bash
+pytest
+```
 
-## Name
-Choose a self-explaining name for your project.
+### Frontend build
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+```bash
+cd frontend
+npm run build
+```
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+For production, set `VITE_API_BASE_URL` to your API host (e.g. `http://localhost:8000`).
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+### Offline evaluation
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+Run RAGAS benchmarks against the golden dataset:
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+```bash
+python -m app.evaluation.runner
+```
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+Results are written to `data/evaluation/results/`.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+## Architecture Overview
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+```
+Upload PDF/DOCX/TXT
+      │
+      ▼
+  Ingestion Pipeline  ──►  Structure-aware Chunker
+      │                         │
+      ▼                         ▼
+  OpenAI Embeddings  ──►  pgvector (document_embeddings)
+                                  │
+User Question ──► Guardrails ──► Query Router ──► RAG | SQL | Hybrid
+                                  │                    │
+                                  ▼                    ▼
+                          Guardrails (post)     LLM Synthesis
+                                  │
+                                  ▼
+                          QueryResponse + citations
+```
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for full Mermaid diagrams covering system architecture, sequence flows, class diagrams, ER schema, RAG pipeline, query router, hybrid retrieval, guardrails, and deployment topology.
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+Internal — C3 Project.
