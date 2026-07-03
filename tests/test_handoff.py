@@ -115,9 +115,10 @@ class TestHandoffRequestSchema:
             confidence_score=0.6,
             sources=[
                 SourceCitation(
-                    excerpt="Disputes are resolved by arbitration.",
+                    document_name="contract.pdf",
                     score=0.8,
-                    citation_label="[Source 1]",
+                    citation_labels=["[Source 1]"],
+                    document_id=uuid4(),
                 )
             ],
             conversation_history=[

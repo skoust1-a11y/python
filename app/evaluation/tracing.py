@@ -38,6 +38,20 @@ def flush_traces() -> None:
         client.flush()
 
 
+def _score_trace(observation: Any, *, name: str, value: float) -> None:
+    """Attach a score to the Langfuse trace backing an observation."""
+    score_trace = getattr(observation, "score_trace", None)
+    if callable(score_trace):
+        score_trace(name=name, value=value)
+        return
+    observation.score(name=name, value=value)
+
+
+def score_trace_metric(observation: Any, *, name: str, value: float) -> None:
+    """Public helper for attaching trace-level scores from call sites."""
+    _score_trace(observation, name=name, value=value)
+
+
 @contextmanager
 def trace_query(
     *,
@@ -51,15 +65,16 @@ def trace_query(
         yield None
         return
 
-    trace = client.trace(
+    with client.start_as_current_observation(
         name=name,
+        as_type="chain",
         input={"question": question},
         metadata=metadata or {},
-    )
-    try:
-        yield trace
-    finally:
-        flush_traces()
+    ) as observation:
+        try:
+            yield observation
+        finally:
+            flush_traces()
 
 
 def log_query_result(
@@ -85,8 +100,8 @@ def log_query_result(
             **(metadata or {}),
         },
     )
-    trace.score(name="latency_ms", value=latency_ms)
-    trace.score(name="cost_usd", value=cost_usd)
+    _score_trace(trace, name="latency_ms", value=latency_ms)
+    _score_trace(trace, name="cost_usd", value=cost_usd)
 
 
 def log_evaluation_scores(
@@ -100,11 +115,17 @@ def log_evaluation_scores(
     if client is None:
         return
 
-    eval_trace = trace or client.trace(
-        name=f"eval-{run_name}",
-        metadata={"type": "benchmark_evaluation"},
-    )
-    for metric_name, value in scores.items():
-        if value is not None:
-            eval_trace.score(name=metric_name, value=float(value))
+    def _apply_scores(observation: Any) -> None:
+        for metric_name, value in scores.items():
+            if value is not None:
+                _score_trace(observation, name=metric_name, value=float(value))
+
+    if trace is not None:
+        _apply_scores(trace)
+    else:
+        with client.start_as_current_observation(
+            name=f"eval-{run_name}",
+            metadata={"type": "benchmark_evaluation"},
+        ) as eval_trace:
+            _apply_scores(eval_trace)
     flush_traces()

@@ -6,14 +6,15 @@ import os
 
 from guardrails import Guard
 
+from app.core.config import settings
 from app.guardrails.validators import (
     CitationRequiredValidator,
     LegalAdviceDetector,
     UnsupportedClaimDetector,
 )
 
-# Prefer synchronous validation in API handlers.
-os.environ.setdefault("GUARDRAILS_RUN_SYNC", "true")
+# Guardrails reads this env var at import time; keep it aligned with settings.
+os.environ.setdefault("GUARDRAILS_RUN_SYNC", str(settings.GUARDRAILS_RUN_SYNC).lower())
 
 BLOCKING_VALIDATOR_NAMES: frozenset[str] = frozenset(
     {

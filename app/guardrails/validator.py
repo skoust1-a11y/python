@@ -54,12 +54,14 @@ class GuardrailValidator:
         *,
         sources: list[dict] | None = None,
         question: str | None = None,
+        response_mode: str | None = None,
     ) -> str:
         """Validate and optionally replace an LLM response."""
         result = self.validate_response_detailed(
             response,
             sources=sources,
             question=question,
+            response_mode=response_mode,
         )
         return result.answer
 
@@ -69,6 +71,7 @@ class GuardrailValidator:
         *,
         sources: list[dict] | None = None,
         question: str | None = None,
+        response_mode: str | None = None,
     ) -> GuardrailValidationResult:
         """Validate an LLM response and return structured guardrail metadata."""
         source_list = sources or []
@@ -82,6 +85,7 @@ class GuardrailValidator:
         metadata = {
             "sources": source_list,
             "question": question or "",
+            "response_mode": response_mode,
         }
 
         outcome = self._guard.validate(response, metadata=metadata)

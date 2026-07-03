@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
+    from app.services.llm_service import log_llm_configuration
+
+    log_llm_configuration()
     from app.evaluation.tracing import flush_traces, get_langfuse_client
 
     get_langfuse_client()

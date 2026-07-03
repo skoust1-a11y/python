@@ -68,16 +68,21 @@ export interface RoutingMetadata {
   confidence: number;
 }
 
+export interface CitationLocation {
+  clause_number: string | null;
+  clause_title: string | null;
+  page_number: number | null;
+}
+
 export interface SourceCitation {
   document_id: string | null;
-  chunk_index: number | null;
-  excerpt: string;
+  document_name: string;
   score: number;
-  citation_label: string | null;
-  source_type: string;
+  source_types: string[];
+  locations: CitationLocation[];
+  citation_labels: string[];
   entity_id: string | null;
   entity_type: string | null;
-  metadata: Record<string, unknown> | null;
 }
 
 export interface StructuredMetadata {
@@ -89,18 +94,23 @@ export interface StructuredMetadata {
   total_count: number;
 }
 
+export interface RelatedDocument {
+  document_id: string | null;
+  name: string;
+  relevance: number;
+}
+
 export interface QueryResponse {
-  answer: string;
-  explanation: string;
+  strict: string;
+  explain: string;
+  analysis: string;
+  confidence: number;
+  confidence_level: "High" | "Medium" | "Low";
+  verification_notice: string | null;
   sources: SourceCitation[];
-  structured_metadata: StructuredMetadata | null;
-  routing: RoutingMetadata;
-  confidence_score: number;
-  provider: string;
-  retrieved_count: number;
-  vector_count: number;
-  sql_count: number;
-  created_at: string;
+  related_documents: RelatedDocument[];
+  follow_up_questions: string[];
+  latency_ms: number;
 }
 
 export interface FeedbackRequest {
@@ -128,6 +138,7 @@ export interface ChatMessage {
   content: string;
   response?: QueryResponse;
   timestamp: string;
+  clientLatencyMs?: number;
 }
 
 export interface FeedbackDraft {

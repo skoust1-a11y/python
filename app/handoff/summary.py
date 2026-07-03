@@ -59,12 +59,20 @@ def generate_handoff_summary(
 
     if sources:
         lines.append("Source Citations:")
-        for index, source in enumerate(sources[:5], start=1):
-            label = source.get("citation_label") or f"Source {index}"
-            excerpt = source.get("excerpt", "")
-            if len(excerpt) > 150:
-                excerpt = excerpt[:147] + "..."
-            score = source.get("score", 0.0)
-            lines.append(f"  {label} (score={score:.3f}): {excerpt}")
+        from app.utils.citation_formatter import (
+            format_document_citations,
+            format_location_line,
+        )
+
+        for citation in format_document_citations(sources):
+            lines.append(f"  - {citation.document_name}")
+            for location in citation.locations:
+                detail = format_location_line(location)
+                if detail:
+                    lines.append(f"      {detail}")
+            if citation.citation_labels:
+                lines.append(
+                    f"      Labels: {', '.join(citation.citation_labels)}"
+                )
 
     return "\n".join(lines).strip()

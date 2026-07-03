@@ -1,17 +1,26 @@
-import { BookOpen, Database, FileText, Layers } from "lucide-react";
-import type { SourceCitation } from "@/api/types";
-import { Badge } from "./Badge";
+import { Link } from "react-router-dom";
+import { ExternalLink, FileText, Hash } from "lucide-react";
+import type { CitationLocation, SourceCitation } from "@/api/types";
 import { formatPercent } from "@/lib/utils";
 
 interface SourcesListProps {
   sources: SourceCitation[];
   compact?: boolean;
+  variant?: "default" | "panel";
 }
 
-function sourceIcon(type: string) {
-  if (type.startsWith("sql")) return Database;
-  if (type === "vector") return Layers;
-  return FileText;
+function formatLocation(location: CitationLocation): string {
+  const parts: string[] = [];
+  if (location.clause_number) {
+    parts.push(`Clause ${location.clause_number}`);
+  }
+  if (location.clause_title) {
+    parts.push(location.clause_title);
+  }
+  if (location.page_number != null) {
+    parts.push(`Page ${location.page_number}`);
+  }
+  return parts.join(" · ");
 }
 
 export function SourcesList({ sources, compact = false }: SourcesListProps) {
@@ -22,100 +31,79 @@ export function SourcesList({ sources, compact = false }: SourcesListProps) {
   }
 
   return (
-    <div className="space-y-3">
-      {sources.map((source, i) => {
-        const Icon = sourceIcon(source.source_type);
+    <ul className={compact ? "list-none space-y-2" : "list-none space-y-3"}>
+      {sources.map((source, sourceIndex) => {
+        const key = source.document_id ?? `${source.entity_type}-${source.entity_id}`;
         return (
-          <div
-            key={`${source.document_id}-${source.chunk_index}-${i}`}
-            className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50"
+          <li
+            key={key}
+            className={`animate-slide-up rounded-xl border border-slate-200/80 bg-slate-50/80 transition-colors hover:border-brand-200/60 hover:bg-brand-50/30 dark:border-slate-700/80 dark:bg-slate-800/40 dark:hover:border-brand-800/40 dark:hover:bg-brand-950/20 ${
+              compact ? "px-3 py-2" : "px-4 py-3.5"
+            }`}
+            style={{ animationDelay: `${sourceIndex * 50}ms` }}
           >
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <Icon className="h-4 w-4 text-brand-600 dark:text-brand-400" />
-              <Badge variant="info">{source.source_type}</Badge>
-              {source.citation_label && (
-                <span className="text-xs font-medium text-brand-700 dark:text-brand-300">
-                  {source.citation_label}
-                </span>
-              )}
-              <span className="ml-auto text-xs font-medium text-slate-500">
-                Score: {formatPercent(source.score)}
-              </span>
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-100 dark:bg-brand-900/40">
+                <FileText className="h-4 w-4 text-brand-600 dark:text-brand-400" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    {source.document_name}
+                  </p>
+                  {source.score > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-200/80 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-400">
+                      <Hash className="h-2.5 w-2.5" />
+                      {formatPercent(source.score)}
+                    </span>
+                  )}
+                </div>
+
+                {source.citation_labels.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {source.citation_labels.map((label) => (
+                      <span
+                        key={label}
+                        className="rounded-md bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:ring-slate-700"
+                      >
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {source.locations.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {source.locations.map((location, index) => {
+                      const label = formatLocation(location);
+                      if (!label) return null;
+                      return (
+                        <li
+                          key={`${location.clause_number}-${location.page_number}-${index}`}
+                          className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400"
+                        >
+                          <span className="h-1 w-1 shrink-0 rounded-full bg-brand-400" />
+                          {label}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                {!compact && source.document_id && (
+                  <Link
+                    to={`/documents/${source.document_id}`}
+                    className="mt-2.5 inline-flex items-center gap-1 text-xs font-medium text-brand-600 transition-colors hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    View document
+                  </Link>
+                )}
+              </div>
             </div>
-            {!compact && (
-              <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                {source.excerpt}
-              </p>
-            )}
-            {compact && (
-              <p className="line-clamp-2 text-sm text-slate-600 dark:text-slate-400">
-                {source.excerpt}
-              </p>
-            )}
-          </div>
+          </li>
         );
       })}
-    </div>
-  );
-}
-
-interface RetrievedChunksProps {
-  sources: SourceCitation[];
-  vectorCount: number;
-  sqlCount: number;
-}
-
-export function RetrievedChunks({ sources, vectorCount, sqlCount }: RetrievedChunksProps) {
-  const vectorSources = sources.filter((s) => s.source_type === "vector");
-  const sqlSources = sources.filter((s) => s.source_type.startsWith("sql"));
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-3 text-sm">
-        <div className="flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 dark:bg-brand-900/20">
-          <Layers className="h-4 w-4 text-brand-600 dark:text-brand-400" />
-          <span className="font-medium">{vectorCount} vector chunk{vectorCount !== 1 ? "s" : ""}</span>
-        </div>
-        <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 dark:bg-amber-900/20">
-          <Database className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          <span className="font-medium">{sqlCount} SQL result{sqlCount !== 1 ? "s" : ""}</span>
-        </div>
-        <div className="flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-800">
-          <BookOpen className="h-4 w-4 text-slate-500" />
-          <span className="font-medium">{sources.length} total source{sources.length !== 1 ? "s" : ""}</span>
-        </div>
-      </div>
-
-      {vectorSources.length > 0 && (
-        <div>
-          <h4 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
-            Vector Chunks
-          </h4>
-          <div className="space-y-2">
-            {vectorSources.map((chunk, i) => (
-              <div
-                key={`chunk-${chunk.chunk_index}-${i}`}
-                className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"
-              >
-                <div className="mb-1 flex items-center justify-between text-xs text-slate-500">
-                  <span>Chunk #{chunk.chunk_index ?? i + 1}</span>
-                  <span>{formatPercent(chunk.score)}</span>
-                </div>
-                <p className="text-sm text-slate-700 dark:text-slate-300">{chunk.excerpt}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {sqlSources.length > 0 && (
-        <div>
-          <h4 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
-            SQL Results
-          </h4>
-          <SourcesList sources={sqlSources} />
-        </div>
-      )}
-    </div>
+    </ul>
   );
 }

@@ -87,7 +87,7 @@ class Router:
         except RouterError:
             raise
         except Exception as exc:
-            raise RouterError(f"Routing classification failed: {exc}") from exc
+            return self._fallback(f"Routing LLM unavailable ({exc})")
 
     def _parse_response(self, raw: str) -> dict[str, Any]:
         candidates = [raw]

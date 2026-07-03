@@ -15,7 +15,8 @@ from app.core.config import settings
 from app.evaluation.cost import estimate_cost
 from app.evaluation.dataset import BenchmarkDataset, BenchmarkItem, load_benchmark
 from app.evaluation.metrics import EvaluationResult, EvaluationSummary, RAGEvaluator
-from app.evaluation.tracing import log_evaluation_scores, trace_query
+from app.evaluation.tracing import log_evaluation_scores, score_trace_metric, trace_query
+from app.prompts.manager import PromptManager
 from app.rag.pipeline import RAGPipeline
 from app.services.embedding_service import EmbeddingService
 from app.services.llm_service import LLMService
@@ -39,6 +40,7 @@ class BenchmarkRunner:
             session=session,
             llm_service=LLMService(),
             embedding_service=EmbeddingService(),
+            prompt_manager=PromptManager(),
         )
         self._evaluator = evaluator or RAGEvaluator()
         self._skip_ragas = skip_ragas
@@ -137,7 +139,7 @@ class BenchmarkRunner:
                     )
                     for metric, value in ragas_scores.items():
                         if value is not None:
-                            trace.score(name=metric, value=value)
+                            score_trace_metric(trace, name=metric, value=value)
 
                 return result
             except Exception as exc:

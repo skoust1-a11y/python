@@ -76,21 +76,28 @@ class DocumentService:
         logger.info("Document upload started: id=%s filename=%s", document.id, file.filename)
 
         try:
-            parsed, chunks, _nodes = await self._pipeline.ingest(dest_path)
+            parsed, chunks, nodes = await self._pipeline.ingest(dest_path)
+            doc_metadata = self._pipeline.build_node_metadata(parsed)
             chunk_payloads = [
                 ChunkToStore(
                     chunk_text=text,
                     chunk_index=index,
-                    metadata=self._pipeline.build_node_metadata(parsed),
+                    metadata={
+                        **doc_metadata,
+                        **(node.metadata or {}),
+                        "filename": document.filename,
+                        "document_id": str(document.id),
+                    },
+                    token_count=(node.metadata or {}).get("token_count"),
                 )
-                for index, text in enumerate(chunks)
+                for index, (text, node) in enumerate(zip(chunks, nodes, strict=True))
             ]
             await self._vector_store.embed_and_store(document.id, chunk_payloads)
 
             document.title = parsed.title
             document.status = "indexed"
             document.chunk_count = len(chunks)
-            document.doc_metadata = self._pipeline.build_node_metadata(parsed)
+            document.doc_metadata = doc_metadata
             await self._session.flush()
 
             logger.info(

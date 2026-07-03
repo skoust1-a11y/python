@@ -31,7 +31,8 @@ def _source_corpus(metadata: Dict) -> str:
     excerpts: list[str] = []
     for source in metadata.get("sources") or []:
         if isinstance(source, dict):
-            excerpts.append(str(source.get("excerpt", "")))
+            text = source.get("full_text") or source.get("excerpt", "")
+            excerpts.append(str(text))
             label = source.get("citation_label")
             if label:
                 excerpts.append(str(label))

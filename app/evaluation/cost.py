@@ -2,9 +2,8 @@
 
 from dataclasses import dataclass
 
-import tiktoken
-
 from app.core.config import settings
+from app.utils.tokens import count_tokens
 
 # USD per 1M tokens (approximate OpenAI pricing)
 PRICING: dict[str, dict[str, float]] = {
@@ -28,24 +27,6 @@ class CostBreakdown:
     @property
     def total_cost_usd(self) -> float:
         return self.llm_cost_usd + self.embedding_cost_usd
-
-
-_encoding_cache = None
-
-
-def count_tokens(text: str, model: str = "gpt-4o-mini") -> int:
-    if not text:
-        return 0
-    global _encoding_cache
-    if _encoding_cache is None:
-        try:
-            _encoding_cache = tiktoken.get_encoding("cl100k_base")
-        except Exception:
-            _encoding_cache = False
-
-    if _encoding_cache is False:
-        return max(1, len(text) // 4)
-    return len(_encoding_cache.encode(text))
 
 
 def estimate_cost(

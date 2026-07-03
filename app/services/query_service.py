@@ -9,8 +9,11 @@ from app.core.config import settings
 from app.evaluation.cost import estimate_cost
 from app.evaluation.tracing import log_query_result, trace_query
 from app.guardrails.validator import GuardrailValidator
+from app.prompts.types import RESPONSE_MODES
+from app.rag.confidence import VERIFICATION_NOTICE, classify_confidence_level
 from app.services.embedding_service import EmbeddingService
 from app.services.llm_service import LLMService
+from app.models.mode_responses import ModeResponses
 from app.services.query_dispatcher import QueryDispatcher, QueryResult
 from app.routing.router import Router
 from app.services.sql_query_planner import SqlQueryPlanner
@@ -52,7 +55,9 @@ class QueryService:
         with trace_query(
             name="legal-query",
             question=question,
-            metadata={"document_id": str(document_id) if document_id else None},
+            metadata={
+                "document_id": str(document_id) if document_id else None,
+            },
         ) as trace:
             start = time.perf_counter()
             response = await self._dispatcher.dispatch(
@@ -63,19 +68,28 @@ class QueryService:
                 provider=provider,
             )
 
-            guardrail_result = self.guardrails.validate_response_detailed(
-                response.answer,
+            validated_responses = self._apply_guardrails_to_all_modes(
+                response.responses,
                 sources=response.sources,
                 question=question,
             )
-            response.answer = guardrail_result.answer
+            response.responses = validated_responses
+            response.answer = validated_responses.explain
+
+            level = classify_confidence_level(response.confidence_score)
+            response.confidence_level = level.value
+            response.verification_notice = (
+                VERIFICATION_NOTICE if level.value == "Low" else None
+            )
+
             latency_ms = (time.perf_counter() - start) * 1000
+            response.latency_ms = latency_ms
 
             if settings.ENABLE_LANGFUSE:
                 contexts = [
-                    source.get("excerpt", "")
+                    source.get("full_text") or source.get("excerpt", "")
                     for source in response.sources
-                    if source.get("excerpt")
+                    if source.get("full_text") or source.get("excerpt")
                 ]
                 cost = estimate_cost(
                     question=question,
@@ -94,3 +108,21 @@ class QueryService:
                 )
 
             return response
+
+    def _apply_guardrails_to_all_modes(
+        self,
+        responses: ModeResponses,
+        *,
+        sources: list[dict],
+        question: str,
+    ) -> ModeResponses:
+        validated: dict[str, str] = {}
+        for mode in RESPONSE_MODES:
+            guardrail_result = self.guardrails.validate_response_detailed(
+                responses.get(mode),
+                sources=sources,
+                question=question,
+                response_mode=mode,
+            )
+            validated[mode] = guardrail_result.answer
+        return ModeResponses.from_dict(validated)

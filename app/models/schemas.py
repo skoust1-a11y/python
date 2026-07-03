@@ -113,7 +113,9 @@ class QueryRequest(BaseModel):
     )
     provider: str | None = Field(
         default=None,
-        description="LLM provider override: openai or anthropic",
+        description=(
+            "LLM provider override: openai, anthropic, google (gemini), groq, or azureopenai"
+        ),
     )
 
 
@@ -123,19 +125,52 @@ class RoutingMetadata(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0, description="Routing confidence (0–1)")
 
 
+class CitationLocation(BaseModel):
+    """Optional pinpoint reference within a cited document."""
+
+    clause_number: str | None = None
+    clause_title: str | None = None
+    page_number: int | None = None
+
+
 class SourceCitation(BaseModel):
+    """Document-level citation returned to clients (no raw chunk text)."""
+
     document_id: UUID | None = None
-    chunk_index: int | None = None
-    excerpt: str
-    score: float
-    citation_label: str | None = None
-    source_type: str = Field(
-        default="vector",
+    document_name: str = Field(
+        ...,
+        description="Primary display name, typically the source filename",
+    )
+    score: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Best retrieval score among chunks from this document",
+    )
+    source_types: list[str] = Field(
+        default_factory=list,
         description="Provenance: vector, sql_clause, sql_contract, sql_case, etc.",
+    )
+    locations: list[CitationLocation] = Field(
+        default_factory=list,
+        description="Deduplicated clause/page references within the document",
+    )
+    citation_labels: list[str] = Field(
+        default_factory=list,
+        description="Answer citation labels (e.g. [Source 1]) referencing this document",
     )
     entity_id: UUID | None = None
     entity_type: str | None = None
-    metadata: dict[str, Any] | None = None
+
+
+def internal_source_to_citation(source: dict[str, Any]) -> SourceCitation:
+    """Format a single internal source as a document-level citation."""
+    from app.utils.citation_formatter import format_document_citations
+
+    citations = format_document_citations([source])
+    if citations:
+        return citations[0]
+    return SourceCitation(document_name="Unknown source", score=0.0)
 
 
 class StructuredMetadata(BaseModel):
@@ -147,26 +182,57 @@ class StructuredMetadata(BaseModel):
     total_count: int = 0
 
 
-class QueryResponse(BaseModel):
-    answer: str
-    explanation: str = Field(
-        ...,
-        description="Natural-language summary of routing and retrieval steps",
-    )
-    sources: list[SourceCitation]
-    structured_metadata: StructuredMetadata | None = None
-    routing: RoutingMetadata
-    confidence_score: float = Field(
+class RelatedDocument(BaseModel):
+    """Compact document reference for discovery (no chunk content)."""
+
+    document_id: UUID | None = None
+    name: str = Field(..., description="Display name, typically the source filename")
+    relevance: float = Field(
         ...,
         ge=0.0,
         le=1.0,
-        description="Rank-weighted retrieval confidence (0–1)",
+        description="Best retrieval relevance score for this document",
     )
-    provider: str
-    retrieved_count: int
-    vector_count: int = 0
-    sql_count: int = 0
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class QueryResponse(BaseModel):
+    """Structured query answer returned to API clients."""
+
+    strict: str = Field(..., description="Evidence mode answer — documents only")
+    explain: str = Field(..., description="Explain mode answer — plain-language explanation")
+    analysis: str = Field(..., description="Analysis mode answer — structured legal review")
+    confidence: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Retrieval confidence score (0–1) shared across all modes",
+    )
+    confidence_level: str = Field(
+        ...,
+        description="Categorical confidence: High, Medium, or Low",
+        examples=["High"],
+    )
+    verification_notice: str | None = Field(
+        default=None,
+        description="Present when confidence is Low; advises manual verification",
+    )
+    sources: list[SourceCitation] = Field(
+        default_factory=list,
+        description="Document-level citations (no raw chunk text)",
+    )
+    related_documents: list[RelatedDocument] = Field(
+        default_factory=list,
+        description="Documents related to the answer, for navigation and discovery",
+    )
+    follow_up_questions: list[str] = Field(
+        default_factory=list,
+        description="Suggested next questions for deeper investigation",
+    )
+    latency_ms: float = Field(
+        ...,
+        ge=0.0,
+        description="End-to-end response generation time in milliseconds",
+    )
 
 
 # ---------------------------------------------------------------------------

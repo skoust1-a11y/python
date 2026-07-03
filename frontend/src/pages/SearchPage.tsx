@@ -6,6 +6,7 @@ import type { DocumentSummary, QueryResponse } from "@/api/types";
 import { Card } from "@/components/Card";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { QueryResultPanel } from "@/components/QueryResultPanel";
+import { loadStoredResponseMode, storeResponseMode, type ResponseMode } from "@/lib/responseModes";
 
 export function SearchPage() {
   const [searchParams] = useSearchParams();
@@ -18,6 +19,7 @@ export function SearchPage() {
   const [result, setResult] = useState<QueryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [activeMode, setActiveMode] = useState<ResponseMode>(loadStoredResponseMode);
 
   useEffect(() => {
     listDocuments(0, 100)
@@ -29,6 +31,11 @@ export function SearchPage() {
     const doc = searchParams.get("doc");
     if (doc) setDocumentId(doc);
   }, [searchParams]);
+
+  const handleModeChange = (mode: ResponseMode) => {
+    setActiveMode(mode);
+    storeResponseMode(mode);
+  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,7 +166,13 @@ export function SearchPage() {
         </div>
       )}
 
-      {result && !loading && <QueryResultPanel response={result} />}
+      {result && !loading && (
+        <QueryResultPanel
+          response={result}
+          activeMode={activeMode}
+          onModeChange={handleModeChange}
+        />
+      )}
     </div>
   );
 }

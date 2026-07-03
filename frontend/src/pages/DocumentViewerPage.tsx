@@ -104,7 +104,7 @@ function DocumentDetail({ doc }: { doc: DocumentDetailResponse }) {
 
           <Card title="Actions">
             <p className="mb-3 text-sm text-slate-500">
-              Query this document in Chat or Search to view retrieved chunks and excerpts.
+              Query this document in Chat or Search to view answers and source citations.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link

@@ -11,7 +11,7 @@ FALLBACK_TEMPLATES: dict[str, str] = {
     ),
     "legal/citation-required": (
         "I cannot present substantive legal findings without citing the underlying "
-        "source documents. Please review the source excerpts returned with this query, "
+        "source documents. Please review the cited sources returned with this query, "
         "or rephrase your question so I can provide a properly cited summary."
     ),
     "legal/unsupported-claims": (

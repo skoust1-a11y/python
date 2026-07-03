@@ -10,9 +10,11 @@ from app.database.session import get_db
 from app.guardrails.validator import GuardrailValidator
 from app.mcp.retry import MCPRetryPolicy
 from app.mcp.search import ExternalLegalSearchService
+from app.prompts.manager import PromptManager
 from app.rag.hybrid_pipeline import HybridPipeline
 from app.rag.pipeline import RAGPipeline
 from app.routing.router import Router
+from app.services.context_compression_service import ContextCompressionService
 from app.services.document_service import DocumentService
 from app.services.embedding_service import EmbeddingService
 from app.services.feedback_service import FeedbackService
@@ -25,6 +27,11 @@ from app.services.sql_retrieval_service import SqlRetrievalService
 
 
 @lru_cache
+def get_prompt_manager() -> PromptManager:
+    return PromptManager()
+
+
+@lru_cache
 def get_embedding_service() -> EmbeddingService:
     return EmbeddingService()
 
@@ -32,6 +39,11 @@ def get_embedding_service() -> EmbeddingService:
 @lru_cache
 def get_llm_service() -> LLMService:
     return LLMService()
+
+
+@lru_cache
+def get_context_compression_service() -> ContextCompressionService:
+    return ContextCompressionService()
 
 
 @lru_cache
@@ -66,11 +78,17 @@ def get_rag_pipeline(
     session: AsyncSession = Depends(get_db),
     embedding_service: EmbeddingService = Depends(get_embedding_service),
     llm_service: LLMService = Depends(get_llm_service),
+    prompt_manager: PromptManager = Depends(get_prompt_manager),
+    context_compression_service: ContextCompressionService = Depends(
+        get_context_compression_service
+    ),
 ) -> RAGPipeline:
     return RAGPipeline(
         session=session,
         embedding_service=embedding_service,
         llm_service=llm_service,
+        prompt_manager=prompt_manager,
+        context_compression_service=context_compression_service,
     )
 
 
@@ -82,6 +100,10 @@ def get_hybrid_pipeline(
     external_search_service: ExternalLegalSearchService = Depends(
         get_external_legal_search_service
     ),
+    prompt_manager: PromptManager = Depends(get_prompt_manager),
+    context_compression_service: ContextCompressionService = Depends(
+        get_context_compression_service
+    ),
 ) -> HybridPipeline:
     return HybridPipeline(
         session=session,
@@ -89,6 +111,8 @@ def get_hybrid_pipeline(
         embedding_service=embedding_service,
         sql_planner=sql_planner,
         external_search_service=external_search_service,
+        prompt_manager=prompt_manager,
+        context_compression_service=context_compression_service,
     )
 
 
@@ -100,6 +124,7 @@ def get_query_dispatcher(
     sql_planner: SqlQueryPlanner = Depends(get_sql_query_planner),
     llm_service: LLMService = Depends(get_llm_service),
     embedding_service: EmbeddingService = Depends(get_embedding_service),
+    prompt_manager: PromptManager = Depends(get_prompt_manager),
 ) -> QueryDispatcher:
     return QueryDispatcher(
         session=session,
@@ -109,6 +134,7 @@ def get_query_dispatcher(
         sql_planner=sql_planner,
         llm_service=llm_service,
         embedding_service=embedding_service,
+        prompt_manager=prompt_manager,
     )
 
 

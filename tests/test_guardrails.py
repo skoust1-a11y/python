@@ -72,6 +72,26 @@ class TestCitationRequired:
         result = validator.validate_response_detailed(response, sources=SAMPLE_SOURCES)
         assert result.passed
 
+    def test_strict_mode_blocks_any_answer_without_citations(self, validator) -> None:
+        response = "Delaware law governs the contract."
+        result = validator.validate_response_detailed(
+            response,
+            sources=SAMPLE_SOURCES,
+            response_mode="strict",
+        )
+        assert result.used_fallback
+        assert "CitationRequiredValidator" in result.violations
+
+    def test_strict_mode_allows_exact_insufficient_message(self, validator) -> None:
+        from app.guardrails.constants import STRICT_INSUFFICIENT_INFO_RESPONSE
+
+        result = validator.validate_response_detailed(
+            STRICT_INSUFFICIENT_INFO_RESPONSE,
+            sources=SAMPLE_SOURCES,
+            response_mode="strict",
+        )
+        assert result.passed
+
 
 class TestUnsupportedClaims:
     def test_blocks_hallucinated_party_name(self, validator) -> None:

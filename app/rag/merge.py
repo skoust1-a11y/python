@@ -195,6 +195,8 @@ def _contract_to_node(contract: ContractSummary) -> NodeWithScore:
         "source_type": "sql_contract",
         "entity_id": str(contract.id),
         "entity_type": "document",
+        "document_name": contract.filename,
+        "title": contract.title,
         "score": SQL_SOURCE_SCORE,
     }
     return NodeWithScore(
@@ -220,6 +222,10 @@ def _clause_to_node(clause: ClauseSummary) -> NodeWithScore:
         "source_type": "sql_clause",
         "entity_id": str(clause.id),
         "entity_type": "clause",
+        "document_name": clause.document_title,
+        "clause_number": clause.clause_number,
+        "clause_title": clause.title,
+        "page_number": clause.page_number,
         "score": SQL_SOURCE_SCORE,
     }
     return NodeWithScore(
@@ -243,6 +249,9 @@ def _case_to_node(case: CaseSummary) -> NodeWithScore:
         "source_type": "sql_case",
         "entity_id": str(case.id),
         "entity_type": "case",
+        "case_name": case.case_name,
+        "case_citation": case.case_citation,
+        "document_name": case.case_name,
         "score": SQL_SOURCE_SCORE,
     }
     return NodeWithScore(

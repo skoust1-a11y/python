@@ -13,15 +13,20 @@ from app.core.config import settings
 from app.mcp.models import ExternalSearchResult
 from app.mcp.search import ExternalLegalSearchService
 from app.rag.confidence import compute_confidence_score
-from app.rag.context_builder import LegalContextBuilder
+from app.rag.context_builder import LegalContextBuilder, internal_source_to_dict
 from app.rag.merge import (
     MergeStats,
     external_results_to_nodes,
     merge_retrieval_results,
     sql_results_to_nodes,
 )
+from app.rag.ranking import rank_retrieval_results
 from app.rag.retriever import LegalDocumentRetriever
+from app.prompts.manager import PromptManager
+from app.rag.retrieval_result import PipelineRetrievalResult
 from app.rag.synthesizer import LegalResponseSynthesizer
+from app.models.mode_responses import ModeResponses
+from app.services.context_compression_service import ContextCompressionService
 from app.services.embedding_service import EmbeddingService
 from app.services.llm_service import LLMService
 from app.services.search_service import SearchService
@@ -34,6 +39,7 @@ class HybridPipelineResult:
     """Output from hybrid or SQL-only retrieval paths."""
 
     answer: str
+    responses: ModeResponses
     sources: list[dict]
     structured_metadata: dict
     explanation: str
@@ -54,9 +60,13 @@ class HybridPipeline:
     session: AsyncSession
     llm_service: LLMService
     embedding_service: EmbeddingService
+    prompt_manager: PromptManager
     sql_planner: SqlQueryPlanner | None = None
     external_search_service: ExternalLegalSearchService | None = None
     context_builder: LegalContextBuilder = field(default_factory=LegalContextBuilder)
+    context_compression_service: ContextCompressionService = field(
+        default_factory=ContextCompressionService
+    )
     top_k: int = field(default_factory=lambda: settings.TOP_K_RETRIEVAL)
     similarity_threshold: float = field(
         default_factory=lambda: settings.SIMILARITY_THRESHOLD
@@ -82,10 +92,13 @@ class HybridPipeline:
         )
 
     def _build_synthesizer(self, provider: str | None = None) -> LegalResponseSynthesizer:
-        llm = self.llm_service.get_llm(provider)
-        return LegalResponseSynthesizer(llm)
+        return LegalResponseSynthesizer(
+            self.llm_service,
+            self.prompt_manager,
+            provider=provider,
+        )
 
-    async def run_hybrid(
+    async def retrieve_hybrid(
         self,
         question: str,
         plan: SqlQueryPlan,
@@ -94,8 +107,8 @@ class HybridPipeline:
         top_k: int | None = None,
         similarity_threshold: float | None = None,
         provider: str | None = None,
-    ) -> HybridPipelineResult:
-        """Run SQL + vector retrieval in parallel, merge, dedupe, and synthesize."""
+    ) -> PipelineRetrievalResult:
+        """Run SQL + vector retrieval once; build shared context for all modes."""
         executor = SqlQueryExecutor(self.session)
         retriever = self._build_retriever(
             document_id=document_id,
@@ -124,12 +137,16 @@ class HybridPipeline:
             vector_nodes,
             sql_result,
             external_nodes=external_nodes,
-            max_results=(top_k or self.top_k) * 2,
+        )
+        ranked_nodes, _ranking_stats = rank_retrieval_results(
+            merged_nodes,
+            question,
+            top_k=top_k,
         )
 
-        return await self._synthesize(
+        return self._build_retrieval_result(
             question,
-            merged_nodes,
+            ranked_nodes,
             sql_result=sql_result,
             vector_count=len(vector_nodes),
             external_count=len(external_nodes),
@@ -140,20 +157,25 @@ class HybridPipeline:
             mode="hybrid",
         )
 
-    async def run_sql(
+    async def retrieve_sql(
         self,
         question: str,
         plan: SqlQueryPlan,
         *,
         document_id: UUID | None = None,
         provider: str | None = None,
-    ) -> HybridPipelineResult:
-        """Run structured SQL retrieval only and synthesize an answer."""
+    ) -> PipelineRetrievalResult:
+        """Run structured SQL retrieval once; build shared context for all modes."""
         executor = SqlQueryExecutor(self.session)
         sql_result = await executor.execute(plan, document_id=document_id)
-        nodes = sql_results_to_nodes(sql_result)
+        sql_nodes = sql_results_to_nodes(sql_result)
+        nodes, _ranking_stats = rank_retrieval_results(
+            sql_nodes,
+            question,
+            top_k=self.top_k,
+        )
 
-        return await self._synthesize(
+        return self._build_retrieval_result(
             question,
             nodes,
             sql_result=sql_result,
@@ -164,18 +186,69 @@ class HybridPipeline:
             mode="sql",
         )
 
-    async def _search_external(self, question: str) -> ExternalSearchResult:
-        """Query external legal MCP databases; failures return empty results."""
-        if self.external_search_service is None or not self.external_search_service.is_available:
-            return ExternalSearchResult()
-        try:
-            return await self.external_search_service.search(question)
-        except Exception:
-            return ExternalSearchResult(
-                errors=["External MCP search unavailable due to an unexpected error."],
-            )
+    async def synthesize_all_modes(
+        self,
+        question: str,
+        retrieval: PipelineRetrievalResult,
+        *,
+        provider: str | None = None,
+    ) -> ModeResponses:
+        synthesizer = self._build_synthesizer(provider or retrieval.provider)
+        return await synthesizer.synthesize_all_modes_from_context(
+            question,
+            retrieval.context_text,
+            mode=retrieval.retrieval_mode,
+        )
 
-    async def _synthesize(
+    async def run_hybrid(
+        self,
+        question: str,
+        plan: SqlQueryPlan,
+        *,
+        document_id: UUID | None = None,
+        top_k: int | None = None,
+        similarity_threshold: float | None = None,
+        provider: str | None = None,
+    ) -> HybridPipelineResult:
+        """Retrieve once, then synthesize all response modes."""
+        retrieval = await self.retrieve_hybrid(
+            question,
+            plan,
+            document_id=document_id,
+            top_k=top_k,
+            similarity_threshold=similarity_threshold,
+            provider=provider,
+        )
+        responses = await self.synthesize_all_modes(
+            question,
+            retrieval,
+            provider=provider,
+        )
+        return self._to_pipeline_result(retrieval, responses)
+
+    async def run_sql(
+        self,
+        question: str,
+        plan: SqlQueryPlan,
+        *,
+        document_id: UUID | None = None,
+        provider: str | None = None,
+    ) -> HybridPipelineResult:
+        """Retrieve once, then synthesize all response modes."""
+        retrieval = await self.retrieve_sql(
+            question,
+            plan,
+            document_id=document_id,
+            provider=provider,
+        )
+        responses = await self.synthesize_all_modes(
+            question,
+            retrieval,
+            provider=provider,
+        )
+        return self._to_pipeline_result(retrieval, responses)
+
+    def _build_retrieval_result(
         self,
         question: str,
         nodes: list,
@@ -188,34 +261,15 @@ class HybridPipeline:
         routing_explanation: str,
         provider: str | None,
         mode: str,
-    ) -> HybridPipelineResult:
+    ) -> PipelineRetrievalResult:
         built_context = self.context_builder.build(nodes)
-        synthesizer = self._build_synthesizer(provider)
-        if mode in {"hybrid", "sql"} and built_context.context_text:
-            answer = await synthesizer.synthesize_from_context(
-                question,
-                built_context.context_text,
-            )
-        else:
-            answer = await synthesizer.synthesize(question, nodes)
+        compressed = self.context_compression_service.compress(
+            built_context,
+            question,
+        )
         confidence = compute_confidence_score(nodes)
         active_provider = provider or settings.DEFAULT_LLM_PROVIDER
-
-        sources = [
-            {
-                "document_id": source.document_id,
-                "chunk_index": source.chunk_index,
-                "excerpt": source.excerpt,
-                "score": source.score,
-                "citation_label": source.citation_label,
-                "source_type": source.metadata.get("source_type", "vector"),
-                "entity_id": source.metadata.get("entity_id"),
-                "entity_type": source.metadata.get("entity_type"),
-                "metadata": source.metadata,
-            }
-            for source in built_context.sources
-        ]
-
+        sources = [internal_source_to_dict(source) for source in built_context.sources]
         explanation = _build_explanation(
             mode=mode,
             routing_explanation=routing_explanation,
@@ -227,20 +281,48 @@ class HybridPipeline:
             final_count=len(nodes),
         )
 
-        return HybridPipelineResult(
-            answer=answer,
+        return PipelineRetrievalResult(
+            context_text=compressed.context_text,
             sources=sources,
-            structured_metadata=_serialize_sql_result(sql_result),
-            explanation=explanation,
+            nodes=nodes,
             confidence_score=confidence,
             provider=active_provider,
             retrieved_count=len(nodes),
+            retrieval_mode=mode,
+            explanation=explanation,
+            structured_metadata=_serialize_metadata(sql_result),
             vector_count=vector_count,
             sql_count=sql_result.total_count,
-            external_count=external_count,
-            merge_stats=merge_stats,
-            external_search=external_search,
         )
+
+    def _to_pipeline_result(
+        self,
+        retrieval: PipelineRetrievalResult,
+        responses: ModeResponses,
+    ) -> HybridPipelineResult:
+        return HybridPipelineResult(
+            answer=responses.explain,
+            responses=responses,
+            sources=retrieval.sources,
+            structured_metadata=retrieval.structured_metadata or _empty_metadata(),
+            explanation=retrieval.explanation,
+            confidence_score=retrieval.confidence_score,
+            provider=retrieval.provider,
+            retrieved_count=retrieval.retrieved_count,
+            vector_count=retrieval.vector_count,
+            sql_count=retrieval.sql_count,
+        )
+
+    async def _search_external(self, question: str) -> ExternalSearchResult:
+        """Query external legal MCP databases; failures return empty results."""
+        if self.external_search_service is None or not self.external_search_service.is_available:
+            return ExternalSearchResult()
+        try:
+            return await self.external_search_service.search(question)
+        except Exception:
+            return ExternalSearchResult(
+                errors=["External MCP search unavailable due to an unexpected error."],
+            )
 
 
 def _build_explanation(
@@ -266,9 +348,10 @@ def _build_explanation(
         parts.append(f"Retrieved {' and '.join(retrieval_parts)}.")
         if merge_stats is not None:
             parts.append(
-                f"After reciprocal-rank fusion and deduplication, "
-                f"{merge_stats.merged_count} unique source(s) were used "
-                f"({merge_stats.duplicates_removed} duplicate(s) removed)."
+                f"After reciprocal-rank fusion, deduplication, overlap merging, "
+                f"and relevance ranking, the top {final_count} chunk(s) were sent "
+                f"to the LLM ({merge_stats.duplicates_removed} duplicate(s) removed "
+                f"during fusion)."
             )
         if external_search and external_search.had_failures:
             parts.append(
@@ -281,6 +364,21 @@ def _build_explanation(
         parts.append(f"Used {final_count} retrieved source(s).")
 
     return " ".join(part for part in parts if part)
+
+
+def _empty_metadata() -> dict:
+    return {
+        "contracts": [],
+        "clauses": [],
+        "cases": [],
+        "metadata_records": [],
+        "plan_explanation": None,
+        "total_count": 0,
+    }
+
+
+def _serialize_metadata(sql_result: SqlRetrievalResult) -> dict:
+    return _serialize_sql_result(sql_result)
 
 
 def _serialize_sql_result(sql_result: SqlRetrievalResult) -> dict:

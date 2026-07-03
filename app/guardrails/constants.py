@@ -6,9 +6,15 @@ LEGAL_DISCLAIMER = (
 
 DISCLAIMER_FOOTER = f"\n\n---\n*{LEGAL_DISCLAIMER}*"
 
+STRICT_INSUFFICIENT_INFO_RESPONSE = (
+    "I could not find sufficient information in the uploaded documents to "
+    "answer this question."
+)
+
 INSUFFICIENT_INFO_PHRASES: tuple[str, ...] = (
     "could not find relevant",
     "could not find sufficient",
+    "could not find sufficient information in the uploaded documents",
     "does not contain enough",
     "does not contain sufficient",
     "insufficient information",
@@ -18,6 +24,7 @@ INSUFFICIENT_INFO_PHRASES: tuple[str, ...] = (
     "cannot answer based on",
     "not found in the indexed",
     "not found in the provided",
+    "not found in the retrieved",
 )
 
 # Prescriptive language that constitutes legal advice or recommendations.

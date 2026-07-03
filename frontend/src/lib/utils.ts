@@ -32,6 +32,10 @@ export function formatPercent(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
+export function formatPercentPrecise(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 export function routeLabel(route: string): string {
   const labels: Record<string, string> = {
     rag: "RAG (Vector)",
@@ -55,7 +59,20 @@ export function statusColor(status: string): string {
 }
 
 export function confidenceColor(score: number): string {
-  if (score >= 0.8) return "text-emerald-600 dark:text-emerald-400";
-  if (score >= 0.6) return "text-amber-600 dark:text-amber-400";
+  if (score >= 0.75) return "text-emerald-600 dark:text-emerald-400";
+  if (score >= 0.5) return "text-amber-600 dark:text-amber-400";
   return "text-red-600 dark:text-red-400";
+}
+
+export function confidenceLevelColor(level: string): string {
+  switch (level) {
+    case "High":
+      return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300";
+    case "Medium":
+      return "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300";
+    case "Low":
+      return "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300";
+    default:
+      return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+  }
 }

@@ -16,10 +16,14 @@ def search_result_to_node(result: SearchResult) -> TextNode:
         "document_id": str(result.document_id),
         "chunk_index": result.chunk_index,
         "score": result.score,
+        "semantic_score": result.score,
+        "source_type": "vector",
         **(result.metadata or {}),
     }
     if result.clause_id is not None:
         metadata["clause_id"] = str(result.clause_id)
+    if result.keywords:
+        metadata["keywords"] = result.keywords
 
     return TextNode(
         id_=str(result.id),
@@ -29,7 +33,14 @@ def search_result_to_node(result: SearchResult) -> TextNode:
 
 
 class LegalDocumentRetriever(BaseRetriever):
-    """Top-K semantic retriever over indexed legal document chunks."""
+    """Top-K semantic retriever over indexed legal document chunks.
+
+    Delegates to :class:`~app.services.search_service.SearchService`, which
+    implements LlamaIndex-style conditional metadata filtering:
+
+    * ``document_id`` set → document-scoped search with a metadata filter.
+    * ``document_id`` omitted → global search across the full vector index.
+    """
 
     def __init__(
         self,
@@ -41,11 +52,7 @@ class LegalDocumentRetriever(BaseRetriever):
     ) -> None:
         self._search = search_service
         self._top_k = top_k or settings.TOP_K_RETRIEVAL
-        self._threshold = (
-            similarity_threshold
-            if similarity_threshold is not None
-            else settings.SIMILARITY_THRESHOLD
-        )
+        self._threshold = similarity_threshold
         self._document_id = document_id
         super().__init__()
 

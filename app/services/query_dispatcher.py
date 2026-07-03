@@ -8,6 +8,8 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.prompts.manager import PromptManager
+from app.models.mode_responses import ModeResponses
 from app.rag.engine import RAGEngine
 from app.rag.hybrid_pipeline import HybridPipeline, HybridPipelineResult
 from app.rag.pipeline import RAGPipeline
@@ -20,18 +22,27 @@ from app.services.sql_query_planner import SqlQueryPlanner
 
 @dataclass
 class QueryResult:
-    """Unified query response across all retrieval routes."""
+    """Unified query response across all retrieval routes.
+
+    ``sources`` holds internal retrieval records (including chunk text) for
+    guardrails, tracing, and prompt grounding. Strip chunk text at the API
+    boundary via ``internal_source_to_citation``.
+    """
 
     answer: str
+    responses: ModeResponses
     sources: list[dict]
     confidence_score: float
     provider: str
     retrieved_count: int
     routing: RoutingResult
     explanation: str
+    confidence_level: str = "Medium"
+    verification_notice: str | None = None
     structured_metadata: dict | None = None
     vector_count: int = 0
     sql_count: int = 0
+    latency_ms: float = 0.0
 
 
 class QueryDispatcher:
@@ -47,22 +58,26 @@ class QueryDispatcher:
         sql_planner: SqlQueryPlanner | None = None,
         llm_service: LLMService | None = None,
         embedding_service: EmbeddingService | None = None,
+        prompt_manager: PromptManager | None = None,
     ) -> None:
         self._session = session
         self._llm_service = llm_service or LLMService()
         self._embedding_service = embedding_service or EmbeddingService()
+        self._prompt_manager = prompt_manager or PromptManager()
         self._router = router or Router(llm_service=self._llm_service)
         self._sql_planner = sql_planner or SqlQueryPlanner(llm_service=self._llm_service)
         self._rag_pipeline = rag_pipeline or RAGPipeline(
             session=session,
             llm_service=self._llm_service,
             embedding_service=self._embedding_service,
+            prompt_manager=self._prompt_manager,
         )
         self._hybrid_pipeline = hybrid_pipeline or HybridPipeline(
             session=session,
             llm_service=self._llm_service,
             embedding_service=self._embedding_service,
             sql_planner=self._sql_planner,
+            prompt_manager=self._prompt_manager,
         )
         self._rag_engine = RAGEngine(self._rag_pipeline)
 
@@ -75,7 +90,17 @@ class QueryDispatcher:
         similarity_threshold: float | None = None,
         provider: str | None = None,
     ) -> QueryResult:
-        routing = await self._router.route(question, provider=provider)
+        if document_id is not None:
+            routing = RoutingResult(
+                route="rag",
+                reason=(
+                    "Document-scoped question — using vector search on the selected "
+                    "document without LLM routing."
+                ),
+                confidence=1.0,
+            )
+        else:
+            routing = await self._router.route(question, provider=provider)
         route = routing.route
 
         if route == "hybrid":
@@ -126,8 +151,19 @@ class QueryDispatcher:
             f"{routing.reason} "
             f"Retrieved {result.retrieved_count} vector chunk(s) via semantic search."
         )
+        if document_id is not None:
+            explanation += " Query scoped to a single document."
+        if any(
+            (source.get("metadata") or {}).get("threshold_fallback")
+            for source in result.sources
+        ):
+            explanation += (
+                " Similarity was below the default threshold; best available chunks "
+                "from the scoped document were used."
+            )
         return QueryResult(
             answer=result.answer,
+            responses=result.responses,
             sources=result.sources,
             confidence_score=result.confidence_score,
             provider=result.provider,
@@ -188,6 +224,7 @@ def _from_hybrid_result(
 ) -> QueryResult:
     return QueryResult(
         answer=result.answer,
+        responses=result.responses,
         sources=result.sources,
         confidence_score=result.confidence_score,
         provider=result.provider or settings.DEFAULT_LLM_PROVIDER,

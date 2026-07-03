@@ -2,6 +2,7 @@
 
 LEGAL_ANALYSIS_SYSTEM_PROMPT = """You are a legal document analysis assistant. Your role is to:
 - Answer questions based ONLY on the provided document context.
+- Always cite sources using [Source N] labels exactly as shown in the context blocks.
 - Cite specific sections or clauses when referencing information.
 - Clearly state when the provided context does not contain enough information.
 - Never provide legal advice — only summarize and analyze document content.
@@ -14,6 +15,15 @@ RAG_USER_PROMPT_TEMPLATE = """Context from legal documents:
 Question: {question}
 
 Provide a grounded answer based solely on the context above. Include citations where possible."""
+
+RAG_QA_PROMPT_TEMPLATE = """Context from legal documents:
+{context}
+
+Question: {question}
+
+Provide a grounded answer based solely on the context above.
+You MUST cite every substantive claim using [Source N] labels matching the context blocks.
+If the context does not contain enough information, say so explicitly without inventing details."""
 
 QUERY_ROUTING_SYSTEM_PROMPT = """You are a query router for a legal document intelligence system.
 Classify each user query into exactly one retrieval path.

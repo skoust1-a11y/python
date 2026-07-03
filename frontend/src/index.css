@@ -13,6 +13,92 @@
   --color-brand-700: #1d4ed8;
   --color-brand-800: #1e40af;
   --color-brand-900: #1e3a8a;
+  --color-brand-950: #172554;
+
+  --animate-fade-in: fade-in 0.4s ease-out forwards;
+  --animate-slide-up: slide-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-slide-in-right: slide-in-right 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-scale-in: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-pulse-soft: pulse-soft 2s ease-in-out infinite;
+  --animate-shimmer: shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes typing-cursor {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -22,4 +108,519 @@ body {
 * {
   scrollbar-width: thin;
   scrollbar-color: theme(colors.slate.400) transparent;
+}
+
+/* Premium glass surfaces */
+.glass-surface {
+  @apply border border-slate-200/70 bg-white/80 backdrop-blur-xl dark:border-slate-800/70 dark:bg-slate-950/80;
+}
+
+.glass-card {
+  @apply rounded-2xl border border-slate-200/60 bg-white shadow-sm ring-1 ring-slate-900/[0.03] dark:border-slate-700/60 dark:bg-slate-900 dark:ring-white/[0.04];
+}
+
+/* Typing cursor */
+.typing-cursor::after {
+  content: "▋";
+  display: inline-block;
+  margin-left: 1px;
+  font-size: 0.85em;
+  color: theme(colors.brand.500);
+  animation: typing-cursor 1s step-end infinite;
+  vertical-align: baseline;
+}
+
+/* Shimmer skeleton */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    theme(colors.slate.200) 0%,
+    theme(colors.slate.100) 50%,
+    theme(colors.slate.200) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+.dark .shimmer {
+  background: linear-gradient(
+    90deg,
+    theme(colors.slate.800) 0%,
+    theme(colors.slate.700) 50%,
+    theme(colors.slate.800) 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* Stagger children animation */
+.stagger-children > * {
+  opacity: 0;
+  animation: slide-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.stagger-children > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger-children > *:nth-child(2) {
+  animation-delay: 60ms;
+}
+.stagger-children > *:nth-child(3) {
+  animation-delay: 120ms;
+}
+.stagger-children > *:nth-child(4) {
+  animation-delay: 180ms;
+}
+.stagger-children > *:nth-child(5) {
+  animation-delay: 240ms;
+}
+.stagger-children > *:nth-child(6) {
+  animation-delay: 300ms;
+}
+.stagger-children > *:nth-child(7) {
+  animation-delay: 360ms;
+}
+.stagger-children > *:nth-child(8) {
+  animation-delay: 420ms;
+}
+.stagger-children > *:nth-child(9) {
+  animation-delay: 480ms;
+}
+.stagger-children > *:nth-child(10) {
+  animation-delay: 540ms;
+}
+
+.legal-markdown h1:first-child,
+.legal-markdown h2:first-child,
+.legal-markdown h3:first-child,
+.legal-markdown h4:first-child,
+.legal-markdown p:first-child {
+  margin-top: 0;
+}
+
+/* ── Prose container ─────────────────────────────────────────────── */
+.legal-markdown-prose {
+  max-width: 68ch;
+  font-size: 15px;
+  line-height: 1.75;
+  color: theme(colors.slate.800);
+}
+
+.dark .legal-markdown-prose {
+  color: theme(colors.slate.100);
+}
+
+/* ── Headings ────────────────────────────────────────────────────── */
+.legal-markdown .legal-h1 {
+  margin: 2rem 0 1rem;
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  color: theme(colors.slate.900);
+}
+
+.legal-markdown .legal-h2 {
+  margin: 1.75rem 0 0.75rem;
+  padding-bottom: 0.35rem;
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: theme(colors.slate.900);
+  border-bottom: 1px solid theme(colors.slate.200 / 70%);
+}
+
+.legal-markdown .legal-h3 {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.4;
+  color: theme(colors.slate.900);
+}
+
+.legal-markdown .legal-h4 {
+  margin: 1.25rem 0 0.375rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: theme(colors.slate.800);
+}
+
+.dark .legal-markdown .legal-h1,
+.dark .legal-markdown .legal-h2,
+.dark .legal-markdown .legal-h3 {
+  color: theme(colors.slate.50);
+}
+
+.dark .legal-markdown .legal-h4 {
+  color: theme(colors.slate.200);
+}
+
+.dark .legal-markdown .legal-h2 {
+  border-bottom-color: theme(colors.slate.700 / 70%);
+}
+
+/* ── Paragraphs ──────────────────────────────────────────────────── */
+.legal-markdown .legal-p {
+  margin: 0.875rem 0;
+  line-height: 1.75;
+}
+
+.legal-markdown .legal-p + .legal-p {
+  margin-top: 1rem;
+}
+
+/* ── Emphasis ────────────────────────────────────────────────────── */
+.legal-markdown .legal-bold {
+  font-weight: 700;
+}
+
+/* ── Inline code ─────────────────────────────────────────────────── */
+.legal-markdown .legal-inline-code {
+  border-radius: 0.3rem;
+  background: theme(colors.slate.100);
+  padding: 0.125rem 0.4rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.84em;
+  font-weight: 500;
+  color: theme(colors.brand.700);
+  box-decoration-break: clone;
+}
+
+.dark .legal-markdown .legal-inline-code {
+  background: theme(colors.slate.800);
+  color: theme(colors.brand.300);
+}
+
+/* ── Code blocks ─────────────────────────────────────────────────── */
+.legal-markdown .legal-code-block-wrap {
+  position: relative;
+  margin: 1.25rem 0;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid theme(colors.slate.200 / 80%);
+  background: theme(colors.slate.900);
+  box-shadow: 0 1px 3px theme(colors.slate.900 / 8%);
+}
+
+.dark .legal-markdown .legal-code-block-wrap {
+  border-color: theme(colors.slate.700 / 80%);
+}
+
+.legal-markdown .legal-code-lang {
+  border-bottom: 1px solid theme(colors.slate.700 / 60%);
+  padding: 0.35rem 1rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: theme(colors.slate.400);
+}
+
+.legal-markdown .legal-code-block {
+  margin: 0;
+  overflow-x: auto;
+  padding: 1rem 1.125rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  color: theme(colors.slate.100);
+  tab-size: 2;
+}
+
+.legal-markdown .legal-code-block code {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: transparent;
+  padding: 0;
+}
+
+/* ── Lists ───────────────────────────────────────────────────────── */
+.legal-markdown .legal-ul,
+.legal-markdown .legal-ol {
+  margin: 0.875rem 0;
+  padding-left: 0;
+}
+
+.legal-markdown .legal-ul {
+  list-style: none;
+}
+
+.legal-markdown .legal-ul > li {
+  position: relative;
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+  line-height: 1.7;
+}
+
+.legal-markdown .legal-ul > li::before {
+  content: "";
+  position: absolute;
+  left: 0.35rem;
+  top: 0.72em;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: theme(colors.brand.500);
+}
+
+.legal-markdown .legal-ol {
+  list-style: none;
+  counter-reset: legal-ol;
+}
+
+.legal-markdown .legal-ol > li {
+  position: relative;
+  margin: 0.5rem 0;
+  padding-left: 2rem;
+  line-height: 1.7;
+  counter-increment: legal-ol;
+}
+
+.legal-markdown .legal-ol > li::before {
+  content: counter(legal-ol) ".";
+  position: absolute;
+  left: 0;
+  min-width: 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: theme(colors.brand.600);
+}
+
+.dark .legal-markdown .legal-ol > li::before {
+  color: theme(colors.brand.400);
+}
+
+.legal-markdown .legal-ul .legal-ul,
+.legal-markdown .legal-ol .legal-ol,
+.legal-markdown .legal-ul .legal-ol,
+.legal-markdown .legal-ol .legal-ul {
+  margin: 0.375rem 0 0.25rem;
+}
+
+/* ── Blockquotes ─────────────────────────────────────────────────── */
+.legal-markdown .legal-blockquote {
+  margin: 1.25rem 0;
+  padding: 0.75rem 0 0.75rem 1.125rem;
+  border-left: 3px solid theme(colors.brand.400);
+  color: theme(colors.slate.600);
+}
+
+.legal-markdown .legal-blockquote p {
+  margin: 0.375rem 0;
+}
+
+.legal-markdown .legal-blockquote p:first-child {
+  margin-top: 0;
+}
+
+.legal-markdown .legal-blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.dark .legal-markdown .legal-blockquote {
+  border-left-color: theme(colors.brand.500);
+  color: theme(colors.slate.300);
+}
+
+/* ── Callouts ────────────────────────────────────────────────────── */
+.legal-markdown .legal-callout {
+  margin: 1.25rem 0;
+  border-radius: 0.75rem;
+  border: 1px solid;
+  padding: 0.875rem 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+
+.legal-markdown .legal-callout-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.legal-markdown .legal-callout-body {
+  padding-left: 1.5rem;
+}
+
+.legal-markdown .legal-callout-body p {
+  margin: 0.25rem 0;
+}
+
+.legal-markdown .legal-callout-body p:first-child {
+  margin-top: 0;
+}
+
+.legal-markdown .legal-callout-body p:last-child {
+  margin-bottom: 0;
+}
+
+.legal-markdown .legal-callout-note {
+  border-color: theme(colors.brand.200 / 80%);
+  background: theme(colors.brand.50 / 80%);
+  color: theme(colors.brand.950);
+}
+
+.legal-markdown .legal-callout-note .legal-callout-header {
+  color: theme(colors.brand.700);
+}
+
+.dark .legal-markdown .legal-callout-note {
+  border-color: theme(colors.brand.800 / 50%);
+  background: theme(colors.brand.950 / 35%);
+  color: theme(colors.brand.100);
+}
+
+.dark .legal-markdown .legal-callout-note .legal-callout-header {
+  color: theme(colors.brand.300);
+}
+
+.legal-markdown .legal-callout-tip {
+  border-color: theme(colors.emerald.200 / 80%);
+  background: theme(colors.emerald.50 / 80%);
+  color: theme(colors.emerald.950);
+}
+
+.legal-markdown .legal-callout-tip .legal-callout-header {
+  color: theme(colors.emerald.700);
+}
+
+.dark .legal-markdown .legal-callout-tip {
+  border-color: theme(colors.emerald.800 / 50%);
+  background: theme(colors.emerald.950 / 30%);
+  color: theme(colors.emerald.100);
+}
+
+.dark .legal-markdown .legal-callout-tip .legal-callout-header {
+  color: theme(colors.emerald.300);
+}
+
+.legal-markdown .legal-callout-warning,
+.legal-markdown .legal-callout-important {
+  border-color: theme(colors.amber.200 / 80%);
+  background: theme(colors.amber.50 / 90%);
+  color: theme(colors.amber.950);
+}
+
+.legal-markdown .legal-callout-warning .legal-callout-header,
+.legal-markdown .legal-callout-important .legal-callout-header {
+  color: theme(colors.amber.700);
+}
+
+.dark .legal-markdown .legal-callout-warning,
+.dark .legal-markdown .legal-callout-important {
+  border-color: theme(colors.amber.800 / 50%);
+  background: theme(colors.amber.950 / 30%);
+  color: theme(colors.amber.100);
+}
+
+.dark .legal-markdown .legal-callout-warning .legal-callout-header,
+.dark .legal-markdown .legal-callout-important .legal-callout-header {
+  color: theme(colors.amber.300);
+}
+
+/* ── Horizontal rules ──────────────────────────────────────────────── */
+.legal-markdown .legal-hr {
+  margin: 2rem 0;
+  border: none;
+  border-top: 1px solid theme(colors.slate.200);
+}
+
+.dark .legal-markdown .legal-hr {
+  border-top-color: theme(colors.slate.700);
+}
+
+/* ── Tables ──────────────────────────────────────────────────────── */
+.legal-markdown .legal-table-wrap {
+  margin: 1.25rem 0;
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  border: 1px solid theme(colors.slate.200 / 80%);
+  -webkit-overflow-scrolling: touch;
+  box-shadow: 0 1px 2px theme(colors.slate.900 / 4%);
+}
+
+.dark .legal-markdown .legal-table-wrap {
+  border-color: theme(colors.slate.700 / 80%);
+}
+
+.legal-markdown .legal-table {
+  width: 100%;
+  min-width: 28rem;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.legal-markdown .legal-table thead tr {
+  border-bottom: 1px solid theme(colors.slate.200);
+  background: theme(colors.slate.50);
+}
+
+.dark .legal-markdown .legal-table thead tr {
+  border-bottom-color: theme(colors.slate.700);
+  background: theme(colors.slate.800 / 60%);
+}
+
+.legal-markdown .legal-table th {
+  padding: 0.625rem 1rem;
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: theme(colors.slate.500);
+  white-space: nowrap;
+}
+
+.dark .legal-markdown .legal-table th {
+  color: theme(colors.slate.400);
+}
+
+.legal-markdown .legal-table td {
+  padding: 0.625rem 1rem;
+  vertical-align: top;
+  color: theme(colors.slate.700);
+  border-bottom: 1px solid theme(colors.slate.100);
+}
+
+.legal-markdown .legal-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.legal-markdown .legal-table tbody tr:hover {
+  background: theme(colors.slate.50 / 60%);
+}
+
+.dark .legal-markdown .legal-table td {
+  color: theme(colors.slate.300);
+  border-bottom-color: theme(colors.slate.800);
+}
+
+.dark .legal-markdown .legal-table tbody tr:hover {
+  background: theme(colors.slate.800 / 40%);
+}
+
+/* ── Citations ───────────────────────────────────────────────────── */
+.legal-markdown .legal-citation-badge {
+  vertical-align: baseline;
+}
+
+/* Mode switch transition */
+.mode-content-transition {
+  animation: fade-in 0.25s ease-out forwards;
+}
+
+/* Smooth focus rings */
+.focus-ring {
+  @apply outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950;
 }

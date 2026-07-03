@@ -1,79 +1,141 @@
 import type { QueryResponse } from "@/api/types";
+
+import type { ResponseMode } from "@/lib/responseModes";
+
 import { Card } from "./Card";
+
 import { ConfidenceScore } from "./ConfidenceScore";
-import { RouteBadge } from "./RouteBadge";
-import { RetrievedChunks, SourcesList } from "./SourcesList";
+
+import { ResponseModeToggles } from "./ResponseModeToggles";
+
+import { MarkdownAnswer } from "@/components/chat/MarkdownAnswer";
+import { SourcesList } from "./SourcesList";
+
+
 
 interface QueryResultPanelProps {
+
   response: QueryResponse;
-  showChunks?: boolean;
+
+  activeMode: ResponseMode;
+
+  onModeChange: (mode: ResponseMode) => void;
+
 }
 
-export function QueryResultPanel({ response, showChunks = true }: QueryResultPanelProps) {
+
+
+export function QueryResultPanel({ response, activeMode, onModeChange }: QueryResultPanelProps) {
+
   return (
+
     <div className="space-y-4">
-      <Card title="Answer">
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800 dark:text-slate-200">
-          {response.answer}
-        </p>
-        {response.explanation && (
-          <p className="mt-3 border-t border-slate-200 pt-3 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
-            {response.explanation}
-          </p>
-        )}
+
+      <Card title="Response mode">
+
+        <div className="space-y-3">
+
+          <ResponseModeToggles activeMode={activeMode} onModeChange={onModeChange} />
+
+          <MarkdownAnswer text={response[activeMode]} />
+
+        </div>
+
       </Card>
 
+
+
       <div className="grid gap-4 md:grid-cols-2">
-        <Card title="Route Used">
-          <RouteBadge routing={response.routing} />
-        </Card>
+
         <Card title="Confidence">
-          <ConfidenceScore score={response.confidence_score} size="lg" />
-          <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
-            <span>Provider: {response.provider}</span>
-            <span>•</span>
-            <span>Retrieved: {response.retrieved_count}</span>
-          </div>
+
+          <ConfidenceScore
+
+            score={response.confidence}
+
+            level={response.confidence_level}
+
+            verificationNotice={response.verification_notice}
+
+            size="lg"
+
+          />
+
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+
+            Shared across all response modes from a single retrieval.
+
+          </p>
+
         </Card>
+
+        <Card title={`Sources (${response.sources.length})`}>
+
+          <SourcesList sources={response.sources} />
+
+        </Card>
+
       </div>
 
-      {showChunks ? (
-        <Card title="Retrieved Chunks">
-          <RetrievedChunks
-            sources={response.sources}
-            vectorCount={response.vector_count}
-            sqlCount={response.sql_count}
-          />
+
+
+      {response.related_documents.length > 0 && (
+
+        <Card title={`Related Documents (${response.related_documents.length})`}>
+
+          <ul className="space-y-2">
+
+            {response.related_documents.map((doc) => (
+
+              <li
+
+                key={doc.document_id ?? doc.name}
+
+                className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-800"
+
+              >
+
+                <span className="font-medium text-slate-800 dark:text-slate-200">{doc.name}</span>
+
+                <span className="text-xs text-slate-500">
+
+                  Relevance: {(doc.relevance * 100).toFixed(0)}%
+
+                </span>
+
+              </li>
+
+            ))}
+
+          </ul>
+
         </Card>
-      ) : (
-        <Card title="Sources">
-          <SourcesList sources={response.sources} />
-        </Card>
+
       )}
 
-      {response.structured_metadata && response.structured_metadata.total_count > 0 && (
-        <Card title="Structured Metadata">
-          <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">
-            {response.structured_metadata.plan_explanation ?? "SQL/hybrid structured results"}
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { label: "Contracts", count: response.structured_metadata.contracts.length },
-              { label: "Clauses", count: response.structured_metadata.clauses.length },
-              { label: "Cases", count: response.structured_metadata.cases.length },
-              { label: "Records", count: response.structured_metadata.metadata_records.length },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="rounded-lg bg-slate-50 p-3 text-center dark:bg-slate-800"
-              >
-                <p className="text-2xl font-bold text-brand-600 dark:text-brand-400">{item.count}</p>
-                <p className="text-xs text-slate-500">{item.label}</p>
-              </div>
+
+
+      {response.follow_up_questions.length > 0 && (
+
+        <Card title="Follow-up Questions">
+
+          <ul className="list-inside list-disc space-y-1 text-sm text-slate-700 dark:text-slate-300">
+
+            {response.follow_up_questions.map((question) => (
+
+              <li key={question}>{question}</li>
+
             ))}
-          </div>
+
+          </ul>
+
         </Card>
+
       )}
+
     </div>
+
   );
+
 }
+

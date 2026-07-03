@@ -51,14 +51,23 @@ class CitationRequiredValidator(Validator):
         if not sources:
             return PassResult()
 
+        is_strict = metadata.get("response_mode") == "strict"
         is_substantive = len(value.strip()) >= self.min_length or bool(
             _CLAIM_INDICATORS.search(value)
         )
-        if not is_substantive:
+        if not is_substantive and not is_strict:
             return PassResult()
 
         if _CITATION_RE.search(value):
             return PassResult()
+
+        if is_strict:
+            return FailResult(
+                error_message=(
+                    "STRICT mode requires a [Source N] citation for every factual "
+                    "statement drawn from the retrieved documents."
+                ),
+            )
 
         return FailResult(
             error_message=(
