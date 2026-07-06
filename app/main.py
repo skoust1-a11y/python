@@ -27,6 +27,9 @@ async def lifespan(app: FastAPI):
     from app.evaluation.tracing import flush_traces, get_langfuse_client
 
     get_langfuse_client()
+    from app.database.session import verify_database_connection
+
+    await verify_database_connection()
     if settings.VECTOR_BACKEND == "qdrant":
         from app.services.qdrant_service import QdrantVectorService
 

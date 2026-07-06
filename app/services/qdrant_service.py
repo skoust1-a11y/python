@@ -80,13 +80,14 @@ class QdrantVectorService:
                 ]
             )
 
-        hits = await self._client.search(
+        response = await self._client.query_points(
             collection_name=self._collection,
-            query_vector=query_vector,
+            query=query_vector,
             limit=top_k,
             query_filter=query_filter,
             with_payload=True,
         )
+        hits = response.points
         results: list[tuple[UUID, float, dict[str, Any]]] = []
         for hit in hits:
             point_id = hit.id if isinstance(hit.id, UUID) else UUID(str(hit.id))

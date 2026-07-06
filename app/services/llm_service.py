@@ -5,19 +5,10 @@ import time
 import traceback
 
 from llama_index.llms.anthropic import Anthropic
+from llama_index.llms.azure_openai import AzureOpenAI
 from llama_index.llms.google_genai import GoogleGenAI
+from llama_index.llms.groq import Groq
 from llama_index.llms.openai import OpenAI
-
-try:
-    from llama_index.llms.azure_openai import AzureOpenAI
-except ImportError:
-    AzureOpenAI = None
-
-try:
-    from llama_index.llms.groq import Groq
-except ImportError:
-    Groq = None
-
 
 from app.core.config import settings
 from app.core.exceptions import LLMProviderError
@@ -176,8 +167,6 @@ class LLMService:
 
         if provider == "groq":
             _log_provider_creation(provider)
-            if Groq is None:
-                raise LLMProviderError("groq", "llama-index-llms-groq package is not installed")
             if not settings.GROQ_API_KEY:
                 raise LLMProviderError("groq", "GROQ_API_KEY not configured")
             return Groq(
@@ -188,8 +177,6 @@ class LLMService:
 
         if provider == "azureopenai":
             _log_provider_creation(provider)
-            if AzureOpenAI is None:
-                raise LLMProviderError("azureopenai", "llama-index-llms-azure-openai package is not installed")
             if not settings.AZURE_OPENAI_API_KEY:
                 raise LLMProviderError("azureopenai", "AZURE_OPENAI_API_KEY not configured")
             if not settings.AZURE_OPENAI_ENDPOINT:
@@ -203,8 +190,6 @@ class LLMService:
                 api_key=settings.AZURE_OPENAI_API_KEY,
                 api_version=settings.AZURE_OPENAI_API_VERSION,
             )
-
-        raise LLMProviderError(provider, f"Unknown provider: {provider}")
 
     async def achat_with_fallback(
         self,

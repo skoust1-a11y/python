@@ -1,6 +1,6 @@
 """Add handoff_escalations table for human review workflow.
 
-Revision ID: 005_add_handoff_escalations_table
+Revision ID: 005_handoff_escalations
 Revises: 004_add_feedback_table
 Create Date: 2026-06-28
 
@@ -10,15 +10,19 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy import inspect
 from sqlalchemy.dialects import postgresql
 
-revision: str = "005_add_handoff_escalations_table"
+revision: str = "005_handoff_escalations"
 down_revision: Union[str, None] = "004_add_feedback_table"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    if inspect(op.get_bind()).has_table("handoff_escalations"):
+        return
+
     op.create_table(
         "handoff_escalations",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),

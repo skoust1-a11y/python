@@ -17,6 +17,29 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from app.mcp.models import MCPServerConfig, parse_mcp_servers
 
 
+def _strip_env_url(value: str) -> str:
+    """Trim whitespace and optional wrapping quotes from env-provided URLs."""
+    stripped = value.strip()
+    if len(stripped) >= 2 and stripped[0] == stripped[-1] and stripped[0] in "'\"":
+        stripped = stripped[1:-1].strip()
+    return stripped
+
+
+def database_target_label(url: str, *, source: str = "DATABASE_URL") -> str:
+    """Return a password-free connection label for logs and diagnostics."""
+    from sqlalchemy.engine import make_url
+
+    if not url.strip():
+        return "<not configured>"
+
+    parsed = make_url(url)
+    host = parsed.host or "?"
+    port = parsed.port or 5432
+    database = parsed.database or "?"
+    user = parsed.username or "?"
+    return f"{source} -> {user}@{host}:{port}/{database}"
+
+
 def _build_postgres_url(
     *,
     driver: str,
@@ -55,8 +78,8 @@ def _normalize_postgres_ssl_query(url: str, driver: str) -> str:
     has_sslmode = any(key == "sslmode" for key, _value in query)
     normalized: list[tuple[str, str]] = []
     for key, value in query:
-        if driver == "asyncpg" and key == "sslmode":
-            if not has_ssl:
+        if driver == "asyncpg" and key in {"sslmode", "channel_binding"}:
+            if key == "sslmode" and not has_ssl:
                 normalized.append(("ssl", value))
             continue
         if driver == "psycopg2" and key == "ssl":
@@ -289,13 +312,15 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _assemble_database_urls(self) -> Self:
-        updates: dict[str, str] = {}
-        if self.DATABASE_URL.strip():
+        self.DATABASE_URL = _strip_env_url(self.DATABASE_URL)
+        self.DATABASE_SYNC_URL = _strip_env_url(self.DATABASE_SYNC_URL)
+
+        if self.DATABASE_URL:
             normalized = _with_postgres_driver(self.DATABASE_URL, "asyncpg")
             if normalized != self.DATABASE_URL:
-                updates["DATABASE_URL"] = normalized
+                self.DATABASE_URL = normalized
         else:
-            updates["DATABASE_URL"] = _build_postgres_url(
+            self.DATABASE_URL = _build_postgres_url(
                 driver="asyncpg",
                 user=self.POSTGRES_USER,
                 password=self.POSTGRES_PASSWORD,
@@ -304,14 +329,14 @@ class Settings(BaseSettings):
                 database=self.POSTGRES_DB,
             )
 
-        if self.DATABASE_SYNC_URL.strip():
+        if self.DATABASE_SYNC_URL:
             normalized = _with_postgres_driver(self.DATABASE_SYNC_URL, "psycopg2")
             if normalized != self.DATABASE_SYNC_URL:
-                updates["DATABASE_SYNC_URL"] = normalized
-        elif self.DATABASE_URL.strip():
-            updates["DATABASE_SYNC_URL"] = _with_postgres_driver(self.DATABASE_URL, "psycopg2")
+                self.DATABASE_SYNC_URL = normalized
+        elif self.DATABASE_URL:
+            self.DATABASE_SYNC_URL = _with_postgres_driver(self.DATABASE_URL, "psycopg2")
         else:
-            updates["DATABASE_SYNC_URL"] = _build_postgres_url(
+            self.DATABASE_SYNC_URL = _build_postgres_url(
                 driver="psycopg2",
                 user=self.POSTGRES_USER,
                 password=self.POSTGRES_PASSWORD,
@@ -319,8 +344,23 @@ class Settings(BaseSettings):
                 port=self.POSTGRES_PORT,
                 database=self.POSTGRES_DB,
             )
-        if updates:
-            return self.model_copy(update=updates)
+
+        if self.DATABASE_URL and self.DATABASE_SYNC_URL:
+            from sqlalchemy.engine import make_url
+
+            runtime = make_url(self.DATABASE_URL)
+            sync = make_url(self.DATABASE_SYNC_URL)
+            if runtime.username != sync.username:
+                raise ValueError(
+                    "DATABASE_URL and DATABASE_SYNC_URL use different usernames. "
+                    "Copy both fresh Neon connection strings after a password reset."
+                )
+            if runtime.password != sync.password:
+                raise ValueError(
+                    "DATABASE_URL and DATABASE_SYNC_URL use different passwords. "
+                    "After a Neon password reset, update both variables from the Neon dashboard."
+                )
+
         return self
 
     @model_validator(mode="after")
@@ -329,9 +369,8 @@ class Settings(BaseSettings):
         if backend not in {"pgvector", "qdrant"}:
             raise ValueError("VECTOR_BACKEND must be either 'pgvector' or 'qdrant'.")
 
-        updates: dict[str, str] = {}
         if backend != self.VECTOR_BACKEND:
-            updates["VECTOR_BACKEND"] = backend
+            self.VECTOR_BACKEND = backend
 
         if backend == "qdrant":
             missing = [
@@ -347,8 +386,6 @@ class Settings(BaseSettings):
                     "Qdrant configuration incomplete: set " + ", ".join(missing)
                 )
 
-        if updates:
-            return self.model_copy(update=updates)
         return self
 
     @model_validator(mode="after")
@@ -357,9 +394,8 @@ class Settings(BaseSettings):
         if backend not in {"local", "supabase", "s3"}:
             raise ValueError("STORAGE_BACKEND must be 'local', 'supabase', or 's3'.")
 
-        updates: dict[str, str] = {}
         if backend != self.STORAGE_BACKEND:
-            updates["STORAGE_BACKEND"] = backend
+            self.STORAGE_BACKEND = backend
 
         if backend == "supabase":
             missing = [
@@ -390,8 +426,6 @@ class Settings(BaseSettings):
                     "S3 storage configuration incomplete: set " + ", ".join(missing)
                 )
 
-        if updates:
-            return self.model_copy(update=updates)
         return self
 
     @field_validator("MCP_SERVERS", mode="before")
