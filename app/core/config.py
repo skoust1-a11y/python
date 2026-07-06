@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from typing import Any, Self
-from urllib.parse import quote_plus
+from urllib.parse import parse_qsl, quote_plus, urlencode, urlsplit, urlunsplit
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -29,6 +29,42 @@ def _build_postgres_url(
     user_enc = quote_plus(user)
     auth = f"{user_enc}:{quote_plus(password)}@" if password else f"{user_enc}@"
     return f"postgresql+{driver}://{auth}{host}:{port}/{database}"
+
+
+def _with_postgres_driver(url: str, driver: str) -> str:
+    """Normalize hosted PostgreSQL URLs for SQLAlchemy async/sync engines."""
+    stripped = url.strip()
+    if not stripped:
+        return ""
+    if "://" not in stripped:
+        return stripped
+
+    scheme, rest = stripped.split("://", 1)
+    if scheme in {"postgres", "postgresql"} or scheme.startswith("postgresql+"):
+        return _normalize_postgres_ssl_query(f"postgresql+{driver}://{rest}", driver)
+    return stripped
+
+
+def _normalize_postgres_ssl_query(url: str, driver: str) -> str:
+    parts = urlsplit(url)
+    query = parse_qsl(parts.query, keep_blank_values=True)
+    if not query:
+        return url
+
+    has_ssl = any(key == "ssl" for key, _value in query)
+    has_sslmode = any(key == "sslmode" for key, _value in query)
+    normalized: list[tuple[str, str]] = []
+    for key, value in query:
+        if driver == "asyncpg" and key == "sslmode":
+            if not has_ssl:
+                normalized.append(("ssl", value))
+            continue
+        if driver == "psycopg2" and key == "ssl":
+            if not has_sslmode:
+                normalized.append(("sslmode", value))
+            continue
+        normalized.append((key, value))
+    return urlunsplit(parts._replace(query=urlencode(normalized)))
 
 
 def _normalize_provider(provider: str) -> str:
@@ -77,8 +113,14 @@ class Settings(BaseSettings):
     DATABASE_SYNC_URL: str = ""
 
     # Vector store
+    VECTOR_BACKEND: str = Field(default="pgvector", description="pgvector | qdrant")
     VECTOR_DIMENSION: int = 1536
     VECTOR_TABLE_NAME: str = "document_embeddings"
+
+    # Qdrant (used when VECTOR_BACKEND=qdrant)
+    QDRANT_URL: str = ""
+    QDRANT_API_KEY: str = ""
+    QDRANT_COLLECTION_NAME: str = "document_embeddings"
 
     # -------------------------------------------------------------------------
     # LLM & embeddings — loaded from `.env` only (no defaults here).
@@ -135,9 +177,25 @@ class Settings(BaseSettings):
     CONTEXT_COMPRESSION_MIN_SENTENCE_CHARS: int = 20
 
     # Ingestion
+    STORAGE_BACKEND: str = Field(default="local", description="local | supabase | s3")
     UPLOAD_DIR: str = "./data/uploads"
+    TEMP_UPLOAD_DIR: str = "./tmp/uploads"
     MAX_UPLOAD_SIZE_MB: int = 50
     ALLOWED_EXTENSIONS: list[str] = ["pdf", "docx", "txt"]
+
+    # Supabase Storage (used when STORAGE_BACKEND=supabase)
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
+    SUPABASE_STORAGE_BUCKET: str = "legal-documents"
+    SUPABASE_STORAGE_PATH_PREFIX: str = "uploads"
+
+    # S3-compatible object storage (used when STORAGE_BACKEND=s3; works with AWS S3 / Cloudflare R2)
+    S3_ENDPOINT_URL: str = ""
+    S3_BUCKET: str = ""
+    S3_ACCESS_KEY_ID: str = ""
+    S3_SECRET_ACCESS_KEY: str = ""
+    S3_REGION: str = "auto"
+    S3_PATH_PREFIX: str = "uploads"
 
     # Guardrails
     ENABLE_GUARDRAILS: bool = True
@@ -232,7 +290,11 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _assemble_database_urls(self) -> Self:
         updates: dict[str, str] = {}
-        if not self.DATABASE_URL.strip():
+        if self.DATABASE_URL.strip():
+            normalized = _with_postgres_driver(self.DATABASE_URL, "asyncpg")
+            if normalized != self.DATABASE_URL:
+                updates["DATABASE_URL"] = normalized
+        else:
             updates["DATABASE_URL"] = _build_postgres_url(
                 driver="asyncpg",
                 user=self.POSTGRES_USER,
@@ -241,7 +303,14 @@ class Settings(BaseSettings):
                 port=self.POSTGRES_PORT,
                 database=self.POSTGRES_DB,
             )
-        if not self.DATABASE_SYNC_URL.strip():
+
+        if self.DATABASE_SYNC_URL.strip():
+            normalized = _with_postgres_driver(self.DATABASE_SYNC_URL, "psycopg2")
+            if normalized != self.DATABASE_SYNC_URL:
+                updates["DATABASE_SYNC_URL"] = normalized
+        elif self.DATABASE_URL.strip():
+            updates["DATABASE_SYNC_URL"] = _with_postgres_driver(self.DATABASE_URL, "psycopg2")
+        else:
             updates["DATABASE_SYNC_URL"] = _build_postgres_url(
                 driver="psycopg2",
                 user=self.POSTGRES_USER,
@@ -250,6 +319,77 @@ class Settings(BaseSettings):
                 port=self.POSTGRES_PORT,
                 database=self.POSTGRES_DB,
             )
+        if updates:
+            return self.model_copy(update=updates)
+        return self
+
+    @model_validator(mode="after")
+    def _validate_vector_settings(self) -> Self:
+        backend = self.VECTOR_BACKEND.strip().lower()
+        if backend not in {"pgvector", "qdrant"}:
+            raise ValueError("VECTOR_BACKEND must be either 'pgvector' or 'qdrant'.")
+
+        updates: dict[str, str] = {}
+        if backend != self.VECTOR_BACKEND:
+            updates["VECTOR_BACKEND"] = backend
+
+        if backend == "qdrant":
+            missing = [
+                key
+                for key, value in {
+                    "QDRANT_URL": self.QDRANT_URL,
+                    "QDRANT_COLLECTION_NAME": self.QDRANT_COLLECTION_NAME,
+                }.items()
+                if not value.strip()
+            ]
+            if missing:
+                raise ValueError(
+                    "Qdrant configuration incomplete: set " + ", ".join(missing)
+                )
+
+        if updates:
+            return self.model_copy(update=updates)
+        return self
+
+    @model_validator(mode="after")
+    def _validate_storage_settings(self) -> Self:
+        backend = self.STORAGE_BACKEND.strip().lower()
+        if backend not in {"local", "supabase", "s3"}:
+            raise ValueError("STORAGE_BACKEND must be 'local', 'supabase', or 's3'.")
+
+        updates: dict[str, str] = {}
+        if backend != self.STORAGE_BACKEND:
+            updates["STORAGE_BACKEND"] = backend
+
+        if backend == "supabase":
+            missing = [
+                key
+                for key, value in {
+                    "SUPABASE_URL": self.SUPABASE_URL,
+                    "SUPABASE_SERVICE_ROLE_KEY": self.SUPABASE_SERVICE_ROLE_KEY,
+                    "SUPABASE_STORAGE_BUCKET": self.SUPABASE_STORAGE_BUCKET,
+                }.items()
+                if not value.strip()
+            ]
+            if missing:
+                raise ValueError(
+                    "Supabase storage configuration incomplete: set " + ", ".join(missing)
+                )
+        elif backend == "s3":
+            missing = [
+                key
+                for key, value in {
+                    "S3_BUCKET": self.S3_BUCKET,
+                    "S3_ACCESS_KEY_ID": self.S3_ACCESS_KEY_ID,
+                    "S3_SECRET_ACCESS_KEY": self.S3_SECRET_ACCESS_KEY,
+                }.items()
+                if not value.strip()
+            ]
+            if missing:
+                raise ValueError(
+                    "S3 storage configuration incomplete: set " + ", ".join(missing)
+                )
+
         if updates:
             return self.model_copy(update=updates)
         return self

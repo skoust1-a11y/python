@@ -27,6 +27,10 @@ async def lifespan(app: FastAPI):
     from app.evaluation.tracing import flush_traces, get_langfuse_client
 
     get_langfuse_client()
+    if settings.VECTOR_BACKEND == "qdrant":
+        from app.services.qdrant_service import QdrantVectorService
+
+        await QdrantVectorService().ensure_collection()
     logger.info("Starting %s", settings.APP_NAME)
     yield
     if settings.MCP_ENABLED:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import tempfile
 import uuid
 from pathlib import Path
 
@@ -17,8 +18,9 @@ from app.ingestion.pipeline import IngestionPipeline
 from app.models.orm import Document
 from app.models.schemas import DocumentDetailResponse, DocumentListResponse, DocumentSummary, DocumentUploadResponse
 from app.services.embedding_service import EmbeddingService
+from app.services.storage_service import DocumentStorageService
 from app.services.vector_store_service import ChunkToStore, VectorStoreService
-from app.utils.file_utils import compute_file_hash, ensure_upload_dir, validate_file_extension
+from app.utils.file_utils import compute_content_hash, sanitize_filename, validate_file_extension
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +32,13 @@ class DocumentService:
         *,
         pipeline: IngestionPipeline | None = None,
         embedding_service: EmbeddingService | None = None,
+        storage_service: DocumentStorageService | None = None,
         vector_store: VectorStoreService | None = None,
     ) -> None:
         self._session = session
         self._pipeline = pipeline or IngestionPipeline()
         self._embedding_service = embedding_service or EmbeddingService()
+        self._storage_service = storage_service or DocumentStorageService()
         self._vector_store = vector_store or VectorStoreService(
             session, embedding_service=self._embedding_service
         )
@@ -45,7 +49,8 @@ class DocumentService:
             raise FileValidationError("Uploaded file must include a filename.")
 
         try:
-            validate_file_extension(file.filename)
+            safe_filename = sanitize_filename(file.filename)
+            validate_file_extension(safe_filename)
         except ValueError as exc:
             raise FileValidationError(str(exc)) from exc
 
@@ -54,18 +59,13 @@ class DocumentService:
         if len(content) > max_bytes:
             raise FileTooLargeError(settings.MAX_UPLOAD_SIZE_MB)
 
-        upload_dir = ensure_upload_dir()
-        stored_name = f"{uuid.uuid4().hex}_{file.filename}"
-        dest_path = upload_dir / stored_name
+        stored_name = f"{uuid.uuid4().hex}_{safe_filename}"
+        content_hash = compute_content_hash(content)
 
-        await asyncio.to_thread(dest_path.write_bytes, content)
-        content_hash = await asyncio.to_thread(compute_file_hash, dest_path)
-
-        file_type = Path(file.filename).suffix.lstrip(".").lower()
+        file_type = Path(safe_filename).suffix.lstrip(".").lower()
         document = Document(
-            filename=file.filename,
+            filename=safe_filename,
             file_type=file_type,
-            storage_path=str(dest_path),
             status="processing",
             content_hash=content_hash,
             file_size_bytes=len(content),
@@ -73,10 +73,23 @@ class DocumentService:
         self._session.add(document)
         await self._session.flush()
 
-        logger.info("Document upload started: id=%s filename=%s", document.id, file.filename)
+        logger.info("Document upload started: id=%s filename=%s", document.id, safe_filename)
 
         try:
-            parsed, chunks, nodes = await self._pipeline.ingest(dest_path)
+            temp_root = Path(settings.TEMP_UPLOAD_DIR)
+            await asyncio.to_thread(temp_root.mkdir, parents=True, exist_ok=True)
+            with tempfile.TemporaryDirectory(
+                prefix="legaldoc-upload-", dir=temp_root
+            ) as temp_dir:
+                dest_path = Path(temp_dir) / stored_name
+                await asyncio.to_thread(dest_path.write_bytes, content)
+                parsed, chunks, nodes = await self._pipeline.ingest(dest_path)
+
+            stored_object = await self._storage_service.upload_document(
+                object_name=stored_name,
+                content=content,
+                content_type=file.content_type,
+            )
             doc_metadata = self._pipeline.build_node_metadata(parsed)
             chunk_payloads = [
                 ChunkToStore(
@@ -95,6 +108,7 @@ class DocumentService:
             await self._vector_store.embed_and_store(document.id, chunk_payloads)
 
             document.title = parsed.title
+            document.storage_path = stored_object.storage_path
             document.status = "indexed"
             document.chunk_count = len(chunks)
             document.doc_metadata = doc_metadata

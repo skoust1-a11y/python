@@ -1,4 +1,4 @@
-"""LlamaIndex retriever backed by pgvector semantic search."""
+"""LlamaIndex retriever backed by semantic vector search."""
 
 from typing import Any
 from uuid import UUID
@@ -11,7 +11,7 @@ from app.services.search_service import SearchResult, SearchService
 
 
 def search_result_to_node(result: SearchResult) -> TextNode:
-    """Map a pgvector search hit to a LlamaIndex TextNode."""
+    """Map a vector search hit to a LlamaIndex TextNode."""
     metadata: dict[str, Any] = {
         "document_id": str(result.document_id),
         "chunk_index": result.chunk_index,

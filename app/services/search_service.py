@@ -1,4 +1,4 @@
-"""Cosine similarity vector search via pgvector + SQLAlchemy."""
+"""Cosine similarity vector search via pgvector or Qdrant."""
 
 from dataclasses import dataclass
 from typing import Any
@@ -10,8 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.orm import DocumentEmbedding
 from app.rag.ranking import candidate_pool_size
-from app.utils.search_filter import apply_similarity_threshold
 from app.services.embedding_service import EmbeddingService
+from app.services.qdrant_service import QdrantVectorService
+from app.utils.search_filter import apply_similarity_threshold
 
 
 @dataclass
@@ -55,9 +56,12 @@ class SearchService:
         self,
         session: AsyncSession,
         embedding_service: EmbeddingService | None = None,
+        qdrant_service: QdrantVectorService | None = None,
     ) -> None:
         self._session = session
         self._embedding_service = embedding_service or EmbeddingService()
+        self._qdrant = qdrant_service or QdrantVectorService()
+        self._use_qdrant = settings.VECTOR_BACKEND == "qdrant"
 
     async def search(
         self,
@@ -84,32 +88,25 @@ class SearchService:
         document_id: UUID | None = None,
         threshold: float | None = None,
     ) -> list[SearchResult]:
-        """
-        Find the most similar chunks using pgvector cosine distance.
-
-        Cosine similarity is computed as ``1 - cosine_distance`` so that
-        higher scores indicate closer semantic matches.
-        """
+        """Find the most similar chunks using cosine similarity."""
         config = await self._resolve_retrieval_config(
             document_id=document_id,
             top_k=top_k,
             threshold=threshold,
         )
 
-        distance = DocumentEmbedding.embedding.cosine_distance(query_vector)
-        similarity = (1 - distance).label("similarity")
-
-        stmt = (
-            select(DocumentEmbedding, similarity)
-            .where(DocumentEmbedding.embedding.isnot(None))
-            .order_by(distance)
-            .limit(config.top_k)
-        )
-        if config.scoped:
-            stmt = stmt.where(DocumentEmbedding.document_id == document_id)
-
-        result = await self._session.execute(stmt)
-        candidates = self._rows_to_results(result.all())
+        if self._use_qdrant:
+            candidates = await self._search_qdrant(
+                query_vector,
+                top_k=config.top_k,
+                document_id=document_id,
+            )
+        else:
+            candidates = await self._search_pgvector(
+                query_vector,
+                top_k=config.top_k,
+                document_id=document_id,
+            )
 
         if config.scoped:
             return apply_similarity_threshold(
@@ -118,6 +115,59 @@ class SearchService:
                 document_id=document_id,
             )
         return self._finalize_global_results(candidates, config.min_score)
+
+    async def _search_pgvector(
+        self,
+        query_vector: list[float],
+        *,
+        top_k: int,
+        document_id: UUID | None,
+    ) -> list[SearchResult]:
+        distance = DocumentEmbedding.embedding.cosine_distance(query_vector)
+        similarity = (1 - distance).label("similarity")
+
+        stmt = (
+            select(DocumentEmbedding, similarity)
+            .where(DocumentEmbedding.embedding.isnot(None))
+            .order_by(distance)
+            .limit(top_k)
+        )
+        if document_id is not None:
+            stmt = stmt.where(DocumentEmbedding.document_id == document_id)
+
+        result = await self._session.execute(stmt)
+        return self._rows_to_results(result.all())
+
+    async def _search_qdrant(
+        self,
+        query_vector: list[float],
+        *,
+        top_k: int,
+        document_id: UUID | None,
+    ) -> list[SearchResult]:
+        hits = await self._qdrant.search(
+            query_vector,
+            top_k=top_k,
+            document_id=document_id,
+        )
+        results: list[SearchResult] = []
+        for point_id, score, payload in hits:
+            clause_id_raw = payload.get("clause_id")
+            clause_id = UUID(clause_id_raw) if clause_id_raw else None
+            keywords = payload.get("keywords")
+            results.append(
+                SearchResult(
+                    id=point_id,
+                    document_id=UUID(payload["document_id"]),
+                    chunk_index=int(payload["chunk_index"]),
+                    chunk_text=str(payload.get("chunk_text", "")),
+                    metadata=payload.get("metadata"),
+                    score=score,
+                    clause_id=clause_id,
+                    keywords=keywords if isinstance(keywords, list) else None,
+                )
+            )
+        return results
 
     async def _resolve_retrieval_config(
         self,
@@ -142,17 +192,22 @@ class SearchService:
             settings.SCOPED_SIMILARITY_THRESHOLD,
         )
 
-        chunk_count = await self._session.scalar(
-            select(func.count())
-            .select_from(DocumentEmbedding)
-            .where(
-                DocumentEmbedding.document_id == document_id,
-                DocumentEmbedding.embedding.isnot(None),
+        if self._use_qdrant:
+            chunk_count = await self._qdrant.count_by_document_id(document_id)
+        else:
+            chunk_count = await self._session.scalar(
+                select(func.count())
+                .select_from(DocumentEmbedding)
+                .where(
+                    DocumentEmbedding.document_id == document_id,
+                    DocumentEmbedding.embedding.isnot(None),
+                )
             )
-        )
-        if chunk_count is not None and int(chunk_count) <= k:
+            chunk_count = int(chunk_count or 0)
+
+        if chunk_count <= k:
             return _RetrievalConfig(
-                top_k=int(chunk_count),
+                top_k=chunk_count,
                 min_score=0.0,
                 scoped=True,
             )
@@ -183,7 +238,7 @@ class SearchService:
         min_score: float | None,
     ) -> list[SearchResult]:
         """
-        Global search trusts pgvector top-k ranking.
+        Global search trusts vector top-k ranking.
 
         An explicit ``threshold`` may post-filter results, but we never return
         an empty set when ranked candidates exist — cross-document matches

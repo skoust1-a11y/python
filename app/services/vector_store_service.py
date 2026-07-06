@@ -1,4 +1,4 @@
-"""PostgreSQL + pgvector storage via SQLAlchemy."""
+"""Vector storage — PostgreSQL metadata with pgvector or Qdrant backends."""
 
 from dataclasses import dataclass
 from typing import Any
@@ -7,8 +7,10 @@ from uuid import UUID
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.models.orm import DocumentEmbedding
 from app.services.embedding_service import EmbeddingService
+from app.services.qdrant_service import QdrantVectorService
 
 
 @dataclass
@@ -25,15 +27,18 @@ class ChunkToStore:
 
 
 class VectorStoreService:
-    """Persist and manage document chunk embeddings in pgvector."""
+    """Persist and manage document chunk embeddings."""
 
     def __init__(
         self,
         session: AsyncSession,
         embedding_service: EmbeddingService | None = None,
+        qdrant_service: QdrantVectorService | None = None,
     ) -> None:
         self._session = session
         self._embedding_service = embedding_service or EmbeddingService()
+        self._qdrant = qdrant_service or QdrantVectorService()
+        self._use_qdrant = settings.VECTOR_BACKEND == "qdrant"
 
     @property
     def embedding_model(self) -> str:
@@ -46,6 +51,10 @@ class VectorStoreService:
     ) -> list[DocumentEmbedding]:
         """Store pre-computed embeddings with chunk text and metadata."""
         records: list[DocumentEmbedding] = []
+        point_ids: list[UUID] = []
+        vectors: list[list[float]] = []
+        payloads: list[dict[str, Any]] = []
+
         for chunk in chunks:
             if chunk.embedding is None:
                 raise ValueError(
@@ -56,7 +65,7 @@ class VectorStoreService:
                 clause_id=chunk.clause_id,
                 chunk_index=chunk.chunk_index,
                 embedding_model=self.embedding_model,
-                embedding=chunk.embedding,
+                embedding=None if self._use_qdrant else chunk.embedding,
                 chunk_text=chunk.chunk_text,
                 content_preview=chunk.chunk_text[:500] if chunk.chunk_text else None,
                 embed_metadata=chunk.metadata,
@@ -67,6 +76,19 @@ class VectorStoreService:
             records.append(record)
 
         await self._session.flush()
+
+        if self._use_qdrant:
+            for record, chunk in zip(records, chunks, strict=True):
+                record.vector_store_id = str(record.id)
+                point_ids.append(record.id)
+                vectors.append(chunk.embedding)  # type: ignore[arg-type]
+                payloads.append(self._build_qdrant_payload(record, chunk))
+            await self._qdrant.upsert_points(
+                point_ids=point_ids,
+                vectors=vectors,
+                payloads=payloads,
+            )
+
         return records
 
     async def embed_and_store(
@@ -94,6 +116,9 @@ class VectorStoreService:
 
     async def delete_by_document_id(self, document_id: UUID) -> int:
         """Remove all embeddings for a document."""
+        if self._use_qdrant:
+            await self._qdrant.delete_by_document_id(document_id)
+
         result = await self._session.execute(
             delete(DocumentEmbedding).where(DocumentEmbedding.document_id == document_id)
         )
@@ -116,3 +141,20 @@ class VectorStoreService:
             .where(DocumentEmbedding.document_id == document_id)
         )
         return int(result.scalar_one())
+
+    @staticmethod
+    def _build_qdrant_payload(
+        record: DocumentEmbedding,
+        chunk: ChunkToStore,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "document_id": str(record.document_id),
+            "chunk_index": record.chunk_index,
+            "chunk_text": record.chunk_text or "",
+            "metadata": chunk.metadata or {},
+        }
+        if record.clause_id is not None:
+            payload["clause_id"] = str(record.clause_id)
+        if record.keywords:
+            payload["keywords"] = record.keywords
+        return payload

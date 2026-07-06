@@ -1,9 +1,12 @@
 """File handling utilities for document uploads."""
 
 import hashlib
+import re
 from pathlib import Path
 
 from app.core.config import settings
+
+_SAFE_FILENAME_PATTERN = re.compile(r"[^A-Za-z0-9._-]+")
 
 
 def ensure_upload_dir() -> Path:
@@ -12,10 +15,23 @@ def ensure_upload_dir() -> Path:
     return upload_dir
 
 
+def sanitize_filename(filename: str) -> str:
+    """Return a storage-safe basename without trusting client-supplied paths."""
+    basename = Path(filename.replace("\\", "/")).name.strip()
+    sanitized = _SAFE_FILENAME_PATTERN.sub("_", basename)
+    if sanitized in {"", ".", ".."}:
+        raise ValueError("Uploaded file must include a valid filename.")
+    return sanitized
+
+
 def validate_file_extension(filename: str) -> None:
     ext = Path(filename).suffix.lstrip(".").lower()
     if ext not in settings.ALLOWED_EXTENSIONS:
         raise ValueError(f"File type '.{ext}' is not allowed.")
+
+
+def compute_content_hash(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
 
 
 def compute_file_hash(file_path: Path) -> str:

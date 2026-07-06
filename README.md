@@ -17,7 +17,7 @@ For detailed architecture diagrams (system, sequence, class, ER, RAG pipeline, q
 | Safety | Guardrails AI |
 | Observability | Langfuse (optional) |
 | Frontend | React 19 + Vite + Tailwind CSS 4 |
-| Containers | Docker + Docker Compose |
+| Cloud deployment | Vercel + Render + Neon + Qdrant + S3 |
 
 ## Features
 
@@ -33,9 +33,22 @@ For detailed architecture diagrams (system, sequence, class, ER, RAG pipeline, q
 
 - **Python 3.12+**
 - **Node.js 20+** (for the frontend)
-- **Docker & Docker Compose** (for PostgreSQL + pgvector)
+- **PostgreSQL + pgvector** (local, Supabase, or optional Docker for development)
 - **OpenAI API key** (required for embeddings and chat)
 - **Anthropic API key** (optional, used as LLM fallback)
+
+## Cloud Deployment
+
+The production deployment uses managed services and does not require Docker:
+
+- Frontend: Vercel
+- Backend: Render
+- Database: Neon PostgreSQL
+- Vector search: Qdrant Cloud
+- File storage: S3-compatible object storage (AWS S3 / Cloudflare R2)
+- Secrets: platform environment variables
+
+See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for the complete deployment guide.
 
 ## Quick Start
 
@@ -57,7 +70,7 @@ DATABASE_URL=postgresql+asyncpg://legaldoc:legaldoc_secret@localhost:5432/legald
 DATABASE_SYNC_URL=postgresql+psycopg2://legaldoc:legaldoc_secret@localhost:5432/legaldoc_navigator
 ```
 
-### 2. Start PostgreSQL
+### 2. Start PostgreSQL locally
 
 ```bash
 docker compose up -d postgres
@@ -128,7 +141,7 @@ curl -X POST http://localhost:8000/query \
   -d '{"question": "What are the key terms in this contract?"}'
 ```
 
-## Docker (Full Stack)
+## Optional Local Docker (Full Stack)
 
 Run both the API and PostgreSQL in containers:
 
@@ -183,7 +196,8 @@ c3-legaldoc-navigator/
 │   └── ARCHITECTURE.md         # Architecture documentation (Mermaid)
 ├── scripts/                    # DB init scripts
 ├── docker-compose.yml
-├── Dockerfile
+├── render.yaml
+├── runtime.txt
 ├── requirements.txt
 └── .env.example
 ```

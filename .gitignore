@@ -20,6 +20,7 @@ env/
 # Data
 data/uploads/*
 !data/uploads/.gitkeep
+tmp/
 
 # Testing
 .pytest_cache/
