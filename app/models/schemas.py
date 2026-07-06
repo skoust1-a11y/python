@@ -117,6 +117,10 @@ class QueryRequest(BaseModel):
             "LLM provider override: openai, anthropic, google (gemini), groq, or azureopenai"
         ),
     )
+    include_contexts: bool = Field(
+        default=False,
+        description="If True, return the raw text chunks (contexts) used to formulate the answer.",
+    )
 
 
 class RoutingMetadata(BaseModel):
@@ -232,6 +236,10 @@ class QueryResponse(BaseModel):
         ...,
         ge=0.0,
         description="End-to-end response generation time in milliseconds",
+    )
+    contexts: list[str] | None = Field(
+        default=None,
+        description="The raw text contexts retrieved and used for prompt grounding.",
     )
 
 

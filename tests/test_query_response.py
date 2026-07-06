@@ -113,7 +113,12 @@ def test_build_query_response_returns_all_mode_fields():
     assert response.sources[0].document_name == "Agreement.pdf"
     assert "full_text" not in response.model_dump_json()
     assert "excerpt" not in response.model_dump_json()
+    assert response.contexts is None
     assert len(response.related_documents) == 1
     assert response.related_documents[0].name == "Agreement.pdf"
     assert len(response.follow_up_questions) >= 1
     assert response.latency_ms == 4200.5
+
+    # Check with include_contexts=True
+    response_with_ctx = build_query_response("What is the notice period?", result, include_contexts=True)
+    assert response_with_ctx.contexts == ["chunk text must not leak"]

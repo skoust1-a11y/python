@@ -42,4 +42,4 @@ async def query_documents(
         provider=body.provider,
     )
 
-    return build_query_response(body.question, result)
+    return build_query_response(body.question, result, include_contexts=body.include_contexts)

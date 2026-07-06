@@ -42,7 +42,11 @@ def _clean_mode_answer(answer: str) -> str:
     return cleaned
 
 
-def build_query_response(question: str, result: QueryResult | Any) -> QueryResponse:
+def build_query_response(
+    question: str,
+    result: QueryResult | Any,
+    include_contexts: bool = False,
+) -> QueryResponse:
     """Convert an internal query result into the public structured response."""
     sources = format_document_citations(result.sources)
     responses = result.responses
@@ -53,6 +57,14 @@ def build_query_response(question: str, result: QueryResult | Any) -> QueryRespo
         sources=sources,
         response_mode="analysis",
     )
+
+    contexts = None
+    if include_contexts and result.sources:
+        contexts = [
+            source.get("full_text") or source.get("excerpt", "")
+            for source in result.sources
+            if isinstance(source, dict) and (source.get("full_text") or source.get("excerpt"))
+        ]
 
     return QueryResponse(
         strict=_clean_mode_answer(responses.strict),
@@ -65,4 +77,5 @@ def build_query_response(question: str, result: QueryResult | Any) -> QueryRespo
         related_documents=build_related_documents(sources),
         follow_up_questions=follow_up_questions,
         latency_ms=result.latency_ms,
+        contexts=contexts,
     )
