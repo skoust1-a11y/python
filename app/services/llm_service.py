@@ -12,6 +12,11 @@ from llama_index.llms.openai import OpenAI
 
 from app.core.config import settings
 from app.core.exceptions import LLMProviderError
+from app.observability.tracing import (
+    observe,
+    trace_llm_messages,
+    update_current_generation,
+)
 from app.utils.google_http import build_google_genai_http_options, build_httpx_clients
 
 logger = logging.getLogger(__name__)
@@ -191,6 +196,7 @@ class LLMService:
                 api_version=settings.AZURE_OPENAI_API_VERSION,
             )
 
+    @observe(name="llm-chat", as_type="generation", capture_input=False, capture_output=False)
     async def achat_with_fallback(
         self,
         messages,
@@ -261,6 +267,12 @@ class LLMService:
                 )
                 attempt_results[candidate] = "SUCCESS"
                 final_provider = candidate
+                update_current_generation(
+                    input={"messages": trace_llm_messages(messages)},
+                    output=content,
+                    model=str(model),
+                    metadata={"provider": candidate},
+                )
                 return content, candidate
             except Exception as exc:
                 elapsed_ms = (time.perf_counter() - start) * 1000

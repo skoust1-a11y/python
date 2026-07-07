@@ -43,7 +43,7 @@ export function StickyModeSelector({
         }`}
       >
         <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          Analysis mode
+          Response mode
         </p>
         <ResponseModeToggles
           activeMode={activeMode}

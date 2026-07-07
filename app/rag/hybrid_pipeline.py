@@ -32,6 +32,7 @@ from app.services.llm_service import LLMService
 from app.services.search_service import SearchService
 from app.services.sql_query_executor import SqlQueryExecutor, SqlRetrievalResult
 from app.services.sql_query_planner import SqlQueryPlan, SqlQueryPlanner
+from app.utils.evidence_validator import filter_public_sources, validate_retrieved_evidence
 
 
 @dataclass
@@ -91,11 +92,16 @@ class HybridPipeline:
             document_id=document_id,
         )
 
-    def _build_synthesizer(self, provider: str | None = None) -> LegalResponseSynthesizer:
+    def _build_synthesizer(
+        self,
+        provider: str | None = None,
+        top_k: int | None = None,
+    ) -> LegalResponseSynthesizer:
         return LegalResponseSynthesizer(
             self.llm_service,
             self.prompt_manager,
             provider=provider,
+            top_k=top_k or self.top_k,
         )
 
     async def retrieve_hybrid(
@@ -193,11 +199,22 @@ class HybridPipeline:
         *,
         provider: str | None = None,
     ) -> ModeResponses:
-        synthesizer = self._build_synthesizer(provider or retrieval.provider)
+        synthesizer = self._build_synthesizer(provider or retrieval.provider, top_k=self.top_k)
         return await synthesizer.synthesize_all_modes_from_context(
             question,
             retrieval.context_text,
             mode=retrieval.retrieval_mode,
+            sources=retrieval.sources,
+            retrieved_count=retrieval.retrieved_count,
+            evidence_sufficient=retrieval.evidence_sufficient,
+        )
+
+    @staticmethod
+    def _public_sources(retrieval: PipelineRetrievalResult) -> list[dict]:
+        """Return retrieval sources — see ``RAGPipeline._public_sources``."""
+        return filter_public_sources(
+            retrieval.sources,
+            evidence_sufficient=retrieval.evidence_sufficient,
         )
 
     async def run_hybrid(
@@ -293,20 +310,38 @@ class HybridPipeline:
             structured_metadata=_serialize_metadata(sql_result),
             vector_count=vector_count,
             sql_count=sql_result.total_count,
+            **self._evidence_validation_fields(question, sources),
         )
+
+    @staticmethod
+    def _evidence_validation_fields(
+        question: str,
+        sources: list[dict],
+    ) -> dict[str, bool | float]:
+        validation = validate_retrieved_evidence(question, sources)
+        return {
+            "evidence_sufficient": validation.sufficient,
+            "evidence_relevance": validation.relevance,
+        }
 
     def _to_pipeline_result(
         self,
         retrieval: PipelineRetrievalResult,
         responses: ModeResponses,
     ) -> HybridPipelineResult:
+        public_sources = self._public_sources(retrieval)
+        confidence_score = (
+            retrieval.confidence_score
+            if retrieval.evidence_sufficient
+            else retrieval.evidence_relevance
+        )
         return HybridPipelineResult(
             answer=responses.explain,
             responses=responses,
-            sources=retrieval.sources,
+            sources=public_sources,
             structured_metadata=retrieval.structured_metadata or _empty_metadata(),
             explanation=retrieval.explanation,
-            confidence_score=retrieval.confidence_score,
+            confidence_score=confidence_score,
             provider=retrieval.provider,
             retrieved_count=retrieval.retrieved_count,
             vector_count=retrieval.vector_count,

@@ -192,6 +192,24 @@ class Settings(BaseSettings):
     OVERLAP_MERGE_MIN_RATIO: float = 0.12
     NEAR_DUPLICATE_JACCARD_THRESHOLD: float = 0.85
 
+    # Evidence mode — minimum retrieval quality before showing extracted clauses
+    EVIDENCE_RELEVANCE_THRESHOLD: float = 0.20
+    EVIDENCE_MIN_CHUNK_SIMILARITY: float = 0.35
+    EVIDENCE_QUERY_OVERLAP_THRESHOLD: float = 0.15
+
+    # Response modes — set to true to re-enable Analysis mode LLM execution
+    ENABLE_ANALYSIS_MODE: bool = False
+
+    # BM25 keyword search
+    BM25_DEFAULT_TOP_K: int = 10
+    BM25_SNIPPET_MAX_CHARS: int = 400
+    BM25_CACHE_MAX_ENTRIES: int = 8
+
+    # Document search (/search) — independent from /query retrieval
+    SEARCH_SEMANTIC_THRESHOLD: float = 0.55
+    SEARCH_BM25_MIN_RAW_SCORE: float = 0.01
+    SEARCH_CANDIDATE_POOL_MULTIPLIER: int = 3
+
     # Context compression (pre-LLM prompt minimization)
     ENABLE_CONTEXT_COMPRESSION: bool = False
     MAX_CONTEXT_TOKENS: int = 6000
@@ -233,6 +251,7 @@ class Settings(BaseSettings):
     LANGFUSE_PUBLIC_KEY: str = ""
     LANGFUSE_SECRET_KEY: str = ""
     LANGFUSE_HOST: str = "https://cloud.langfuse.com"
+    LANGFUSE_BASE_URL: str = ""
 
     # RAG evaluation
     EVAL_OUTPUT_DIR: str = "./data/evaluation/results"

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from llama_index.core.schema import NodeWithScore, TextNode
 
 from app.core.config import settings
-from app.rag.merge import _dedup_key
+from app.utils.rank_fusion import node_dedup_key as _dedup_key
 
 _STOP_WORDS = frozenset(
     {
@@ -65,6 +65,7 @@ def rank_retrieval_results(
     query: str,
     *,
     top_k: int | None = None,
+    cap_at_final_top_k: bool = True,
 ) -> tuple[list[NodeWithScore], RankingStats]:
     """
     Deduplicate, merge overlapping chunks, rerank, and return the top results.
@@ -76,7 +77,11 @@ def rank_retrieval_results(
     deduped, duplicates_removed = deduplicate_chunks(nodes)
     merged, overlaps_merged = merge_overlapping_chunks(deduped)
     reranked = rerank_chunks(merged, query)
-    final_k = _resolve_final_top_k(top_k)
+    final_k = (
+        _resolve_final_top_k(top_k)
+        if cap_at_final_top_k
+        else (top_k or settings.TOP_K_RETRIEVAL)
+    )
     output = reranked[:final_k]
 
     dominant_document_id = _dominant_document_id(reranked)

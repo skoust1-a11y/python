@@ -11,21 +11,29 @@ STRICT_INSUFFICIENT_INFO_RESPONSE = (
     "answer this question."
 )
 
+EVIDENCE_NONE_FOUND_PHRASES: tuple[str, ...] = (
+    "no relevant clauses found",
+    "no evidence found",
+)
+
 INSUFFICIENT_INFO_PHRASES: tuple[str, ...] = (
     "could not find relevant",
     "could not find sufficient",
     "could not find sufficient information in the uploaded documents",
     "does not contain enough",
     "does not contain sufficient",
+    "do not contain information",
+    "does not contain information",
     "insufficient information",
     "not enough information",
     "no relevant information",
+    "no relevant clauses found",
     "unable to answer",
     "cannot answer based on",
     "not found in the indexed",
     "not found in the provided",
     "not found in the retrieved",
-)
+) + EVIDENCE_NONE_FOUND_PHRASES
 
 # Prescriptive language that constitutes legal advice or recommendations.
 LEGAL_ADVICE_PATTERNS: tuple[str, ...] = (

@@ -106,7 +106,10 @@ def test_build_query_response_returns_all_mode_fields():
     assert response.strict == "Strict answer."
     assert response.explain == "Explain answer."
     assert response.analysis == "Analysis answer."
-    assert response.confidence == 0.88
+    # Without structured analysis, confidence is evidence-computed from sources + explain answer.
+    assert 0.0 < response.confidence <= 1.0
+    assert response.relevance > 0.0
+    assert response.faithfulness == 1.0  # no claims to evaluate
     assert response.confidence_level == "High"
     assert response.verification_notice is None
     assert len(response.sources) == 1

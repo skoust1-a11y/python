@@ -121,6 +121,16 @@ class QueryRequest(BaseModel):
         default=False,
         description="If True, return the raw text chunks (contexts) used to formulate the answer.",
     )
+    session_id: str | None = Field(
+        default=None,
+        max_length=128,
+        description="Optional session identifier for Langfuse trace grouping.",
+    )
+    user_id: str | None = Field(
+        default=None,
+        max_length=128,
+        description="Optional user identifier for Langfuse trace attribution.",
+    )
 
 
 class RoutingMetadata(BaseModel):
@@ -199,17 +209,60 @@ class RelatedDocument(BaseModel):
     )
 
 
+class ClaimEvaluationResponse(BaseModel):
+    """A single factual claim evaluated against retrieved evidence."""
+
+    claim: str
+    status: str = Field(..., description="supported | partially_supported | unsupported")
+    supporting_sources: list[str] = Field(default_factory=list)
+    notes: str | None = None
+
+
+class AnalysisEvaluationResponse(BaseModel):
+    """Structured claim evaluation and evidence-based scores."""
+
+    claims: list[ClaimEvaluationResponse] = Field(default_factory=list)
+    missing_evidence: list[str] = Field(default_factory=list)
+    missing_information: list[str] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+    inferences: list[str] = Field(default_factory=list)
+    calculations: list[str] = Field(default_factory=list)
+    ambiguities: list[str] = Field(default_factory=list)
+    hallucination_detected: bool = False
+    summary: str | None = None
+    metrics_explanation: str | None = None
+    faithfulness: float = Field(default=0.0, ge=0.0, le=1.0)
+    relevance: float = Field(default=0.0, ge=0.0, le=1.0)
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+
+
 class QueryResponse(BaseModel):
     """Structured query answer returned to API clients."""
 
-    strict: str = Field(..., description="Evidence mode answer — documents only")
+    strict: str = Field(..., description="Evidence mode — extracted supporting clauses")
     explain: str = Field(..., description="Explain mode answer — plain-language explanation")
-    analysis: str = Field(..., description="Analysis mode answer — structured legal review")
+    analysis: str = Field(..., description="Analysis mode — answer evaluation report")
     confidence: float = Field(
         ...,
         ge=0.0,
         le=1.0,
-        description="Retrieval confidence score (0–1) shared across all modes",
+        description="Evidence-based confidence score (0–1)",
+    )
+    faithfulness: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Percentage of explain-answer claims supported by evidence",
+    )
+    relevance: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Retrieval relevance of chunks to the user question",
+    )
+    analysis_evaluation: AnalysisEvaluationResponse | None = Field(
+        default=None,
+        description="Structured claim evaluation from Analysis mode",
     )
     confidence_level: str = Field(
         ...,
@@ -240,6 +293,97 @@ class QueryResponse(BaseModel):
     contexts: list[str] | None = Field(
         default=None,
         description="The raw text contexts retrieved and used for prompt grounding.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Keyword search (BM25)
+# ---------------------------------------------------------------------------
+
+
+class KeywordSearchRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=500)
+    document_id: UUID | None = Field(
+        default=None,
+        description="Optional scope: search only within this document",
+    )
+    top_k: int | None = Field(
+        default=None,
+        ge=1,
+        le=50,
+        description="Maximum number of search result matches to return",
+    )
+    exact_phrase: bool = Field(
+        default=False,
+        description="When true, require the exact phrase in each returned chunk",
+    )
+
+
+class SnippetHighlight(BaseModel):
+    text: str
+    matched: bool
+
+
+class DirectEvidenceMetadata(BaseModel):
+    """Pinpoint and retrieval metadata for a direct-evidence chunk."""
+
+    chunk_id: UUID
+    document_id: UUID
+    clause_id: UUID | None = None
+    clause_number: str | None = None
+    clause_title: str | None = None
+    relevance_type: str = Field(
+        default="match",
+        description="How the chunk matched: match (search) or direct (evidence mode)",
+    )
+    match_sources: list[str] = Field(
+        default_factory=list,
+        description="Retrieval paths that surfaced this chunk: bm25 and/or semantic",
+    )
+    raw_score: float = Field(
+        default=0.0,
+        ge=0.0,
+        description="Unnormalized retrieval score before clamping to 0–1",
+    )
+
+
+class DirectEvidenceItem(BaseModel):
+    """One search result card returned by document search."""
+
+    document: str = Field(..., description="Human-readable document name")
+    page: int | None = Field(default=None, description="Source page number when available")
+    chunk: int | None = Field(default=None, description="Chunk index within the document")
+    score: float = Field(..., ge=0.0, le=1.0, description="Normalized retrieval score")
+    content: str = Field(
+        ...,
+        description="Focused excerpt around the best-matching region in the chunk",
+    )
+    highlights: list[SnippetHighlight] = Field(
+        default_factory=list,
+        description="Excerpt fragments with keyword match highlighting",
+    )
+    metadata: DirectEvidenceMetadata
+
+
+class KeywordSearchResponse(BaseModel):
+    query: str
+    total_candidates: int = Field(
+        ...,
+        ge=0,
+        description="Number of indexed chunks considered for this search scope",
+    )
+    result_count: int = Field(..., ge=0)
+    results: list[DirectEvidenceItem]
+    latency_ms: float = Field(..., ge=0.0)
+    bm25_hit_count: int = Field(
+        default=0,
+        ge=0,
+        description="BM25 candidates considered before fusion",
+    )
+    semantic_hit_count: int = Field(
+        default=0,
+        ge=0,
+        description="Semantic candidates considered before fusion",
     )
 
 

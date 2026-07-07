@@ -6,6 +6,8 @@ import type {
   FeedbackRequest,
   FeedbackResponse,
   HealthResponse,
+  KeywordSearchRequest,
+  KeywordSearchResponse,
   QueryRequest,
   QueryResponse,
 } from "./types";
@@ -69,6 +71,16 @@ export function uploadDocument(
 
 export function queryDocuments(body: QueryRequest): Promise<QueryResponse> {
   return request<QueryResponse>("/query", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function keywordSearchDocuments(
+  body: KeywordSearchRequest,
+): Promise<KeywordSearchResponse> {
+  return request<KeywordSearchResponse>("/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

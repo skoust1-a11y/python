@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from app.prompts.types import RESPONSE_MODES, ResponseMode
+
+if TYPE_CHECKING:
+    from app.models.analysis_evaluation import AnalysisEvaluation
 
 
 @dataclass(frozen=True)
@@ -12,6 +16,7 @@ class ModeResponses:
     strict: str
     explain: str
     analysis: str
+    analysis_evaluation: AnalysisEvaluation | None = None
 
     def as_dict(self) -> dict[ResponseMode, str]:
         return {

@@ -85,7 +85,7 @@ def compute_confidence(
     """
     effective_top_k = top_k or settings.TOP_K_RETRIEVAL
 
-    retrieval = _score_retrieval_similarity(sources)
+    retrieval = compute_retrieval_relevance(sources)
     chunk_support = _score_chunk_support(retrieved_count, effective_top_k)
     citation = _score_citation_quality(answer, sources)
     llm = _score_llm_confidence(
@@ -163,7 +163,8 @@ def _rank_weighted_average(scores: list[float]) -> float:
     return round(min(max(normalized, 0.0), 1.0), 4)
 
 
-def _score_retrieval_similarity(sources: list[dict[str, Any]]) -> float:
+def compute_retrieval_relevance(sources: list[dict[str, Any]]) -> float:
+    """Public helper: rank-weighted average of source retrieval scores (0–1)."""
     return _rank_weighted_average(_extract_scores_from_sources(sources))
 
 

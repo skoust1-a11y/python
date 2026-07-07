@@ -61,13 +61,20 @@ class LegalContextBuilder:
             label = f"[Source {index}]"
             document_id = str(metadata.get("document_id", "unknown"))
             chunk_index = int(metadata.get("chunk_index", index - 1))
-            score = float(node_with_score.score or metadata.get("score", 0.0))
+            semantic_score = metadata.get("semantic_score")
+            score = float(
+                semantic_score
+                if semantic_score is not None
+                else (node_with_score.score or metadata.get("score", 0.0))
+            )
             excerpt = (node.get_content() or "")[: self._excerpt_max_chars]
             full_text = node.get_content() or ""
+            location_parts = _format_location_metadata(metadata)
 
             blocks.append(
                 f"{label} [{metadata.get('source_type', 'vector')}] "
-                f"(document={document_id}, chunk={chunk_index})\n{full_text}"
+                f"(document={_document_display_name(metadata, document_id)}, "
+                f"{location_parts}, chunk={chunk_index})\n{full_text}"
             )
             sources.append(
                 SourceReference(
@@ -89,3 +96,24 @@ class LegalContextBuilder:
             context_text="\n\n---\n\n".join(blocks),
             sources=sources,
         )
+
+
+def _document_display_name(metadata: dict, document_id: str) -> str:
+    for key in ("document_name", "filename", "title", "source_file"):
+        value = metadata.get(key)
+        if value:
+            return str(value)
+    return document_id
+
+
+def _format_location_metadata(metadata: dict) -> str:
+    parts: list[str] = []
+    if metadata.get("clause_number"):
+        parts.append(f"clause={metadata['clause_number']}")
+    if metadata.get("clause_title"):
+        parts.append(f"section={metadata['clause_title']}")
+    if metadata.get("page_number") is not None:
+        parts.append(f"page={metadata['page_number']}")
+    if not parts:
+        return "location=not specified"
+    return ", ".join(parts)

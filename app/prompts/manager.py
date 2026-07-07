@@ -46,11 +46,23 @@ class PromptManager:
         context: str,
         question: str,
         retrieval_mode: str = "rag",
+        explain_answer: str = "",
+        evidence_output: str = "",
     ) -> str:
         """Build the user prompt for synthesis using the selected response mode."""
         mode = self.normalize_response_mode(response_mode)
         template = _PROMPT_MODULES[mode].USER_PROMPT_TEMPLATE
-        user_content = template.format(context=context, question=question)
+
+        if mode == "analysis":
+            user_content = template.format(
+                context=context,
+                question=question,
+                explain_answer=explain_answer,
+                evidence_output=evidence_output,
+            )
+        else:
+            user_content = template.format(context=context, question=question)
+
         if retrieval_mode in {"hybrid", "sql"}:
             user_content = user_content.replace(
                 "Context from legal documents:",
@@ -67,6 +79,8 @@ class PromptManager:
         question: str,
         response_mode: str | None = None,
         retrieval_mode: str = "rag",
+        explain_answer: str = "",
+        evidence_output: str = "",
     ) -> list[ChatMessage]:
         """Build chat messages for legal answer synthesis."""
         return [
@@ -81,6 +95,27 @@ class PromptManager:
                     context=context,
                     question=question,
                     retrieval_mode=retrieval_mode,
+                    explain_answer=explain_answer,
+                    evidence_output=evidence_output,
                 ),
             ),
         ]
+
+    def build_analysis_messages(
+        self,
+        *,
+        context: str,
+        question: str,
+        explain_answer: str,
+        evidence_output: str,
+        retrieval_mode: str = "rag",
+    ) -> list[ChatMessage]:
+        """Build chat messages for Analysis mode (evaluates Explain + Evidence outputs)."""
+        return self.build_synthesis_messages(
+            context=context,
+            question=question,
+            response_mode="analysis",
+            retrieval_mode=retrieval_mode,
+            explain_answer=explain_answer,
+            evidence_output=evidence_output,
+        )

@@ -11,7 +11,6 @@ export const GENERATION_STEPS: ProgressStep[] = [
   { id: "analyze", label: "Analyzing clauses..." },
   { id: "strict", label: "Generating Evidence response..." },
   { id: "explain", label: "Preparing Explain response..." },
-  { id: "analysis", label: "Preparing Analysis review..." },
   { id: "complete", label: "Completed" },
 ];
 

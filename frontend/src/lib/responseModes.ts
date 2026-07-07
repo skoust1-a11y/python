@@ -1,10 +1,18 @@
 export type ResponseMode = "strict" | "explain" | "analysis";
 
+/** Set to true to show Analysis mode in the response mode selector. */
+export const ANALYSIS_MODE_VISIBLE = false;
+
 export const RESPONSE_MODES: ResponseMode[] = [
   "strict",
   "explain",
   "analysis",
 ];
+
+/** Modes shown in the UI — excludes hidden modes without removing their implementation. */
+export const VISIBLE_RESPONSE_MODES: ResponseMode[] = ANALYSIS_MODE_VISIBLE
+  ? RESPONSE_MODES
+  : RESPONSE_MODES.filter((mode) => mode !== "analysis");
 
 export const DEFAULT_RESPONSE_MODE: ResponseMode = "explain";
 
@@ -28,13 +36,16 @@ const LEGACY_MODE_MAP: Record<string, ResponseMode> = {
 };
 
 export function normalizeResponseMode(value: string | null | undefined): ResponseMode {
+  let mode = DEFAULT_RESPONSE_MODE;
   if (value && RESPONSE_MODES.includes(value as ResponseMode)) {
-    return value as ResponseMode;
+    mode = value as ResponseMode;
+  } else if (value && value in LEGACY_MODE_MAP) {
+    mode = LEGACY_MODE_MAP[value];
   }
-  if (value && value in LEGACY_MODE_MAP) {
-    return LEGACY_MODE_MAP[value];
+  if (!ANALYSIS_MODE_VISIBLE && mode === "analysis") {
+    return DEFAULT_RESPONSE_MODE;
   }
-  return DEFAULT_RESPONSE_MODE;
+  return mode;
 }
 
 export function loadStoredResponseMode(): ResponseMode {

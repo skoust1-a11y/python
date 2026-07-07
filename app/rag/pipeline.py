@@ -7,6 +7,7 @@ from llama_index.core.schema import QueryBundle
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.observability.tracing import observe, update_current_span
 from app.rag.confidence import compute_confidence_score
 from app.rag.context_builder import LegalContextBuilder, internal_source_to_dict
 from app.rag.ranking import rank_retrieval_results
@@ -19,6 +20,7 @@ from app.services.context_compression_service import ContextCompressionService
 from app.services.embedding_service import EmbeddingService
 from app.services.llm_service import LLMService
 from app.rag.retrieval_result import PipelineRetrievalResult
+from app.utils.evidence_validator import filter_public_sources, validate_retrieved_evidence
 
 
 @dataclass
@@ -77,13 +79,16 @@ class RAGPipeline:
     def _build_synthesizer(
         self,
         provider: str | None = None,
+        top_k: int | None = None,
     ) -> LegalResponseSynthesizer:
         return LegalResponseSynthesizer(
             self.llm_service,
             self.prompt_manager,
             provider=provider,
+            top_k=top_k or self.top_k,
         )
 
+    @observe(name="rag-retrieval", as_type="retriever", capture_input=False, capture_output=False)
     async def retrieve(
         self,
         question: str,
@@ -117,6 +122,8 @@ class RAGPipeline:
                 retrieved_count=0,
                 retrieval_mode="rag",
                 contexts=[],
+                evidence_sufficient=False,
+                evidence_relevance=0.0,
             )
 
         built_context = self.context_builder.build(nodes)
@@ -131,6 +138,18 @@ class RAGPipeline:
             for node_with_score in nodes
         ]
 
+        update_current_span(
+            input={"question": question},
+            output={
+                "retrieved_count": len(nodes),
+                "confidence_score": confidence,
+            },
+            metadata={
+                "document_id": str(document_id) if document_id else None,
+                "top_k": top_k or self.top_k,
+            },
+        )
+
         return PipelineRetrievalResult(
             context_text=compressed.context_text,
             sources=sources,
@@ -140,8 +159,21 @@ class RAGPipeline:
             retrieved_count=len(nodes),
             retrieval_mode="rag",
             contexts=contexts,
+            **self._evidence_validation_fields(question, sources),
         )
 
+    @staticmethod
+    def _evidence_validation_fields(
+        question: str,
+        sources: list[dict],
+    ) -> dict[str, bool | float]:
+        validation = validate_retrieved_evidence(question, sources)
+        return {
+            "evidence_sufficient": validation.sufficient,
+            "evidence_relevance": validation.relevance,
+        }
+
+    @observe(name="rag-synthesis", as_type="chain", capture_input=False, capture_output=False)
     async def synthesize_all_modes(
         self,
         question: str,
@@ -150,11 +182,32 @@ class RAGPipeline:
         provider: str | None = None,
     ) -> ModeResponses:
         """Generate all response modes from a pre-built retrieval context."""
-        synthesizer = self._build_synthesizer(provider or retrieval.provider)
-        return await synthesizer.synthesize_all_modes_from_context(
+        synthesizer = self._build_synthesizer(provider or retrieval.provider, top_k=self.top_k)
+        responses = await synthesizer.synthesize_all_modes_from_context(
             question,
             retrieval.context_text,
             mode=retrieval.retrieval_mode,
+            sources=retrieval.sources,
+            retrieved_count=retrieval.retrieved_count,
+            evidence_sufficient=retrieval.evidence_sufficient,
+        )
+        update_current_span(
+            input={"question": question, "retrieved_count": retrieval.retrieved_count},
+            output={"modes": list(responses.as_dict().keys())},
+        )
+        return responses
+
+    @staticmethod
+    def _public_sources(retrieval: PipelineRetrievalResult) -> list[dict]:
+        """Return retrieval sources for the API and guardrails.
+
+        Do not strip sources when evidence validation fails — that hid related
+        provisions from the UI and left Explain-mode guardrails with an empty
+        corpus. ``evidence_sufficient`` gates strict-mode LLM extraction only.
+        """
+        return filter_public_sources(
+            retrieval.sources,
+            evidence_sufficient=retrieval.evidence_sufficient,
         )
 
     async def run(
@@ -179,12 +232,18 @@ class RAGPipeline:
             retrieval,
             provider=provider,
         )
+        public_sources = self._public_sources(retrieval)
+        confidence_score = (
+            retrieval.confidence_score
+            if retrieval.evidence_sufficient
+            else retrieval.evidence_relevance
+        )
 
         return RAGPipelineResult(
             answer=responses.explain,
             responses=responses,
-            sources=retrieval.sources,
-            confidence_score=retrieval.confidence_score,
+            sources=public_sources,
+            confidence_score=confidence_score,
             provider=retrieval.provider,
             retrieved_count=retrieval.retrieved_count,
             contexts=retrieval.contexts,

@@ -7,6 +7,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
 from app.core.exceptions import LLMProviderError
+from app.observability.tracing import observe, update_current_generation
 from app.utils.google_http import build_google_genai_http_options
 
 SUPPORTED_EMBEDDING_PROVIDERS = frozenset({"openai", "google"})
@@ -61,19 +62,29 @@ class EmbeddingService:
         return self._provider
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=10))
+    @observe(name="text-embedding", as_type="embedding", capture_input=False, capture_output=False)
     async def embed_text(self, text: str) -> list[float]:
         """Embed a single text string."""
         if not text.strip():
             raise ValueError("Cannot embed empty text")
         try:
             if self._provider == "openai":
-                return await self._embed_openai([text])[0]
-            return await self._google_embedder.aget_text_embedding(text)  # type: ignore[union-attr]
+                vector = (await self._embed_openai([text]))[0]
+            else:
+                vector = await self._google_embedder.aget_text_embedding(text)  # type: ignore[union-attr]
+            update_current_generation(
+                input={"text_length": len(text)},
+                output={"dimensions": len(vector)},
+                model=self._model,
+                metadata={"provider": self._provider},
+            )
+            return vector
         except LLMProviderError:
             raise
         except Exception as exc:
             raise LLMProviderError(self._provider, str(exc)) from exc
 
+    @observe(name="text-embedding-batch", as_type="embedding", capture_input=False, capture_output=False)
     async def embed_texts(self, texts: list[str]) -> list[list[float]]:
         """Embed multiple texts, preserving input order."""
         if not texts:
@@ -83,8 +94,16 @@ class EmbeddingService:
 
         try:
             if self._provider == "openai":
-                return await self._embed_openai(texts)
-            return await self._google_embedder.aget_text_embedding_batch(texts)  # type: ignore[union-attr]
+                vectors = await self._embed_openai(texts)
+            else:
+                vectors = await self._google_embedder.aget_text_embedding_batch(texts)  # type: ignore[union-attr]
+            update_current_generation(
+                input={"batch_size": len(texts)},
+                output={"dimensions": len(vectors[0]) if vectors else 0},
+                model=self._model,
+                metadata={"provider": self._provider},
+            )
+            return vectors
         except LLMProviderError:
             raise
         except Exception as exc:

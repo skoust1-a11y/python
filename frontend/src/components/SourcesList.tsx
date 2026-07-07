@@ -1,26 +1,13 @@
 import { Link } from "react-router-dom";
 import { ExternalLink, FileText, Hash } from "lucide-react";
-import type { CitationLocation, SourceCitation } from "@/api/types";
+import type { SourceCitation } from "@/api/types";
+import { formatCitationLocation } from "@/lib/citationFormat";
 import { formatPercent } from "@/lib/utils";
 
 interface SourcesListProps {
   sources: SourceCitation[];
   compact?: boolean;
   variant?: "default" | "panel";
-}
-
-function formatLocation(location: CitationLocation): string {
-  const parts: string[] = [];
-  if (location.clause_number) {
-    parts.push(`Clause ${location.clause_number}`);
-  }
-  if (location.clause_title) {
-    parts.push(location.clause_title);
-  }
-  if (location.page_number != null) {
-    parts.push(`Page ${location.page_number}`);
-  }
-  return parts.join(" · ");
 }
 
 export function SourcesList({ sources, compact = false }: SourcesListProps) {
@@ -75,7 +62,7 @@ export function SourcesList({ sources, compact = false }: SourcesListProps) {
                 {source.locations.length > 0 && (
                   <ul className="mt-2 space-y-1">
                     {source.locations.map((location, index) => {
-                      const label = formatLocation(location);
+                      const label = formatCitationLocation(location);
                       if (!label) return null;
                       return (
                         <li

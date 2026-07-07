@@ -21,3 +21,5 @@ class PipelineRetrievalResult:
     vector_count: int = 0
     sql_count: int = 0
     contexts: list[str] = field(default_factory=list)
+    evidence_sufficient: bool = True
+    evidence_relevance: float = 0.0

@@ -1,131 +1,37 @@
-"""Langfuse tracing integration for RAG query and evaluation runs."""
+"""Backward-compatible re-exports for Langfuse tracing."""
 
-from __future__ import annotations
+from app.observability.tracing import (
+    flush_traces,
+    get_langfuse_client,
+    init_langfuse_client,
+    is_tracing_enabled,
+    log_evaluation_scores,
+    log_query_result,
+    mask_sources_for_trace,
+    observe,
+    score_trace_metric,
+    shutdown_tracing,
+    trace_llm_messages,
+    trace_query,
+    traced,
+    update_current_generation,
+    update_current_span,
+)
 
-import logging
-from contextlib import contextmanager
-from typing import Any, Generator
-
-from app.core.config import settings
-
-logger = logging.getLogger(__name__)
-
-_langfuse_client = None
-
-
-def get_langfuse_client():
-    """Return a singleton Langfuse client when tracing is enabled."""
-    global _langfuse_client
-    if not settings.ENABLE_LANGFUSE:
-        return None
-    if not settings.LANGFUSE_PUBLIC_KEY or not settings.LANGFUSE_SECRET_KEY:
-        logger.warning("Langfuse enabled but keys are missing; tracing disabled")
-        return None
-    if _langfuse_client is None:
-        from langfuse import Langfuse
-
-        _langfuse_client = Langfuse(
-            public_key=settings.LANGFUSE_PUBLIC_KEY,
-            secret_key=settings.LANGFUSE_SECRET_KEY,
-            host=settings.LANGFUSE_HOST,
-        )
-    return _langfuse_client
-
-
-def flush_traces() -> None:
-    client = get_langfuse_client()
-    if client is not None:
-        client.flush()
-
-
-def _score_trace(observation: Any, *, name: str, value: float) -> None:
-    """Attach a score to the Langfuse trace backing an observation."""
-    score_trace = getattr(observation, "score_trace", None)
-    if callable(score_trace):
-        score_trace(name=name, value=value)
-        return
-    observation.score(name=name, value=value)
-
-
-def score_trace_metric(observation: Any, *, name: str, value: float) -> None:
-    """Public helper for attaching trace-level scores from call sites."""
-    _score_trace(observation, name=name, value=value)
-
-
-@contextmanager
-def trace_query(
-    *,
-    name: str,
-    question: str,
-    metadata: dict[str, Any] | None = None,
-) -> Generator[Any, None, None]:
-    """Create a Langfuse trace span for a query or evaluation item."""
-    client = get_langfuse_client()
-    if client is None:
-        yield None
-        return
-
-    with client.start_as_current_observation(
-        name=name,
-        as_type="chain",
-        input={"question": question},
-        metadata=metadata or {},
-    ) as observation:
-        try:
-            yield observation
-        finally:
-            flush_traces()
-
-
-def log_query_result(
-    trace: Any,
-    *,
-    answer: str,
-    sources: list[dict],
-    confidence_score: float,
-    route: str,
-    latency_ms: float,
-    cost_usd: float,
-    metadata: dict[str, Any] | None = None,
-) -> None:
-    """Attach generation output and scores to an active Langfuse trace."""
-    if trace is None:
-        return
-
-    trace.update(
-        output={"answer": answer, "sources": sources},
-        metadata={
-            "route": route,
-            "confidence_score": confidence_score,
-            **(metadata or {}),
-        },
-    )
-    _score_trace(trace, name="latency_ms", value=latency_ms)
-    _score_trace(trace, name="cost_usd", value=cost_usd)
-
-
-def log_evaluation_scores(
-    trace: Any,
-    *,
-    scores: dict[str, float],
-    run_name: str,
-) -> None:
-    """Log RAGAS metric scores to Langfuse."""
-    client = get_langfuse_client()
-    if client is None:
-        return
-
-    def _apply_scores(observation: Any) -> None:
-        for metric_name, value in scores.items():
-            if value is not None:
-                _score_trace(observation, name=metric_name, value=float(value))
-
-    if trace is not None:
-        _apply_scores(trace)
-    else:
-        with client.start_as_current_observation(
-            name=f"eval-{run_name}",
-            metadata={"type": "benchmark_evaluation"},
-        ) as eval_trace:
-            _apply_scores(eval_trace)
-    flush_traces()
+__all__ = [
+    "flush_traces",
+    "get_langfuse_client",
+    "init_langfuse_client",
+    "is_tracing_enabled",
+    "log_evaluation_scores",
+    "log_query_result",
+    "mask_sources_for_trace",
+    "observe",
+    "score_trace_metric",
+    "shutdown_tracing",
+    "trace_llm_messages",
+    "trace_query",
+    "traced",
+    "update_current_generation",
+    "update_current_span",
+]

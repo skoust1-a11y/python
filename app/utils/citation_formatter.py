@@ -95,6 +95,13 @@ def format_location_line(location: CitationLocation) -> str | None:
     return " · ".join(parts)
 
 
+def extract_location_from_metadata(metadata: dict[str, Any] | None) -> CitationLocation | None:
+    """Extract pinpoint metadata from chunk embed_metadata."""
+    if not metadata:
+        return None
+    return _extract_location(metadata)
+
+
 def _source_metadata(source: dict[str, Any]) -> dict[str, Any]:
     metadata = source.get("metadata")
     return metadata if isinstance(metadata, dict) else {}

@@ -24,9 +24,9 @@ async def lifespan(app: FastAPI):
     from app.services.llm_service import log_llm_configuration
 
     log_llm_configuration()
-    from app.evaluation.tracing import flush_traces, get_langfuse_client
+    from app.observability.tracing import init_langfuse_client
 
-    get_langfuse_client()
+    init_langfuse_client()
     from app.database.session import verify_database_connection
 
     await verify_database_connection()
@@ -40,7 +40,9 @@ async def lifespan(app: FastAPI):
         from app.dependencies import get_external_legal_search_service
 
         await get_external_legal_search_service().shutdown()
-    flush_traces()
+    from app.observability.tracing import shutdown_tracing
+
+    shutdown_tracing()
     logger.info("Shutting down %s", settings.APP_NAME)
 
 

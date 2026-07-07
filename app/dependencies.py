@@ -15,6 +15,10 @@ from app.rag.hybrid_pipeline import HybridPipeline
 from app.rag.pipeline import RAGPipeline
 from app.routing.router import Router
 from app.services.context_compression_service import ContextCompressionService
+from app.services.bm25_search_service import BM25SearchService
+from app.services.embedding_service import EmbeddingService
+from app.search.service import DocumentSearchService
+from app.services.search_service import SearchService
 from app.services.document_service import DocumentService
 from app.services.embedding_service import EmbeddingService
 from app.services.feedback_service import FeedbackService
@@ -150,6 +154,25 @@ def get_sql_retrieval_service(
     session: AsyncSession = Depends(get_db),
 ) -> SqlRetrievalService:
     return SqlRetrievalService(session=session)
+
+
+def get_bm25_search_service(
+    session: AsyncSession = Depends(get_db),
+) -> BM25SearchService:
+    return BM25SearchService(session=session)
+
+
+def get_document_search_service(
+    session: AsyncSession = Depends(get_db),
+    bm25_service: BM25SearchService = Depends(get_bm25_search_service),
+    embedding_service: EmbeddingService = Depends(get_embedding_service),
+) -> DocumentSearchService:
+    return DocumentSearchService(
+        session=session,
+        bm25_service=bm25_service,
+        search_service=SearchService(session, embedding_service),
+        embedding_service=embedding_service,
+    )
 
 
 def get_document_service(

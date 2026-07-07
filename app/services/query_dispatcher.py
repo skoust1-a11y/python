@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.observability.tracing import observe, update_current_span
 from app.prompts.manager import PromptManager
 from app.models.mode_responses import ModeResponses
 from app.rag.engine import RAGEngine
@@ -39,6 +40,8 @@ class QueryResult:
     explanation: str
     confidence_level: str = "Medium"
     verification_notice: str | None = None
+    faithfulness: float = 0.0
+    relevance: float = 0.0
     structured_metadata: dict | None = None
     vector_count: int = 0
     sql_count: int = 0
@@ -81,6 +84,7 @@ class QueryDispatcher:
         )
         self._rag_engine = RAGEngine(self._rag_pipeline)
 
+    @observe(name="query-dispatch", as_type="chain", capture_input=False, capture_output=False)
     async def dispatch(
         self,
         question: str,
@@ -104,7 +108,23 @@ class QueryDispatcher:
         route = routing.route
 
         if route == "hybrid":
-            return await self._run_hybrid(
+            result = await self._run_hybrid(
+                question,
+                routing,
+                document_id=document_id,
+                top_k=top_k,
+                similarity_threshold=similarity_threshold,
+                provider=provider,
+            )
+        elif route == "sql":
+            result = await self._run_sql(
+                question,
+                routing,
+                document_id=document_id,
+                provider=provider,
+            )
+        else:
+            result = await self._run_rag(
                 question,
                 routing,
                 document_id=document_id,
@@ -113,22 +133,19 @@ class QueryDispatcher:
                 provider=provider,
             )
 
-        if route == "sql":
-            return await self._run_sql(
-                question,
-                routing,
-                document_id=document_id,
-                provider=provider,
-            )
-
-        return await self._run_rag(
-            question,
-            routing,
-            document_id=document_id,
-            top_k=top_k,
-            similarity_threshold=similarity_threshold,
-            provider=provider,
+        update_current_span(
+            input={"question": question},
+            output={
+                "route": route,
+                "retrieved_count": result.retrieved_count,
+                "provider": result.provider,
+            },
+            metadata={
+                "routing_confidence": routing.confidence,
+                "document_id": str(document_id) if document_id else None,
+            },
         )
+        return result
 
     async def _run_rag(
         self,

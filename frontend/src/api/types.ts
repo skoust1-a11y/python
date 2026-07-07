@@ -62,6 +62,49 @@ export interface QueryRequest {
   provider?: string | null;
 }
 
+export interface KeywordSearchRequest {
+  query: string;
+  document_id?: string | null;
+  top_k?: number | null;
+  exact_phrase?: boolean;
+}
+
+export interface SnippetHighlight {
+  text: string;
+  matched: boolean;
+}
+
+export interface DirectEvidenceMetadata {
+  chunk_id: string;
+  document_id: string;
+  clause_id: string | null;
+  clause_number: string | null;
+  clause_title: string | null;
+  relevance_type: string;
+  match_sources: string[];
+  raw_score: number;
+}
+
+export interface DirectEvidenceItem {
+  document: string;
+  page: number | null;
+  chunk: number | null;
+  score: number;
+  content: string;
+  highlights: SnippetHighlight[];
+  metadata: DirectEvidenceMetadata;
+}
+
+export interface KeywordSearchResponse {
+  query: string;
+  total_candidates: number;
+  result_count: number;
+  results: DirectEvidenceItem[];
+  latency_ms: number;
+  bm25_hit_count: number;
+  semantic_hit_count: number;
+}
+
 export interface RoutingMetadata {
   route: string;
   reason: string;
@@ -100,11 +143,31 @@ export interface RelatedDocument {
   relevance: number;
 }
 
+export interface AnalysisEvaluationResponse {
+  claims: Array<{
+    claim: string;
+    status: string;
+    supporting_sources: string[];
+    notes: string | null;
+  }>;
+  missing_evidence: string[];
+  assumptions: string[];
+  inferences: string[];
+  calculations: string[];
+  summary: string | null;
+  faithfulness: number;
+  relevance: number;
+  confidence: number;
+}
+
 export interface QueryResponse {
   strict: string;
   explain: string;
   analysis: string;
   confidence: number;
+  faithfulness: number;
+  relevance: number;
+  analysis_evaluation: AnalysisEvaluationResponse | null;
   confidence_level: "High" | "Medium" | "Low";
   verification_notice: string | null;
   sources: SourceCitation[];

@@ -8,6 +8,7 @@ from llama_index.core.llms import ChatMessage, MessageRole
 
 from app.core.config import settings
 from app.core.exceptions import RouterError
+from app.observability.tracing import observe, trace_llm_messages, update_current_generation
 from app.prompts.templates import (
     QUERY_ROUTING_SYSTEM_PROMPT,
     QUERY_ROUTING_USER_PROMPT_TEMPLATE,
@@ -53,6 +54,7 @@ class Router:
             RouteDefinition(name=name.lower(), description=description, examples=examples)
         )
 
+    @observe(name="query-routing", as_type="chain", capture_input=False, capture_output=False)
     async def route(
         self,
         query: str,
@@ -83,7 +85,18 @@ class Router:
             response = await llm.achat(messages)
             raw = (response.message.content or "").strip()
             parsed = self._parse_response(raw)
-            return self._validate_decision(parsed)
+            decision = self._validate_decision(parsed)
+            update_current_generation(
+                input={"messages": trace_llm_messages(messages)},
+                output={
+                    "route": decision.route,
+                    "confidence": decision.confidence,
+                    "reason": decision.reason,
+                },
+                model=str(getattr(llm, "model", None) or "unknown"),
+                metadata={"step": "query-routing"},
+            )
+            return decision
         except RouterError:
             raise
         except Exception as exc:

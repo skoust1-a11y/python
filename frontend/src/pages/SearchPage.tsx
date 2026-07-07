@@ -1,25 +1,23 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search as SearchIcon, SlidersHorizontal } from "lucide-react";
-import { listDocuments, queryDocuments } from "@/api/client";
-import type { DocumentSummary, QueryResponse } from "@/api/types";
+import { keywordSearchDocuments, listDocuments } from "@/api/client";
+import type { DocumentSummary, KeywordSearchResponse } from "@/api/types";
 import { Card } from "@/components/Card";
+import { DirectEvidenceResults } from "@/components/evidence/DirectEvidenceResults";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { QueryResultPanel } from "@/components/QueryResultPanel";
-import { loadStoredResponseMode, storeResponseMode, type ResponseMode } from "@/lib/responseModes";
 
 export function SearchPage() {
   const [searchParams] = useSearchParams();
   const [query, setQuery] = useState("");
   const [documentId, setDocumentId] = useState(searchParams.get("doc") ?? "");
-  const [topK, setTopK] = useState(5);
-  const [threshold, setThreshold] = useState(0.7);
+  const [topK, setTopK] = useState(10);
+  const [exactPhrase, setExactPhrase] = useState(false);
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<QueryResponse | null>(null);
+  const [result, setResult] = useState<KeywordSearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [activeMode, setActiveMode] = useState<ResponseMode>(loadStoredResponseMode);
 
   useEffect(() => {
     listDocuments(0, 100)
@@ -32,26 +30,21 @@ export function SearchPage() {
     if (doc) setDocumentId(doc);
   }, [searchParams]);
 
-  const handleModeChange = (mode: ResponseMode) => {
-    setActiveMode(mode);
-    storeResponseMode(mode);
-  };
-
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    const question = query.trim();
-    if (!question) return;
+    const searchQuery = query.trim();
+    if (!searchQuery) return;
 
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const response = await queryDocuments({
-        question,
+      const response = await keywordSearchDocuments({
+        query: searchQuery,
         document_id: documentId || null,
         top_k: topK,
-        similarity_threshold: threshold,
+        exact_phrase: exactPhrase,
       });
       setResult(response);
     } catch (err) {
@@ -66,7 +59,7 @@ export function SearchPage() {
       <div>
         <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Search</h2>
         <p className="mt-1 text-slate-500 dark:text-slate-400">
-          Semantic search across your legal document corpus
+          Hybrid keyword + semantic search over indexed documents
         </p>
       </div>
 
@@ -78,7 +71,7 @@ export function SearchPage() {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search for clauses, terms, parties, obligations..."
+              placeholder="e.g. tell me about payment terms, termination clause..."
               className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-800"
             />
           </div>
@@ -124,31 +117,26 @@ export function SearchPage() {
             <div className="grid gap-4 rounded-lg bg-slate-50 p-4 sm:grid-cols-2 dark:bg-slate-800/50">
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-500">
-                  Top K chunks ({topK})
+                  Top K matches ({topK})
                 </label>
                 <input
                   type="range"
                   min={1}
-                  max={20}
+                  max={50}
                   value={topK}
                   onChange={(e) => setTopK(Number(e.target.value))}
                   className="w-full"
                 />
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">
-                  Similarity threshold ({threshold.toFixed(2)})
-                </label>
+              <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                 <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={threshold}
-                  onChange={(e) => setThreshold(Number(e.target.value))}
-                  className="w-full"
+                  type="checkbox"
+                  checked={exactPhrase}
+                  onChange={(e) => setExactPhrase(e.target.checked)}
+                  className="rounded border-slate-300 text-brand-600 focus:ring-brand-500"
                 />
-              </div>
+                Exact phrase match
+              </label>
             </div>
           )}
         </form>
@@ -156,7 +144,7 @@ export function SearchPage() {
 
       {loading && (
         <Card>
-          <LoadingSpinner size="lg" label="Searching documents and retrieving chunks..." />
+          <LoadingSpinner size="lg" label="Searching documents..." />
         </Card>
       )}
 
@@ -167,11 +155,15 @@ export function SearchPage() {
       )}
 
       {result && !loading && (
-        <QueryResultPanel
-          response={result}
-          activeMode={activeMode}
-          onModeChange={handleModeChange}
-        />
+        <Card title={`Results for "${result.query}"`}>
+          <DirectEvidenceResults
+            results={result.results}
+            totalCandidates={result.total_candidates}
+            latencyMs={result.latency_ms}
+            bm25HitCount={result.bm25_hit_count}
+            semanticHitCount={result.semantic_hit_count}
+          />
+        </Card>
       )}
     </div>
   );

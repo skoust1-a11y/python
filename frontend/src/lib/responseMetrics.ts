@@ -11,9 +11,9 @@ export interface ResponseMetrics {
 }
 
 /**
- * Derives display metrics from the existing query response payload.
- * Faithfulness and relevance are computed client-side from retrieval scores
- * so no backend changes are required.
+ * Derives display metrics from the query response payload.
+ * Uses evidence-based scores from the backend when available; falls back to
+ * retrieval-derived estimates for older API responses.
  */
 export function computeResponseMetrics(
   response: QueryResponse,
@@ -23,22 +23,28 @@ export function computeResponseMetrics(
   const avgScore =
     scores.length > 0 ? scores.reduce((sum, s) => sum + s, 0) / scores.length : 0;
   const maxScore = scores.length > 0 ? Math.max(...scores) : 0;
-  const confidence = response.confidence;
 
-  const faithfulness =
-    scores.length > 0
-      ? Math.min(confidence, avgScore * 0.85 + confidence * 0.15)
-      : confidence * 0.45;
+  const hasBackendMetrics =
+    response.faithfulness > 0 ||
+    response.relevance > 0 ||
+    response.analysis_evaluation != null;
 
-  const relevance =
-    maxScore > 0
+  const faithfulness = hasBackendMetrics
+    ? response.faithfulness
+    : scores.length > 0
+      ? Math.min(response.confidence, avgScore * 0.85 + response.confidence * 0.15)
+      : response.confidence * 0.45;
+
+  const relevance = hasBackendMetrics
+    ? response.relevance
+    : maxScore > 0
       ? maxScore * 0.7 + avgScore * 0.3
       : response.related_documents.length > 0
         ? Math.max(...response.related_documents.map((d) => d.relevance))
-        : confidence * 0.55;
+        : response.confidence * 0.55;
 
   return {
-    confidence,
+    confidence: response.confidence,
     faithfulness,
     relevance,
     latencyMs: latencyMs ?? response.latency_ms,

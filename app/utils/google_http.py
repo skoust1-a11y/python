@@ -7,6 +7,20 @@ import ssl
 from typing import Any
 
 import httpx
+import requests
+from requests.adapters import HTTPAdapter
+
+
+class SSLContextHTTPAdapter(HTTPAdapter):
+    """Mount a custom SSL context on requests (used by OpenTelemetry OTLP exporters)."""
+
+    def __init__(self, ssl_context: ssl.SSLContext, **kwargs: Any) -> None:
+        self._ssl_context = ssl_context
+        super().__init__(**kwargs)
+
+    def init_poolmanager(self, *args: Any, **kwargs: Any):
+        kwargs["ssl_context"] = self._ssl_context
+        return super().init_poolmanager(*args, **kwargs)
 
 
 def build_ssl_context() -> ssl.SSLContext:
@@ -32,6 +46,13 @@ def build_httpx_clients() -> dict[str, httpx.Client | httpx.AsyncClient]:
         "http_client": httpx.Client(verify=verify),
         "async_http_client": httpx.AsyncClient(verify=verify),
     }
+
+
+def build_requests_session() -> requests.Session:
+    """Return a requests session that uses the shared SSL trust configuration."""
+    session = requests.Session()
+    session.mount("https://", SSLContextHTTPAdapter(build_ssl_context()))
+    return session
 
 
 def build_google_genai_http_options() -> dict[str, Any]:

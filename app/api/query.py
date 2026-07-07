@@ -40,6 +40,8 @@ async def query_documents(
         top_k=body.top_k,
         similarity_threshold=body.similarity_threshold,
         provider=body.provider,
+        session_id=body.session_id,
+        user_id=body.user_id,
     )
 
     return build_query_response(body.question, result, include_contexts=body.include_contexts)

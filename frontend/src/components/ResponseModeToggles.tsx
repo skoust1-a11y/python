@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import {
   RESPONSE_MODE_DESCRIPTIONS,
   RESPONSE_MODE_LABELS,
-  RESPONSE_MODES,
+  VISIBLE_RESPONSE_MODES,
   type ResponseMode,
 } from "@/lib/responseModes";
 
@@ -53,7 +53,7 @@ export function ResponseModeToggles({
         aria-hidden
       />
 
-      {RESPONSE_MODES.map((mode) => {
+      {VISIBLE_RESPONSE_MODES.map((mode) => {
         const selected = activeMode === mode;
         return (
           <button
