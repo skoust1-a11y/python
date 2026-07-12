@@ -9,6 +9,8 @@ from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import QueryFusionRetriever
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.vector_stores.postgres import PGVectorStore
+from llama_index.core.vector_stores import MetadataFilters
+from llama_index.core.base.base_retriever import BaseRetriever
 
 import time
 
@@ -67,26 +69,39 @@ class FusionRetrievalService:
         """
         # TODO: Create a StorageContext from the vector store
         # Hint: A StorageContext is LlamaIndex's way of managing where data is stored. Use StorageContext.from_defaults(vector_store=self.vector_store) to create one. This context will be used to access the stored embeddings and documents.
+        context = StorageContext.from_defaults(vector_store=self.vector_store)
         
         # TODO: Create a VectorStoreIndex from the vector store and storage context
         # Hint: A VectorStoreIndex is an index structure that allows you to query the vector store efficiently. Use VectorStoreIndex.from_vector_store(vector_store=self.vector_store, storage_context=storage_context) to create it from the existing vector store. This index will enable semantic search capabilities. Save it as self.index.
-        
+        self.index = VectorStoreIndex.from_vector_store(vector_store=self.vector_store,storage_context = context)
         # TODO: Create a vector retriever from the index
         # Hint: A retriever is a component that finds relevant documents based on a query. Use self.index.as_retriever(similarity_top_k=self.similarity_top_k) to convert the index into a retriever that will return the top k most similar documents. This retriever uses vector similarity search (semantic search). Save it as self.vector_retriever.
-        
+        self.vector_retriever = self.index.as_retriever(similarity_top_k=self.similarity_top_k)
+        all_nodes = []
         # TODO: Load all nodes from the vector store for BM25 retriever
         # Hint: BM25 is a keyword-based retrieval algorithm that complements vector search. Import MetadataFilters from llama_index.core.vector_stores, then use self.vector_store.get_nodes(filters=MetadataFilters(filters=[])) to retrieve all nodes with empty filters. Wrap this in a try/except block because the vector store might be empty or there might be connection issues - if it fails, you'll just use vector search alone. Store the result in a variable like all_nodes.
-        
-        # TODO: Create BM25 retriever if nodes are available
-        # Hint: BM25 retriever works on keyword matching and is great for exact term searches. Start with a list containing only the vector retriever: retrievers = [self.vector_retriever]. If nodes were successfully loaded, use BM25Retriever.from_defaults(nodes=all_nodes, similarity_top_k=min(self.similarity_top_k, max(1, len(all_nodes)))) to create a BM25 retriever. Add it to the retrievers list and save it as self.bm25_retriever. If no nodes were loaded, set self.bm25_retriever = None - you'll only use vector search in that case.
-        
+        try:
+            all_nodes.extend(self.vector_store.get_nodes(filters=MetadataFilters(filters=[])))
+        except ConnectionError as e:
+            raise ConnectionError(f'The vector store was not able to connect: {e}')
+        except Exception as e:
+            raise
+        vector_retriever: BaseRetriever = self.vector_retriever
+        retrievers: List[BaseRetriever] = [vector_retriever]
+         # TODO: Create BM25 retriever if nodes are available
+         # Hint: BM25 retriever works on keyword matching and is great for exact term searches. Start with a list containing only the vector retriever: retrievers = [self.vector_retriever]. If nodes were successfully loaded, use BM25Retriever.from_defaults(nodes=all_nodes, similarity_top_k=min(self.similarity_top_k, max(1, len(all_nodes)))) to create a BM25 retriever. Add it to the retrievers list and save it as self.bm25_retriever. If no nodes were loaded, set self.bm25_retriever = None - you'll only use vector search in that case.
+        if all_nodes:
+            self.bm25_retriever = BM25Retriever.from_defaults(nodes=all_nodes, similarity_top_k=min(self.similarity_top_k, max(1, len(all_nodes))))
+            retrievers.append(self.bm25_retriever)
+
         # TODO: Create a QueryFusionRetriever combining the retrievers
         # Hint: Fusion retrieval combines results from multiple retrieval methods (like vector search and BM25) to get better results. The QueryFusionRetriever uses Reciprocal Rank Fusion (RRF) to merge results from different retrievers. Use QueryFusionRetriever(retrievers=retrievers, similarity_top_k=self.similarity_top_k, num_queries=self.num_queries, mode=self.mode, use_async=self.use_async) to create it. Save it as self.fusion_retriever.
-        
-        # TODO: Create a RetrieverQueryEngine from the fusion retriever
-        # Hint: A QueryEngine not only retrieves documents but also generates answers using an LLM. Use RetrieverQueryEngine.from_args(retriever=self.fusion_retriever) to create one using the fusion retriever you just built, and save it as self.query_engine. This is what you'll use to get full answers, not just document chunks.
-        
-        raise NotImplementedError("_init_retrievers method not implemented yet")
+        self.fusion_retriever = QueryFusionRetriever(retrievers=retrievers, similarity_top_k=self.similarity_top_k, num_queries=self.num_queries, mode=self.mode, use_async=self.use_async)
+         
+         # TODO: Create a RetrieverQueryEngine from the fusion retriever
+         # Hint: A QueryEngine not only retrieves documents but also generates answers using an LLM. Use RetrieverQueryEngine.from_args(retriever=self.fusion_retriever) to create one using the fusion retriever you just built, and save it as self.query_engine. This is what you'll use to get full answers, not just document chunks.
+        self.query_engine = RetrieverQueryEngine.from_args(retriever=self.fusion_retriever)
+         
 
     def query(self, query_text: str) -> str:
         """
@@ -99,11 +114,11 @@ class FusionRetrievalService:
         """
         # TODO: Query the query engine with the query text
         # Hint: The query engine will use the fusion retriever to find relevant documents, then use an LLM to generate an answer based on those documents. Call self.query_engine.query(query_text) to get the response object that contains the generated answer.
-        
+        result = self.query_engine.query(query_text)
         # TODO: Convert the result to a string and return it
         # Hint: The query engine returns a response object, but we need just the text answer. Use str() to convert the query result to a string representation before returning it.
+        return str(result)
         
-        raise NotImplementedError("query method not implemented yet")
 
     def retrieve(self, query_text: str) -> List[RetrievedChunk]:
         """
@@ -122,10 +137,48 @@ class FusionRetrievalService:
         """
         # TODO: Retrieve nodes using the fusion retriever
         # Hint: Unlike the query method which generates answers, this method just retrieves the relevant document chunks. Use self.fusion_retriever.retrieve(query_text) to get nodes (document chunks) that are relevant to the given query text. The fusion retriever will combine results from vector search and BM25 search to return the most relevant chunks.
-        
-        # TODO: Transform each node into a RetrievedChunk object
-        # Hint: The retrieved nodes are LlamaIndex node objects that contain text, scores, and metadata. Create an empty list: out: List[RetrievedChunk] = []. Iterate through each retrieved node. For each node: extract the text content using n.text, get the relevance score using getattr(n, "score", None) (which may not exist on all nodes), and extract the source file information from n.node.metadata dictionary (check for "filename" first using .get("filename"), then "source_path" as fallback). Wrap the metadata extraction in try/except to handle cases where metadata might be missing. Create RetrievedChunk(text=n.text, score=score, source=src) and append it to your list.
-        
-        # TODO: Return the list of RetrievedChunk objects
-        # Hint: Return the list of RetrievedChunk objects you've created. This gives the caller access to the retrieved document chunks with their scores and source information, which is useful for showing citations or debugging.
-        raise NotImplementedError("retrieve method not implemented yet")
+        nodes = self.fusion_retriever.retrieve(query_text)
+         
+         # TODO: Transform each node into a RetrievedChunk object
+         # Hint: The retrieved nodes are LlamaIndex node objects that contain text, scores, and metadata. Create an empty list: out: List[RetrievedChunk] = []. Iterate through each retrieved node. For each node: extract the text content using n.text, get the relevance score using getattr(n, "score", None) (which may not exist on all nodes), and extract the source file information from n.node.metadata dictionary (check for "filename" first using .get("filename"), then "source_path" as fallback). Wrap the metadata extraction in try/except to handle cases where metadata might be missing. Create RetrievedChunk(text=n.text, score=score, source=src) and append it to your list.
+         
+         # TODO: Return the list of RetrievedChunk objects
+         # Hint: Return the list of RetrievedChunk objects you've created. This gives the caller access to the retrieved document chunks with their scores and source information, which is useful for showing citations or debugging.
+        out: List[RetrievedChunk] = []
+        for n in nodes:
+            # text
+            text = getattr(n, "text", None)
+            if text is None:
+                # fall back to node content
+                node_obj = getattr(n, "node", None)
+                if node_obj is not None:
+                    text = getattr(node_obj, "get_text", None)
+                    if callable(text):
+                        try:
+                            text = text()
+                        except Exception:
+                            text = None
+                    else:
+                        text = getattr(node_obj, "text", None)
+            if text is None:
+                text = ""
+
+            # score
+            score = getattr(n, "score", None)
+
+            # source metadata
+            src = None
+            try:
+                meta = None
+                if hasattr(n, "node") and getattr(n.node, "metadata", None) is not None:
+                    meta = n.node.metadata
+                elif getattr(n, "metadata", None) is not None:
+                    meta = n.metadata
+                if isinstance(meta, dict):
+                    src = meta.get("filename") or meta.get("source_path")
+            except Exception:
+                src = None
+
+            out.append(RetrievedChunk(text=text, score=score, source=src))
+
+        return out

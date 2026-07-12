@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from typing import List, Optional
+from guardrails import Guard
+from guardrails.hub import DetectPII
 
 import time
 
@@ -41,14 +43,17 @@ class GuardrailsValidator:
         """
         # TODO: Initialize self._pii_guard to None
         # Hint: Set self._pii_guard = None initially
+        self._pii_guard = None
         
         # TODO: Try to import and initialize Guardrails Hub DetectPII validator
         # Hint: Import Guard from guardrails and DetectPII from guardrails.hub. Create a Guard instance using Guard().use(DetectPII(pii_entities=["EMAIL_ADDRESS", "PHONE_NUMBER", "US_SSN", "CREDIT_CARD", "US_PASSPORT", "US_DRIVER_LICENSE", "PERSON", "LOCATION", "DATE_TIME"], on_fail="fix")) to detect various PII entity types with automatic redaction enabled. Store the configured guard in self._pii_guard.
-        
+        try:
+            self._pii_guard = Guard().use(DetectPII(pii_entities=["EMAIL_ADDRESS", "PHONE_NUMBER", "US_SSN", "CREDIT_CARD", "US_PASSPORT", "US_DRIVER_LICENSE", "PERSON", "LOCATION", "DATE_TIME"], on_fail="fix"))
+        except Exception as e:
+            self._pii_guard = None
         # TODO: Handle exceptions - if initialization fails, keep _pii_guard as None
         # Hint: Wrap the initialization in a try/except block. If importing or setting up the guard fails, set self._pii_guard = None in the except block so the instance variable remains None
         
-        raise NotImplementedError("__init__ method not implemented yet")
 
     def decide_input(self, text: str) -> InputDecision:
         """
@@ -61,12 +66,18 @@ class GuardrailsValidator:
         """
         # TODO: Check if the input text is empty or only whitespace
         # Hint: Verify whether the text is empty or contains only whitespace characters using a condition like: if not text or not text.strip()
+        if not text or not text.strip():
+            return InputDecision(allowed=False,reason="Empty Query")
+        else:
+            return InputDecision(allowed=True,reason=None)
+
         
         # TODO: Return InputDecision(False, "Empty query") if input is invalid
         # Hint: If the input is invalid, return InputDecision(allowed=False, reason="Empty query") to indicate the query is not allowed with an appropriate reason message
         
         # TODO: Return InputDecision(True, None) if input is valid
         # Hint: If the input is valid, return InputDecision(allowed=True, reason=None) to indicate the query is allowed with no blocking reason
+
         
         raise NotImplementedError("decide_input method not implemented yet")
 
@@ -84,11 +95,52 @@ class GuardrailsValidator:
         """
         # TODO: Initialize tracking variables
         # Hint: Create variables: pii_summaries: List[str] = [], pii_detected: bool = False, output_sanitized: bool = False, and sanitized: str = text (start with the original input text)
+        pii_summaries : List[str] = []
+        pii_detected: bool = False
+        output_sanitized: bool = False
+        sanitized: str = text 
+
         
         # TODO: Use Guardrails Hub DetectPII validator if available
         # Hint: Check if self._pii_guard is not None. If available, wrap in try/except block. Call self._pii_guard.validate(sanitized) to validate the text. Extract the validated output using result.validated_output if getattr(result, "validated_output", None) else sanitized. Compare the candidate with the original sanitized text. If different, set pii_detected=True, output_sanitized=True, and add "PII detected and redacted (DetectPII/Presidio)" to pii_summaries. Update sanitized to the candidate value. On exception, keep the original text (use pass).
-        
+        if self._pii_guard is not None:
+            try:
+                result = self._pii_guard.validate(sanitized)
+                candidate = getattr(result, "validated_output", None)
+                # If the guard returns a validated output, use it as the candidate; otherwise keep the original
+                candidate = str(candidate) if candidate is not None else sanitized
+
+                # If the guardredacted/sanitized value differs from the original, record PII detection
+                if candidate != sanitized:
+                    pii_detected = True
+                    output_sanitized = True
+                    pii_summaries.append("PII detected and redacted (DetectPII/Presidio)")
+                    sanitized = candidate
+            except Exception as e:
+                # If validation fails for any reason, keep the original text and log the exception
+                logger.debug("PII guard validation failed: %s", e)
+                sanitized = text
+
+        # If nothing was changed by validation, simply return a non-blocking decision with the original/sanitized text
+        # Keep the original comment and behavior intent: do not mark as blocked unless other checks require it
+        if text == sanitized:
+            return OutputDecision(
+                blocked=False,
+                reason=None,
+                sanitized_text=sanitized,
+                pii_detected=pii_detected,
+                pii_summaries=pii_summaries,
+                output_sanitized=output_sanitized,
+            )
+
+
         # TODO: Return OutputDecision with all results
         # Hint: Return OutputDecision(blocked=False, reason=None, sanitized_text=sanitized, pii_detected=pii_detected, pii_summaries=pii_summaries, output_sanitized=output_sanitized) containing all the validation results
-        
-        raise NotImplementedError("validate_and_sanitize_output method not implemented yet")
+        return OutputDecision(
+            blocked=False,
+            reason=None,
+            sanitized_text=sanitized,
+            pii_detected=pii_detected,
+            pii_summaries=pii_summaries,
+            output_sanitized=output_sanitized,
+        )
