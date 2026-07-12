@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, field_validator
 from llama_index.core import SimpleDirectoryReader
 from llama_index.core.vector_stores import MetadataFilters, ExactMatchFilter
 from main.service import get_query_engine, add_documents_to_index, get_file_metadata
+from main.service.rag_service import NodeInsertionError
 
 logger = logging.getLogger(__name__)
 
@@ -161,28 +162,42 @@ async def upload_document(file: UploadFile = File(...)):
         # HINT: Create a SimpleDirectoryReader with input_files=[file_path]
         # HINT: Call load_data() to load the documents
         # Your code here:
-        documents = None  # Replace with actual implementation
+        reader = SimpleDirectoryReader(input_files=[file_path])
+        documents = reader.load_data()
+
+        logger.info(f"Loaded {len(documents)} document(s) from {safe_filename}")
         
         # TODO: Get expected metadata for the document
         # HINT: Use get_file_metadata(safe_filename) to extract metadata from filename
         # Your code here:
-        expected_metadata = None  # Replace with actual implementation
+        expected_metadata = get_file_metadata(safe_filename)
         
         # TODO: Apply metadata to all loaded documents
         # HINT: Loop through documents and replace each doc.metadata with expected_metadata.copy()
         # HINT: Use .copy() to avoid sharing the same dictionary reference
         # Your code here:
+        for doc in documents:
+            doc.metadata = expected_metadata.copy()
         
         # TODO: Add documents to the index
         # HINT: Call add_documents_to_index(documents) to index the documents
         # HINT: Store the result in a variable
         # Your code here:
-        result = None  # Replace with actual implementation
-        
-        # TODO: Return UploadResponse with success message and document count
-        # HINT: Use result["message"] and len(documents)
-        # Your code here:
-        raise NotImplementedError("Document upload processing is not implemented yet. Please complete the implementation.")
+        try:
+            result = add_documents_to_index(documents=documents)
+        except NodeInsertionError as nie:
+            # Log full details for operators, but return a concise, non-sensitive message to clients
+            logger.error("Indexing error while uploading document %s: %s", safe_filename, nie, exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Internal indexing error: {str(nie)}"
+            )
+
+        # Return success response
+        return UploadResponse(
+            message=result.get('message', 'Indexed'),
+            documents_indexed=len(documents)
+        )
         
     except HTTPException:
         raise
@@ -228,21 +243,30 @@ async def query_rag(request: QueryRequest):
         #   2. Wrap them in a MetadataFilters object
         # Your code here:
         metadata_filters = None  # Replace with actual implementation
+        if request.filters is not None:
+            filters_list = [ExactMatchFilter(
+                key=k,
+                value=v
+            ) for k,v in request.filters.items()
+            ]
+            metadata_filters = MetadataFilters(filters=filters_list)
         
         # TODO: Get query engine with specified parameters
         # HINT: Call get_query_engine() with similarity_top_k and filters
         # Your code here:
-        query_engine = None  # Replace with actual implementation
+        query_engine = get_query_engine(similarity_top_k=request.similarity_top_k,
+                                        filters=metadata_filters)  # Replace with actual implementation
+
         
         # TODO: Execute the query
         # HINT: Call query_engine.query() with request.question
         # Your code here:
-        response = None  # Replace with actual implementation
+        response = query_engine.query(request.question)  # Replace with actual implementation
         
         # TODO: Extract the answer from response
         # HINT: Convert response to string
         # Your code here:
-        answer = None  # Replace with actual implementation
+        answer = str(response)  # Replace with actual implementation
         
         # Extract source nodes (already implemented)
         source_nodes = []
@@ -261,7 +285,7 @@ async def query_rag(request: QueryRequest):
         
         # TODO: Return QueryResponse with answer and source_nodes
         # Your code here:
-        raise NotImplementedError("Query processing is not implemented yet. Please complete the implementation.")
+        return QueryResponse(source_nodes=source_nodes,answer=answer)
         
     except ValueError as e:
         logger.error(f"Validation error: {e}", exc_info=True)

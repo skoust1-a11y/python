@@ -8,11 +8,12 @@ This module provides:
 """
 
 import logging
+from llama_index.core import VectorStoreIndex
 
 logger = logging.getLogger(__name__)
 
 
-def create_query_engine(index, llm, similarity_top_k=2, filters=None):
+def create_query_engine(index : VectorStoreIndex, llm, similarity_top_k=2, filters=None):
     """
     Create Query Engine from index.
     
@@ -34,5 +35,10 @@ def create_query_engine(index, llm, similarity_top_k=2, filters=None):
     #   - similarity_top_k: Number of similar nodes to retrieve
     #   - filters: Optional metadata filters for targeted retrieval
     # Your code here:
-    raise NotImplementedError("create_query_engine method is not implemented yet. Please complete the implementation.")
+    if filters is not None:
+        query_engine = index.as_query_engine(llm=llm,similarity_top_k=similarity_top_k,filters=filters)
+    else:
+        query_engine = index.as_query_engine(llm=llm,similarity_top_k=similarity_top_k)
+        
+    return query_engine 
 

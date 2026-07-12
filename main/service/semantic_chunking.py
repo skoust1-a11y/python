@@ -10,7 +10,10 @@ This module provides:
 import logging
 from typing import List, Any
 from llama_index.core.node_parser import SemanticSplitterNodeParser
-from llama_index.core import Document
+from llama_index.core import Document,Settings
+from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
+from llama_index.llms.azure_openai import AzureOpenAI
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +39,19 @@ def create_semantic_splitter(embed_model, buffer_size=1, breakpoint_percentile_t
     #   - breakpoint_percentile_threshold: Percentile threshold for determining split points
     #   - embed_model: The embedding model for semantic similarity calculation
     # Your code here:
-    raise NotImplementedError("create_semantic_splitter method is not implemented yet. Please complete the implementation.")
 
 
-def generate_nodes_from_documents(semantic_splitter, documents: List[Document]) -> List[Any]:
+    semantic_splitter = SemanticSplitterNodeParser(
+        buffer_size=buffer_size,
+        breakpoint_percentile_threshold=breakpoint_percentile_threshold,
+        embed_model=embed_model
+    )
+
+    return semantic_splitter
+    
+
+
+def generate_nodes_from_documents(semantic_splitter : SemanticSplitterNodeParser, documents: List[Document]) -> List[Any]:
     """
     Use the node parser to explicitly generate nodes from documents.
     
@@ -56,5 +68,6 @@ def generate_nodes_from_documents(semantic_splitter, documents: List[Document]) 
     # HINT: Use the semantic_splitter's get_nodes_from_documents() method
     # HINT: Pass the documents list as the argument
     # Your code here:
-    raise NotImplementedError("generate_nodes_from_documents method is not implemented yet. Please complete the implementation.")
+    nodes = semantic_splitter.get_nodes_from_documents(documents=documents)
+    return nodes
 

@@ -21,6 +21,11 @@ from main.service.semantic_chunking import create_semantic_splitter, generate_no
 
 logger = logging.getLogger(__name__)
 
+# Custom exception for indexing/node insertion errors
+class NodeInsertionError(Exception):
+    """Raised when inserting nodes into the index fails."""
+    pass
+
 # Global instances
 _index: Optional[VectorStoreIndex] = None
 _llm = None
@@ -80,17 +85,31 @@ def initialize_services():
         #   - azure_endpoint: Use llm_endpoint variable
         #   - api_version: Get from 'AZURE_OPENAI_API_VERSION' env var (default: '2024-02-15-preview')
         # Your code here:
-        raise NotImplementedError("Azure OpenAI LLM initialization is not implemented yet. Please complete the implementation.")
+        llm_model_name = os.getenv('AZURE_OPENAI_LLM_MODEL', 'gpt-4o-mini')
+        api_version = os.getenv('AZURE_OPENAI_API_VERSION', '2024-02-15-preview')
+
+        # Initialize AzureOpenAI LLM using the preferred parameter names
+        _llm = AzureOpenAI(
+            model=llm_model_name,
+            deployment_name=llm_deployment,
+            api_key=llm_api_key,
+            azure_endpoint=llm_endpoint,
+            api_version=api_version,
+            temperature=0.1,
+            max_completion_tokens=1000,
+        )
         
         # TODO: Get embedding deployment name from environment variable
         # HINT: Use os.getenv('AZURE_OPENAI_EMBEDDING_DEPLOYMENT')
         # Your code here:
-        embed_deployment = None
+        embed_deployment = os.getenv('AZURE_OPENAI_EMBEDDING_DEPLOYMENT')
         
         # TODO: Validate embedding configuration
         # HINT: Check if embed_deployment, llm_api_key, and llm_endpoint are all present
         # HINT: Raise ValueError if any are missing with message "Missing required Azure OpenAI Embedding configuration"
         # Your code here:
+        if not all([embed_deployment, llm_api_key, llm_endpoint]):
+            raise ValueError(f'Missing required Azure OpenAI Embedding configuration')
         
         # TODO: Initialize Azure OpenAI Embedding model
         # HINT: Create an AzureOpenAIEmbedding instance and assign it to _embed_model
@@ -101,7 +120,15 @@ def initialize_services():
         #   - azure_endpoint: Use llm_endpoint variable
         #   - api_version: Get from 'AZURE_OPENAI_API_VERSION' env var (default: '2024-02-15-preview')
         # Your code here:
-        raise NotImplementedError("Azure OpenAI Embedding initialization is not implemented yet. Please complete the implementation.")
+        embed_model_name = os.getenv('AZURE_OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small')
+        _embed_model = AzureOpenAIEmbedding(
+            model=embed_model_name,
+            deployment_name=embed_deployment,
+            api_key=llm_api_key,
+            azure_endpoint=llm_endpoint,
+            api_version=api_version,
+        )
+        
         
         # Verify objects were created successfully
         if _llm is None:
@@ -117,6 +144,12 @@ def initialize_services():
         # HINT: Wrap in try-except to handle any potential errors gracefully
         # HINT: If assignment fails, it's non-critical - log a warning and continue
         # Your code here:
+
+        try:
+            Settings.llm = _llm
+            Settings.embed_model = _embed_model
+        except Exception as e:
+            logger.warning(f'The Settings are not configured correctly: {e}')
         
         logger.info(f"✓ LLM configured: {os.getenv('AZURE_OPENAI_LLM_MODEL', 'gpt-4o-mini')}")
         logger.info(f"✓ Embedding model configured: {os.getenv('AZURE_OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small')}")
@@ -149,19 +182,52 @@ def load_or_create_index(embed_model) -> VectorStoreIndex:
     #   - table_name: DB_TABLE_NAME
     #   - embed_dim: 1536 (dimension for text-embedding-3-small)
     # Your code here:
-    vector_store = None  # Replace with actual implementation
+    required_vars = [
+        'DB_USER',
+        'DB_PASSWORD',
+        'DB_HOST',
+        'DB_PORT',
+        'DB_NAME',
+        'DB_TABLE_NAME'
+    ]
+    if not all([os.getenv(item) for item in required_vars]):
+        raise ValueError('Missing DB Config')
+    
+    vector_store = PGVectorStore.from_params(
+        database=os.getenv('DB_NAME'),
+        host=os.getenv('DB_HOST'),
+        password=os.getenv('DB_PASSWORD'),
+        port=os.getenv('DB_PORT'),
+        user=os.getenv('DB_USER'),
+        table_name=os.getenv('DB_TABLE_NAME'),
+        embed_dim=1536 
+    )  
     
     # TODO: Create StorageContext from the vector store
     # HINT: Use StorageContext.from_defaults() and pass the vector_store
     # Your code here:
-    storage_context = None  # Replace with actual implementation
+    storage_context = StorageContext.from_defaults(
+        vector_store=vector_store
+    )  # Replace with actual implementation
+
     
     # TODO: Try to load existing index from PostgreSQL, or create a new empty one
     # HINT: Use try-except block
     # HINT: In try block: Use VectorStoreIndex.from_vector_store() with vector_store and embed_model
     # HINT: In except block: Create new VectorStoreIndex with empty nodes=[], storage_context, and embed_model
     # Your code here:
-    raise NotImplementedError("load_or_create_index method is not implemented yet. Please complete the implementation.")
+    try:
+        index = VectorStoreIndex.from_vector_store(
+            embed_model=embed_model,
+            vector_store=vector_store,
+            )
+    except Exception as e:
+        index = VectorStoreIndex(
+            nodes=[],
+            storage_context=storage_context,
+            embed_model=embed_model
+        )
+    return index
 
 
 def get_index() -> VectorStoreIndex:
@@ -222,14 +288,39 @@ def add_documents_to_index(documents):
     
     logger.info(f"Adding {len(documents)} document(s) to index with semantic chunking...")
     
-    # TODO: Implement document indexing with semantic chunking
-    # HINT: Steps to complete:
-    #   1. Get embedding model using get_embed_model()
-    #   2. Create semantic splitter using create_semantic_splitter(embed_model)
-    #   3. Generate nodes using generate_nodes_from_documents(semantic_splitter, documents)
-    #   4. Loop through nodes and insert each one using _index.insert(node)
-    # HINT: Use try-except to handle insertion errors
-    # HINT: Return a dictionary with success message: {"message": "Successfully indexed X document(s)"}
-    # Your code here:
-    raise NotImplementedError("add_documents_to_index method is not implemented yet. Please complete the implementation.")
+    try:
+        embedding_model = get_embed_model()
+        splitter = create_semantic_splitter(embed_model=embedding_model)
+
+        nodes = generate_nodes_from_documents(semantic_splitter=splitter, documents=documents)
+
+        # Insert nodes into the index with per-node error handling so we can
+        # log specific failures and propagate a meaningful exception to callers.
+        inserted_count = 0
+        for node in nodes:
+            try:
+                _index.insert(node)
+                inserted_count += 1
+            except Exception as e:
+                # Log detailed internal info for debugging (stack trace included)
+                # but raise a concise, non-sensitive error to the caller.
+                metadata_info = getattr(node, 'metadata', None)
+                logger.exception("Failed to insert node into index. Node metadata: %s", metadata_info)
+                # Build a short, safe error message
+                short_msg = f"Node insertion failed: {type(e).__name__}: {str(e)[:200]}"
+                raise NodeInsertionError(short_msg) from e
+
+        logger.info("Successfully inserted %d/%d nodes into index", inserted_count, len(nodes))
+        return {"message": f"Successfully indexed {len(documents)} to the number of nodes: {len(nodes)}"}
+
+    except NodeInsertionError:
+        # Re-raise NodeInsertionError so callers (API layer) can return 500 with a brief message
+        raise
+    except Exception as e:
+        # Log unexpected errors with full traceback, but expose only a short message
+        logger.exception("Unexpected error while indexing documents")
+        short_msg = f"Indexing failed: {type(e).__name__}: {str(e)[:200]}"
+        # Wrap unexpected errors in NodeInsertionError for consistent handling
+        raise NodeInsertionError(short_msg) from e
+
 
