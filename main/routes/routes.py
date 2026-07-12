@@ -92,7 +92,39 @@ async def analyze_review(request: ReviewRequest):
     # Return the SentimentResponse
     
     # TODO: Step 5 - Handle exceptions
-    # Hint: Re-raise HTTPException 
+    # Hint: Re-raise HTTPException
     # For other exceptions, raise HTTPException with status_code=500 and appropriate error message
-    
-    raise NotImplementedError("This endpoint is not yet implemented. Please complete the TODO steps above.")
+    if agent_service is None or not agent_service.is_initialized():
+        raise HTTPException(
+            status_code=503,
+            detail="Service not ready. Please wait for initialization."
+        )
+
+    try:
+        result = await agent_service.analyze_review_sentiment(
+            review_text=request.review_text,
+            product_id=request.product_id,
+            product_name=request.product_name
+        )
+
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=500,
+                detail=result.get("error", "Analysis failed")
+            )
+
+        analysis_result = SentimentAnalysisResult(
+            review_text=result["review_text"],
+            sentiment=result["sentiment"],
+            confidence=result["confidence"],
+            model_used=result["model_used"],
+            product_id=result.get("product_id"),
+            product_name=result.get("product_name"),
+            aspects=result.get("aspects")
+        )
+
+        return SentimentResponse(result=analysis_result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

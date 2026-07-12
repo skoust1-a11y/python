@@ -44,8 +44,17 @@ class HuggingFaceMCPService:
         # Hint: Create a dictionary with "Authorization" key
         # Value should be "Bearer {token}" formatted string
         # Store it in self.headers
-        
-        raise NotImplementedError("This method is not yet implemented. Please complete the TODO steps above.")
+        self.url = os.getenv("HF_MCP_URL", "https://huggingface.co/mcp")
+
+        self.token = os.getenv("HF_TOKEN")
+
+        if not self.token:
+            raise ValueError(
+                "HF_TOKEN is not set. Please set the HF_TOKEN environment variable. "
+                "You can create a token at https://huggingface.co/settings/tokens"
+            )
+
+        self.headers = {"Authorization": f"Bearer {self.token}"}
 
     async def load_tools(self, allowed_tools: List[str] | None = None) -> List[BaseTool]:
         """
@@ -95,5 +104,19 @@ class HuggingFaceMCPService:
         # TODO: Step 6 - Handle exceptions
         # Hint: Wrap the above steps in a try-except block
         # On exception, log the error and raise ConnectionError with an appropriate message
-        
-        raise NotImplementedError("This method is not yet implemented. Please complete the TODO steps above.")
+        try:
+            logger.info(f"Connecting to MCP server at {self.url}...")
+
+            client = BasicMCPClient(command_or_url=self.url, headers=self.headers)
+
+            tool_spec = McpToolSpec(client=client)
+
+            tools = await tool_spec.to_tool_list_async()
+
+            if allowed_tools is not None:
+                return [t for t in tools if t.metadata.name in allowed_tools]
+
+            return tools
+        except Exception as e:
+            logger.error(f"Failed to connect to MCP server at {self.url}: {e}")
+            raise ConnectionError(f"Failed to connect to MCP server at {self.url}: {e}")

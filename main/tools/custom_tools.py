@@ -38,8 +38,10 @@ def hf_inference_api(model_id: str, text: str) -> str:
     # Hint: If HF_HUB_AVAILABLE is True, call _call_with_hub_client(model_id, text)
     # Otherwise, call _call_with_requests(model_id, text)
     # Return the result
-    
-    raise NotImplementedError("This function is not yet implemented. Please complete the TODO steps above.")
+    if HF_HUB_AVAILABLE:
+        return _call_with_hub_client(model_id, text)
+    else:
+        return _call_with_requests(model_id, text)
 
 def _call_with_hub_client(model_id: str, text: str) -> str:
     """
@@ -86,8 +88,27 @@ def _call_with_hub_client(model_id: str, text: str) -> str:
     #   - error: f"Model '{model_id}' failed"
     #   - details: error message
     #   - suggestion: Message about using model_search to find different models
-    
-    raise NotImplementedError("This function is not yet implemented. Please complete the TODO steps above.")
+    token = os.getenv("HF_TOKEN")
+
+    if not token:
+        return json.dumps({
+            "error": "HF_TOKEN not configured",
+            "details": "HF_TOKEN environment variable is not set",
+            "suggestion": "Set HF_TOKEN. You can create a token at https://huggingface.co/settings/tokens"
+        }, indent=2)
+
+    client = InferenceClient(token=token)
+
+    try:
+        results = client.text_classification(text, model=model_id)
+        formatted = [{"label": r.label, "score": r.score} for r in results]
+        return json.dumps(formatted, indent=2)
+    except Exception as e:
+        return json.dumps({
+            "error": f"Model '{model_id}' failed",
+            "details": str(e),
+            "suggestion": "Use the model_search MCP tool to find a different sentiment analysis model."
+        }, indent=2)
 
 def _call_with_requests(model_id: str, text: str) -> str:
     """
@@ -140,8 +161,51 @@ def _call_with_requests(model_id: str, text: str) -> str:
     #   - error: "Request failed"
     #   - details: error message string
     #   - suggestion: Message about using model_search
-    
-    raise NotImplementedError("This function is not yet implemented. Please complete the TODO steps above.")
+    import requests
+
+    token = os.getenv("HF_TOKEN")
+
+    if not token:
+        return json.dumps({
+            "error": "HF_TOKEN not configured",
+            "details": "HF_TOKEN environment variable is not set",
+            "suggestion": "Set HF_TOKEN. You can create a token at https://huggingface.co/settings/tokens"
+        }, indent=2)
+
+    api_url = f"https://api-inference.huggingface.co/models/{model_id}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    payload = {"inputs": text}
+
+    try:
+        response = requests.post(api_url, json=payload, headers=headers, timeout=30)
+
+        if response.status_code == 200:
+            return response.text
+        elif response.status_code == 503:
+            time.sleep(5)
+            response = requests.post(api_url, json=payload, headers=headers, timeout=30)
+            if response.status_code == 200:
+                return response.text
+            return json.dumps({
+                "error": f"Model '{model_id}' is loading",
+                "details": "Model is still loading after retry (status 503)",
+                "suggestion": "Use the model_search MCP tool to find a different sentiment analysis model."
+            }, indent=2)
+        else:
+            return json.dumps({
+                "error": f"Model '{model_id}' failed",
+                "details": f"Request returned status code {response.status_code}: {response.text}",
+                "suggestion": "Use the model_search MCP tool to find a different sentiment analysis model."
+            }, indent=2)
+    except Exception as e:
+        return json.dumps({
+            "error": "Request failed",
+            "details": str(e),
+            "suggestion": "Use the model_search MCP tool to find a different sentiment analysis model."
+        }, indent=2)
 
 # TODO: Create the LlamaIndex tool
 # Hint: Use FunctionTool.from_defaults() to create a tool from hf_inference_api function
@@ -158,4 +222,18 @@ def _call_with_requests(model_id: str, text: str) -> str:
 
 # Note: This will be None until you implement it above
 # You must create the tool using FunctionTool.from_defaults() before it can be used
-custom_inference_tool = None  # TODO: Replace None with FunctionTool.from_defaults() call
+custom_inference_tool = FunctionTool.from_defaults(
+    fn=hf_inference_api,
+    name="hf_inference",
+    description=(
+        "Runs sentiment inference on a SPECIFIC Hugging Face model via the Inference API. "
+        "Use this tool ONLY after you have obtained a specific model ID from the model_search tool. "
+        "It is optimized for product review sentiment analysis. "
+        "If the inference fails, do NOT use a hardcoded fallback model; instead use the model_search "
+        "tool again to find a different working sentiment analysis model and retry. "
+        "Args: model_id (str) - the exact Hugging Face model ID (e.g. "
+        "'distilbert-base-uncased-finetuned-sst-2-english'); text (str) - the product review text to analyze. "
+        "Returns: a JSON-formatted string containing classification results with 'label' and 'score' fields, "
+        "or a JSON error object with details and a suggestion to search for another model."
+    )
+)

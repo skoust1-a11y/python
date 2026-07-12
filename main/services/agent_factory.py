@@ -60,5 +60,8 @@ def create_agent(tools: List[BaseTool], verbose: bool = True) -> ReActAgent:
     
     # TODO: Step 3 - Return the agent
     # Hint: Return the ReActAgent instance created in Step 2
-    
-    raise NotImplementedError("This function is not yet implemented. Please complete the TODO steps above.")
+    llm = create_llm()
+
+    agent = ReActAgent(tools=tools, llm=llm)
+
+    return agent

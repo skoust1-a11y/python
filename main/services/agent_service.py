@@ -61,9 +61,28 @@ class AgentService:
         # TODO: Step 7 - Handle exceptions
         # Hint: Wrap steps 2-6 in a try-except block
         # On exception, log the error with traceback and re-raise
-        
-        raise NotImplementedError("This method is not yet implemented. Please complete the TODO steps above.")
-    
+        if self._initialized:
+            logger.info("Agent already initialized")
+            return
+
+        try:
+            mcp_service = HuggingFaceMCPService()
+
+            self.tools = await mcp_service.load_tools(allowed_tools=None)
+            logger.info(f"Loaded {len(self.tools)} MCP tools")
+
+            self.tools.append(custom_inference_tool)
+            logger.info("Added hf_inference custom tool")
+
+            self.agent = create_agent(self.tools, verbose=False)
+
+            self._initialized = True
+            self._mcp_connected = True
+            logger.info("Agent service initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize agent service: {e}", exc_info=True)
+            raise
+
     def is_initialized(self) -> bool:
         """Check if agent is initialized"""
         return self._initialized and self.agent is not None
@@ -141,8 +160,62 @@ class AgentService:
         #   - error: "Failed to parse agent response"
         #   - raw_response: response_text
         # Wrap in try-except to catch exceptions and return error dictionary
-        
-        raise NotImplementedError("This method is not yet implemented. Please complete the TODO steps above.")
+        if not self.is_initialized():
+            raise RuntimeError("Agent service not initialized")
+
+        try:
+            product_context = ""
+            if product_name:
+                product_context += f" for product: {product_name}"
+            if product_id:
+                product_context += f" (ID: {product_id})"
+
+            prompt = f"""Analyze the sentiment of the following product review{product_context}:
+
+Review: "{review_text}"
+
+Follow these steps:
+1. Use the 'model_search' MCP tool to find a suitable Hugging Face sentiment analysis model for product reviews. Do NOT hardcode a model.
+2. Use the 'hf_inference' tool with the discovered model ID and the review text to run sentiment classification.
+3. Determine the overall sentiment as one of: POSITIVE, NEGATIVE, NEUTRAL, or MIXED.
+4. Extract the key aspects mentioned in the review (e.g., price, quality, delivery, customer service). If none, say none.
+
+Respond in EXACTLY this format:
+Sentiment: <POSITIVE|NEGATIVE|NEUTRAL|MIXED>
+Confidence: <a number between 0 and 1>
+Model: <the model ID you used>
+Aspects: <comma-separated list of aspects, or none>"""
+
+            ctx = Context(self.agent)
+            handler = self.agent.run(prompt, ctx=ctx)
+            response = await handler
+            response_text = str(response)
+
+            result = self._parse_response(response_text, review_text, product_id, product_name)
+
+            if result:
+                result["success"] = True
+                return result
+
+            return {
+                "sentiment": SentimentLabel.NEUTRAL,
+                "confidence": 0.0,
+                "model_used": "parsing_failed",
+                "aspects": [],
+                "success": False,
+                "error": "Failed to parse agent response",
+                "raw_response": response_text
+            }
+        except Exception as e:
+            logger.error(f"Error during sentiment analysis: {e}", exc_info=True)
+            return {
+                "sentiment": SentimentLabel.NEUTRAL,
+                "confidence": 0.0,
+                "model_used": "error",
+                "aspects": [],
+                "success": False,
+                "error": str(e)
+            }
     
     
     
@@ -199,5 +272,47 @@ class AgentService:
         #   - product_name: product_name parameter
         # If sentiment_match not found, return None
         # Wrap in try-except to handle errors and return None on exception
-        
-        raise NotImplementedError("This method is not yet implemented. Please complete the TODO steps above.")
+        try:
+            sentiment_match = re.search(r"Sentiment:\s*(.+)", response, re.IGNORECASE)
+            confidence_match = re.search(r"Confidence:\s*([0-9]*\.?[0-9]+)", response, re.IGNORECASE)
+            model_match = re.search(r"Model:\s*(.+)", response, re.IGNORECASE)
+            aspects_match = re.search(r"Aspects:\s*(.+)", response, re.IGNORECASE)
+
+            if not sentiment_match:
+                return None
+
+            sentiment_str = sentiment_match.group(1).strip().upper()
+            try:
+                sentiment = SentimentLabel(sentiment_str)
+            except ValueError:
+                if "POS" in sentiment_str or "GOOD" in sentiment_str:
+                    sentiment = SentimentLabel.POSITIVE
+                elif "NEG" in sentiment_str or "BAD" in sentiment_str:
+                    sentiment = SentimentLabel.NEGATIVE
+                elif "MIX" in sentiment_str:
+                    sentiment = SentimentLabel.MIXED
+                else:
+                    sentiment = SentimentLabel.NEUTRAL
+
+            confidence = float(confidence_match.group(1)) if confidence_match else 0.0
+
+            model_used = model_match.group(1).strip() if model_match else "unknown"
+
+            aspects = []
+            if aspects_match:
+                aspects_str = aspects_match.group(1).strip()
+                if aspects_str and aspects_str.lower() != "none":
+                    aspects = [a.strip() for a in aspects_str.split(",") if a.strip()]
+
+            return {
+                "sentiment": sentiment,
+                "confidence": confidence,
+                "model_used": model_used,
+                "aspects": aspects,
+                "review_text": review_text,
+                "product_id": product_id,
+                "product_name": product_name
+            }
+        except Exception as e:
+            logger.error(f"Failed to parse agent response: {e}", exc_info=True)
+            return None
