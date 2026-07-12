@@ -9,7 +9,7 @@ This function should initialize an Azure OpenAI Chat model using LangChain's Azu
 # Verify these imports are correct for your implementation:
 from typing import Dict, Any
 from langchain_openai import AzureChatOpenAI
-from ..config import logger
+from ..config import logger,load_config
 
 
 def initialize_llm(config: Dict[str, Any]) -> AzureChatOpenAI:
@@ -55,12 +55,24 @@ def initialize_llm(config: Dict[str, Any]) -> AzureChatOpenAI:
         #   - api_version
         #   - temperature=0.1 (for factual accuracy)
         #   - max_tokens=1000
+        config = load_config()
+        llm = AzureChatOpenAI(
+            azure_deployment=config.get('azure_llm_deployment'),
+            azure_endpoint=config.get('azure_endpoint'),
+            api_key=config.get('azure_api_key'),
+            api_version=config.get('api_version'),
+            temperature=0.1,
+            max_completion_tokens=1000
+        )
+
+        return llm
         
         # TODO: Step 2 - Return the initialized LLM instance
         
         # Placeholder - remove this line once you implement the function
-        raise NotImplementedError("TODO: Implement initialize_llm() function")
-        
+
+    except ValueError as e:
+        raise ValueError(f'The value error is: {e}')
     except Exception as e:
         # TODO: Step 3 - Handle errors
         # Re-raise the exception

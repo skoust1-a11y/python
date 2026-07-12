@@ -147,23 +147,36 @@ async def query_rag(request: QueryRequest):
     # TODO: Step 1 - Get app state and increment counter
     # Get app_state using get_app_state()
     # Increment app_state.total_queries
+    app_state = get_app_state()
+    app_state.total_queries += 1
     
     try:
         # TODO: Step 2 - Validate RAG pipeline components
         # Check if app_state.rag_chain and app_state.retriever are not None
-        # If either is None, raise HTTPException with:
-        #   - status_code: status.HTTP_503_SERVICE_UNAVAILABLE
-        #   - detail: "RAG pipeline not initialized"
-        
+        if app_state.rag_chain is None or app_state.retriever is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="RAG pipeline not initialized",
+            )
+
         # TODO: Step 3 - Determine top_k value
         # If request.top_k is provided, use it; otherwise use app_state.config['top_k']
         # Store in variable k
+        k = request.top_k if request.top_k is not None else app_state.config['top_k']
         
         # TODO: Step 4 - Create or get retriever
         # If request.top_k is provided:
         #   - Create custom retriever from app_state.vectorstore.as_retriever()
         #   - Use search_type="similarity" and search_kwargs={"k": k}
         # Otherwise, use app_state.retriever
+        if request.top_k is not None:
+            # create a custom retriever for the requested k
+            retreiver = app_state.vectorstore.as_retriever(
+                search_type="similarity",
+                search_kwargs={"k": k},
+            )
+        else:
+            retreiver = app_state.retriever
         
         # TODO: Step 5 - Execute query
         # Call query_with_error_handling() with:
@@ -171,23 +184,48 @@ async def query_rag(request: QueryRequest):
         #   - retriever (from step 4)
         #   - request.question
         # Store result
+        result = query_with_error_handling(
+            app_state.rag_chain, retriever=retreiver, query=request.question
+        )
         
         # TODO: Step 6 - Check query result status
         # If result["status"] is not "success":
         #   - Raise HTTPException with:
         #     * status_code: status.HTTP_500_INTERNAL_SERVER_ERROR
         #     * detail: result.get('error', 'Query processing failed')
+        if result.get("status") != "success":
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=result.get("error", "Query processing failed"),
+            )
         
         # TODO: Step 7 - Extract answer and update metrics
         # Get answer from result["answer"]
         # Add retrieved_chunks count to app_state.total_chunks_retrieved
+        ans = result.get("answer", "")
+        # accumulate total chunks retrieved
+        app_state.total_chunks_retrieved += int(result.get("retrieved_chunks", 0) or 0)
         
         # TODO: Step 8 - Format sources
         # Initialize empty sources list
         # If request.include_sources is True and "sources" in result:
         #   - Create list of SourceDocument objects from result["sources"]
         #   - Extract: source, chunk_id (as string), content (remove "..." from content_preview)
-        #   - Set relevance_score to None
+        sources: List[SourceDocument] = []
+        if request.include_sources and result.get("sources"):
+            for s in result.get("sources", []):
+                src = s.get("source", "Unknown")
+                chunk_id = str(s.get("chunk_id", "N/A"))
+                content_preview = s.get("content_preview", "")
+                content = content_preview.replace("...", "")
+                sources.append(
+                    SourceDocument(
+                        source=src,
+                        chunk_id=chunk_id,
+                        content=content,
+                        relevance_score=None,
+                    )
+                )
         
         # TODO: Step 9 - Build metadata dictionary
         # Create metadata dict with:
@@ -196,9 +234,19 @@ async def query_rag(request: QueryRequest):
         #   - model: app_state.config['azure_llm_deployment']
         #   - has_sources: boolean (len(sources) > 0)
         #   - graceful_failure: from result quality_metrics
+        metadata = {
+            "chunks_retrieved": int(result.get("retrieved_chunks", 0) or 0),
+            "top_k": k,
+            "model": app_state.config.get("azure_llm_deployment") if app_state.config else None,
+            "has_sources": len(sources) > 0,
+            "graceful_failure": bool(
+                result.get("quality_metrics", {}).get("graceful_failure")
+            ),
+        }
         
         # TODO: Step 10 - Update success metrics
         # Increment app_state.successful_queries
+        app_state.successful_queries += 1
         
         # TODO: Step 11 - Return QueryResponse
         # Return QueryResponse with:
@@ -207,22 +255,33 @@ async def query_rag(request: QueryRequest):
         #   - sources: sources list from step 8
         #   - metadata: metadata dict from step 9
         #   - timestamp: datetime.now().isoformat()
-        
-        # Placeholder - remove this line once you implement the function
-        raise NotImplementedError("TODO: Implement query_rag() function")
+        return QueryResponse(
+            question=request.question,
+            answer=ans,
+            sources=sources,
+            metadata=metadata,
+            timestamp=datetime.now().isoformat(),
+        )
         
     except HTTPException:
         # TODO: Step 12 - Handle HTTPException
         # Increment app_state.failed_queries
         # Re-raise the exception
+        app_state.failed_queries += 1
         raise
+    
     except Exception as e:
         # TODO: Step 13 - Handle general exceptions
         # Increment app_state.failed_queries
         # Raise HTTPException with:
         #   - status_code: status.HTTP_500_INTERNAL_SERVER_ERROR
-        #   - detail: f"Query processing failed: {str(e)}"
-        raise
+        #   - detail: f"Query processing_failed: {str(e)}"
+        app_state.failed_queries += 1
+        logger.error(f"Unhandled error in query_rag: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Query processing failed: {str(e)}",
+        )
 
 
 @router.post("/retrieve", response_model=RetrievalResponse, tags=["Retrieval"])
@@ -254,43 +313,85 @@ async def retrieve_chunks(request: RetrievalRequest):
     """
     # TODO: Step 1 - Get app state
     # Get app_state using get_app_state()
+    app_state = get_app_state()
     
     try:
         # TODO: Step 2 - Determine top_k value
         # Use request.top_k if provided, otherwise use app_state.config['top_k']
         # Store in variable k
-        
+        k = request.top_k if request.top_k is not None else app_state.config['top_k']
+
         # TODO: Step 3 - Create retriever
         # Create retriever from app_state.vectorstore.as_retriever()
         # Use search_type="similarity" and search_kwargs={"k": k}
-        
+        retriever = app_state.vectorstore.as_retriever(
+            search_type="similarity",
+            search_kwargs={"k": k}
+        )
+
         # TODO: Step 4 - Retrieve documents
         # Invoke retriever with request.query
         # Store documents in variable
-        
+        docs = []
+        try:
+            if hasattr(retriever, "invoke"):
+                docs = retriever.invoke(request.query)
+            else:
+                docs = retriever(request.query)
+        except TypeError:
+            if hasattr(retriever, "invoke"):
+                docs = retriever.invoke(request.query)
+            else:
+                raise
+
+        if docs is None:
+            docs = []
+
         # TODO: Step 5 - Format chunks for response
         # Create list of SourceDocument objects from retrieved documents:
         #   - source: from doc.metadata.get('source', 'Unknown')
         #   - chunk_id: from doc.metadata.get('chunk_id', 'N/A') as string
         #   - content: from doc.page_content
         #   - relevance_score: None
-        
+        chunks: List[SourceDocument] = []
+        for d in docs:
+            try:
+                meta = getattr(d, 'metadata', {}) or {}
+                content = getattr(d, 'page_content', '') or str(d)
+            except Exception:
+                meta = {}
+                content = str(d)
+
+            chunks.append(SourceDocument(
+                source=meta.get('source', 'Unknown'),
+                chunk_id=str(meta.get('chunk_id', 'N/A')),
+                content=content,
+                relevance_score=None
+            ))
+
         # TODO: Step 6 - Return response
         # Return RetrievalResponse with:
         #   - query: request.query
         #   - chunks: chunks list from step 5
         #   - count: length of chunks list
         #   - timestamp: datetime.now().isoformat()
-        
-        # Placeholder - remove this line once you implement the function
-        raise NotImplementedError("TODO: Implement retrieve_chunks() function")
+        return RetrievalResponse(
+            query=request.query,
+            chunks=chunks,
+            count=len(chunks),
+            timestamp=datetime.now().isoformat()
+        )
         
     except Exception as e:
         # TODO: Step 7 - Handle exceptions
         # Raise HTTPException with:
         #   - status_code: status.HTTP_500_INTERNAL_SERVER_ERROR
         #   - detail: f"Retrieval failed: {str(e)}"
-        raise
+        logger.error(f"Retrieval failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Retrieval failed: {str(e)}"
+        )
 
 
 @router.get("/", tags=["General"])

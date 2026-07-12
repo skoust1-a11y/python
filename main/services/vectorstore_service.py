@@ -53,19 +53,28 @@ def initialize_embeddings(config: Dict[str, Any]) -> AzureOpenAIEmbeddings:
         #   - azure_deployment
         #   - api_key
         #   - api_version
+        embedding_model = AzureOpenAIEmbeddings(
+            api_version=config.get('api_version'),
+            azure_deployment=config.get('azure_embedding_deployment'),
+            azure_endpoint=config.get('azure_endpoint'),
+            api_key=config.get('azure_api_key')
+        )
         
         # TODO: Step 2 - Test embedding generation
         # Call embed_query() with a test string (e.g., "test")
+        embed = embedding_model.embed_query("test")
+        logger.info(f'The Embedding query is : {embed}')
         # Store the result in a variable
         
         # TODO: Step 3 - Return the embeddings instance
+        return embedding_model
         
         # Placeholder - remove this line once you implement the function
-        raise NotImplementedError("TODO: Implement initialize_embeddings() function")
         
     except Exception as e:
         # TODO: Step 4 - Handle errors
         # Re-raise the exception
+        logger.error(f'The error with intiialzing embedding model is : {e}')
         raise
 
 
@@ -107,14 +116,22 @@ def setup_vectorstore(config: Dict[str, Any], embeddings: AzureOpenAIEmbeddings)
         #   - embeddings: the embeddings parameter
         #   - collection_name: from config['collection_name']
         #   - use_jsonb: True
+        pg_vector = PGVector(
+            collection_name=config.get('collection_name'),
+            connection=config.get('database_url'),
+            use_jsonb=True,
+            embeddings=embeddings
+        )
         
         # TODO: Step 2 - Return the vectorstore instance
+
+        return pg_vector
         
         # Placeholder - remove this line once you implement the function
-        raise NotImplementedError("TODO: Implement setup_vectorstore() function")
         
     except Exception as e:
         # TODO: Step 3 - Handle errors
         # Re-raise the exception
+        logger.error(f'The error is: {e}')
         raise
 

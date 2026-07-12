@@ -11,7 +11,7 @@ from typing import List, Dict, Any
 from langchain_postgres import PGVector
 from langchain_openai import AzureChatOpenAI
 from langchain_core.documents import Document
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough,RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
 from ..config import logger
 from ..prompts import create_production_prompt
@@ -46,11 +46,20 @@ def format_docs(docs: List[Document]) -> str:
     """
     # TODO: Step 1 - Check if docs list is empty
     # If empty, return "No relevant context found."
+    if len(docs) == 0:
+        return "No relevant context found."
+
     
     # TODO: Step 2 - Initialize list for formatted chunks
+    list_chunks = []
     
     # TODO: Step 3 - Iterate through documents
     # Use enumerate starting at 1 to get index numbers
+    for index,doc in enumerate(docs,start=1):
+        source = doc.metadata.get('source', 'Unknown')
+        chunk_id = doc.metadata.get('chunk_id', 'N/A')
+        content = doc.page_content
+        list_chunks.append(f'[Source N: {source} | Chunk ID: {chunk_id}]\n{content}')
     
     # TODO: Step 4 - Extract metadata from each document
     # Get source from doc.metadata.get('source', 'Unknown')
@@ -63,11 +72,13 @@ def format_docs(docs: List[Document]) -> str:
     
     # TODO: Step 6 - Join all formatted chunks
     # Use "\n\n---\n\n" as separator
+    format_str = "\n\n---\n\n".join(list_chunks)
     
     # TODO: Step 7 - Return the formatted string
+    return format_str
     
     # Placeholder - remove this line once you implement the function
-    raise NotImplementedError("TODO: Implement format_docs() function")
+
 
 
 def build_rag_chain(
@@ -113,20 +124,29 @@ def build_rag_chain(
     # Use as_retriever() with:
     #   - search_type="similarity"
     #   - search_kwargs={"k": config['top_k']}
+    retriever = vectorstore.as_retriever(
+        search_type="similarity",
+        search_kwargs={"k": config['top_k']}
+    )
     
     # TODO: Step 2 - Create prompt template
     # Call create_production_prompt() function
+    prompt = create_production_prompt()
     
     # TODO: Step 3 - Build LCEL chain
     # Use pipe operator (|) to chain components:
-    #   - Start with dictionary: {"context": retriever | format_docs, "question": RunnablePassthrough()}
+    #   - Start with dictionary: {"context": retriever | RunnableLambda(format_docs), "question": RunnablePassthrough()}
     #   - Pipe to prompt
     #   - Pipe to llm
     #   - Pipe to StrOutputParser()
     # Store in rag_chain variable
+    rag_chain = {
+        "context": retriever | RunnableLambda(format_docs),
+        "question": RunnablePassthrough()
+    } | prompt | llm | StrOutputParser()
     
     # TODO: Step 4 - Return tuple of (rag_chain, retriever)
+    return rag_chain, retriever
     
-    # Placeholder - remove this line once you implement the function
-    raise NotImplementedError("TODO: Implement build_rag_chain() function")
+    # Placeholder - removed NotImplementedError after implementation
 

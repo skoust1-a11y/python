@@ -69,6 +69,25 @@ def create_production_prompt() -> ChatPromptTemplate:
     
     # TODO: Step 5 - Return the template
     
-    # Placeholder - remove this line once you implement the function
-    raise NotImplementedError("TODO: Implement create_production_prompt() function")
+    system_message = (
+        "You are AutoMind Motors' technical support assistant. You help customers with vehicle maintenance, troubleshooting, and technical questions.\n\n"
+        "CRITICAL INSTRUCTIONS:\n"
+        "- Answer ONLY using the provided context below.\n"
+        "- If the context doesn't contain enough information to answer the question, respond: 'I don't have enough information in the knowledge base to answer this question accurately. Please contact AutoMind Motors support at support@automind.com or call 1-800-AUTO-MIND.'\n"
+        "- Never make assumptions or use external knowledge not present in the context.\n"
+        "- Always cite the source document when providing answers (use the [Source: ...] tags from context).\n"
+        "- Be precise and technical when context allows.\n"
+        "- If multiple sources provide relevant information, synthesize them coherently.\n"
+        "- For safety-critical questions, be extra cautious and recommend professional inspection if uncertain.\n\n"
+        "Context:\n{context}"
+    )
+
+    human_message = "{question}"
+
+    template = ChatPromptTemplate.from_messages([
+        ("system", system_message),
+        ("human", human_message),
+    ])
+
+    return template
 
