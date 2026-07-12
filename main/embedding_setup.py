@@ -7,6 +7,7 @@ import sys
 import logging
 import psycopg2
 from pathlib import Path
+from main.services.vectorstore_service import get_vectorstore_service
 
 # Add project root to Python path to allow imports when running script directly
 project_root = Path(__file__).parent.parent
@@ -74,14 +75,15 @@ def initialize_vectorstore_service():
     
     try:
         # TODO: Create an instance of VectorstoreService
-        
+        vector_service = VectorstoreService()
         # TODO: Return the service instance
-        pass
+        return vector_service
     except Exception as e:
         # TODO: Add exception handling here
         # Log error appropriately
+        logger.error('vector service not initialized at embedding_setup')
         # Re-raise the exception
-        pass
+        raise Exception('vector service not initialized at embedding_setup')
 
 
 # --------------------------
@@ -105,30 +107,37 @@ def insert_sample_documents(service, documents):
 
     # TODO: Check if documents list is empty
     # If empty, log a warning and return empty list
+    if len(documents) == 0:
+        logger.info('Empty List of Documents')
+        return []
 
     try:
         # TODO: Call service.add_documents() method with the documents list
+        list_of_ids = service.add_documents(documents)
         
         # TODO: Get the list of document IDs from the result
         
         # TODO: Log success message with number of documents inserted
+        logger.info(f'{len(list_of_ids)} of Documents are inserted successfully..')
         
         # TODO: Log each document with its ID and document name from metadata
-        
+        for log_doc in documents:
+            logger.info(f'Documents added with {log_doc.metadata['id']} and {log_doc.metadata['name']} has been inserted successfully.')
         # TODO: Return the list of document IDs
-        pass
+        return list_of_ids
     except Exception as e:
         # TODO: Add exception handling here
         # Log error appropriately
+        logger.error('The Documents have been not added.')
         # Return empty list on failure
-        pass
+        return []
 
 
 # --------------------------
 # Step 5: Similarity search
 # --------------------------
 
-def perform_similarity_search(service, query_text, top_k=3, return_result=False):
+def perform_similarity_search(service : VectorstoreService, query_text, top_k=3, return_result=False):
     """
     Perform similarity search with scores for detailed logging.
     Can optionally return the best result.
@@ -150,26 +159,52 @@ def perform_similarity_search(service, query_text, top_k=3, return_result=False)
     try:
         # TODO: Perform similarity search with scores using service.vectorstore.similarity_search_with_score()
         # Pass query_text and top_k (k parameter)
+        results = service.vectorstore.similarity_search_with_score(query=query_text,k=top_k)
+
         
         # TODO: Check if results are empty
         # If empty, log a warning and return None
+        if len(results) == 0:
+            logger.warning('The Extracted search results are empty')
+            return None
         
         # TODO: Iterate through results and log each result
         # For each result, calculate similarity score (1 / (1 + distance))
         # Log rank, distance, similarity, content, and metadata
-        
+        c = 0
+        for doc,distance in results:
+            similarity_score = (1 / (1 + distance))
+            logger.info(
+                f"Rank: {c}, "
+                f"Distance: {distance:.4f}, "
+                f"Similarity: {similarity_score:.4f}"
+                f"content: {doc.page_content}"
+                f"metadata : {doc.metadata}"
+            )
+            c += 1
+
+
+            
+        best_doc,best_score = results[0]
+
         # TODO: If return_result is True and results exist, return the best result
         # Extract the best document (first result) and return as dict with "content" and "metadata" keys
         # Log that you're returning the best result
-        
+        if return_result and len(results) > 0:
+            logger.info(f'Returned the best Result search')
+            return {
+                'content' : best_doc.page_content,
+                'metadata' : best_doc.metadata
+            }
+        else:
+            return None
         # TODO: Return None if return_result is False
-        pass
-
     except Exception as e:
         # TODO: Add exception handling here
         # Log error appropriately
+        logger.error(f'The Similar Results are not able to fetch. {e}')
         # Return None on failure
-        pass
+        return None
 
 
 # --------------------------
