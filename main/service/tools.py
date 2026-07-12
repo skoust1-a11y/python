@@ -99,10 +99,11 @@ def get_vector_tool():
     vector_tool = QueryEngineTool.from_defaults(
         query_engine=query_engine,
         name="policy_documents",
-        description=("it contains healthcare policy documents, quality metrics targets,"
-    "patient safety protocols, capacity management guidelines, and regulatory compliance information, and that it should be used for "
-    " questions about targets, benchmarks, protocols, guidelines, or policy information."
-    )
+        description=(
+            "Contains healthcare policy documents, quality metrics targets, "
+            "patient safety protocols, capacity management guidelines, and regulatory compliance information. "
+            "Use it for questions about targets, benchmarks, protocols, guidelines, or policy information."
+        )
     )
 
     return vector_tool
@@ -152,10 +153,10 @@ def get_sql_tool():
         query_engine=sql_query_engine,
         name="hospital_database",
         description=(
-            "this tool contains patient admission data, "
-    " discharge information, readmission rates, department capacity metrics, bed utilization rates, and operational statistics, and that"
-    " it should be used for questions about actual patient counts, utilization rates, readmission statistics, or any quantitative"
-    "operational metrics."
+            "Contains patient admission data, discharge information, readmission rates, "
+            "department capacity metrics, bed utilization rates, and operational statistics. "
+            "Use it for questions about actual patient counts, utilization rates, "
+            "readmission statistics, or any quantitative operational metrics."
         )
     )
 

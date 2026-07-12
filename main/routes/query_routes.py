@@ -47,5 +47,26 @@ async def query_agent(request: QueryRequest):
         # Convert to response model
         return QueryResponse(**result.to_dict())
         
+    except (ValueError, RuntimeError) as e:
+        # Return clear, specialized API errors for missing variables or configuration issues
+        err_msg = str(e)
+        if "Missing required environment" in err_msg or "Vector search is not configured" in err_msg:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Service Configuration Error: {err_msg}"
+            )
+        elif "No policy document embeddings found" in err_msg:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing Embeddings Error: {err_msg}"
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Query Execution Error: {err_msg}"
+            )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected error processing query: {str(e)}"
+        )

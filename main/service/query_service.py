@@ -116,8 +116,10 @@ def _extract_tools_used(agent, response) -> List[str]:
     if sources:  # also covers "not None AND non-empty"
         for var in sources:
             tool_name = getattr(var, 'tool_name', None)
-            if tool_name is not None and tool_name not in list_of_tools:
-                list_of_tools.append(tool_name)
+            if tool_name is not None:
+                friendly = _map_tool_name(tool_name)
+                if friendly and friendly not in list_of_tools:
+                    list_of_tools.append(friendly)
     
     # TODO: Step 3 - If no tools found, check chat history for tool calls (Method 2)
     # Hint: If the tools_used list is still empty after Method 1, try an alternative approach by checking the agent's chat history.

@@ -87,14 +87,13 @@ def get_sql_database(engine=None, include_tables : Optional[List] = None):
     # Hint: Check whether the include_tables parameter passed to this function is None. If it is None, you need to set it to a list
     # containing the default table names that should be exposed. The default tables are "patients" and "department_capacity". Store
     # this list in the include_tables variable.
-    default_tables = ["patients","department_capacity"]
-
-    tables_load = []
+    default_tables = ["patients", "department_capacity"]
 
     if include_tables is None:
-        tables_load.extend(default_tables)
+        tables_load = default_tables
     else:
-        tables_load.extend(include_tables)
+        # Merge default tables with custom include_tables, keeping unique tables
+        tables_load = list(set(default_tables + include_tables))
 
     
     # TODO: Step 3 - Create and return a SQLDatabase instance
