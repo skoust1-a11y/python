@@ -5,6 +5,7 @@ FastAPI route handlers for document upload and querying.
 
 import os
 import re
+import asyncio
 import logging
 import tempfile
 from typing import List
@@ -12,6 +13,11 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from llama_index.core import SimpleDirectoryReader
 from main.service.rag_service import get_query_engine, add_documents_to_index
+from main.evaluation.dataset import get_langfuse_client
+from main.evaluation.dataset_evaluation import (
+    evaluate_faithfulness_score,
+    evaluate_answer_relevance,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -171,9 +177,10 @@ async def query_rag(request: QueryRequest):
         if hasattr(response, 'source_nodes') and response.source_nodes:
             for node in response.source_nodes:
                 text = getattr(node, "text", "") or ""
-                
+
                 # TODO: Add full text to eval_context_chunks for evaluation
-                
+                eval_context_chunks.append(text)
+
                 display_text = text[:200] + "..." if len(text) > 200 else text
                 source_nodes.append({
                     "text": display_text,
@@ -182,7 +189,8 @@ async def query_rag(request: QueryRequest):
                 })
         
         # TODO: Join eval_context_chunks with "\n\n" to create eval_context
-        
+        eval_context = "\n\n".join(eval_context_chunks)
+
         # TODO: Add automatic evaluation and tracing
         # 1. Get Langfuse client
         # 2. Create span with name="api_query", input={"question": request.question}, metadata
@@ -190,7 +198,36 @@ async def query_rag(request: QueryRequest):
         # 4. Run evaluate_faithfulness_score() and evaluate_answer_relevance() asynchronously
         # 5. Update span with output (answer + scores) and end it
         # 6. Wrap in try/except to handle evaluation errors gracefully
-        
+        try:
+            langfuse = get_langfuse_client()
+            span = langfuse.start_span(
+                name="api_query",
+                input={"question": request.question},
+                metadata={"similarity_top_k": 1, "source": "api"},
+            )
+            trace_id = span.trace_id
+
+            faithfulness, answer_relevance = await asyncio.gather(
+                evaluate_faithfulness_score(
+                    langfuse, trace_id, request.question, eval_context, answer
+                ),
+                evaluate_answer_relevance(
+                    langfuse, trace_id, request.question, answer
+                ),
+            )
+
+            span.update(
+                output={
+                    "answer": answer,
+                    "faithfulness": faithfulness,
+                    "answer_relevance": answer_relevance,
+                }
+            )
+            span.end()
+            langfuse.flush()
+        except Exception as eval_error:
+            logger.warning(f"Evaluation failed but query succeeded: {eval_error}")
+
         return QueryResponse(
             answer=answer,
             source_nodes=source_nodes
