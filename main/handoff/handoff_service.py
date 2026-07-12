@@ -24,9 +24,11 @@ EMAIL_TO = os.getenv("SUPPORT_EMAIL")
 
 def generate_handoff_reference_id(now: Optional[datetime.datetime] = None) -> str:
     """Generate a unique handoff reference ID in format: HO-YYYYMMDD-HHMMSS-HEXCODE"""
-    # TODO: Generate ID with current UTC time (if now is None) + 3-byte hex token
-    # Format: f"HO-{timestamp}-{secrets.token_hex(3).upper()}"
-    raise NotImplementedError("generate_handoff_reference_id needs to be implemented")
+    if now is None:
+        now = datetime.datetime.now(datetime.timezone.utc)
+    timestamp = now.strftime("%Y%m%d-%H%M%S")
+    hex_code = secrets.token_hex(3).upper()
+    return f"HO-{timestamp}-{hex_code}"
 
 
 def evaluate_score(
@@ -36,44 +38,132 @@ def evaluate_score(
     no_chunks: bool
 ) -> Dict[str, Any]:
     """Determines if the system should escalate based on evaluation scores."""
-    # TODO: Check triggers in order and return {"trigger": bool, "reason": str}:
-    # 1. no_chunks → "retrieval returned no context"
-    # 2. faithfulness or relevance is None → "evaluation scores unavailable"
-    # 3. faithfulness < 0.6 → "faithfulness below threshold"
-    # 4. relevance < 0.5 → "answer relevance below threshold"
-    # 5. Keywords in question (human/agent/support/escalate) → "explicit user request"
-    # 6. Otherwise → {"trigger": False}
-    raise NotImplementedError("evaluate_score needs to be implemented")
+    if no_chunks:
+        return {"trigger": True, "reason": "retrieval returned no context"}
+    if faithfulness is None or relevance is None:
+        return {"trigger": True, "reason": "evaluation scores unavailable"}
+    if faithfulness < FAITHFULNESS_THRESHOLD:
+        return {"trigger": True, "reason": "faithfulness below threshold"}
+    if relevance < RELEVANCE_THRESHOLD:
+        return {"trigger": True, "reason": "answer relevance below threshold"}
+    
+    keywords = ["human", "agent", "support", "escalate"]
+    if any(k in user_question.lower() for k in keywords):
+        return {"trigger": True, "reason": "explicit user request"}
+        
+    return {"trigger": False}
 
 
 async def evaluate_confidence_score(answer: str) -> Dict[str, Any]:
     """Evaluate LLM confidence score (0-100) and trigger handoff if below threshold (40)."""
-    # TODO: Use LLM to rate confidence
-    # 1. Get Settings.llm (raise ValueError if None)
-    # 2. Prompt: "Rate confidence 0–100.\nAnswer: {answer}"
-    # 3. Parse score from response (extract digits, default to 50)
-    # 4. Return {"trigger": bool, "reason": str, "confidence": int}
-    raise NotImplementedError("evaluate_confidence_score needs to be implemented")
+    llm = Settings.llm
+    if llm is None:
+        raise ValueError("Settings.llm is not configured")
+    
+    prompt = f"Rate confidence 0–100.\nAnswer: {answer}"
+    try:
+        response = llm.complete(prompt)
+        response_text = response.text
+        
+        import re
+        match = re.search(r'\d+', response_text)
+        if match:
+            score = int(match.group())
+        else:
+            score = 50
+    except Exception as e:
+        logger.error(f"Error evaluating confidence score: {e}", exc_info=True)
+        score = 50
+        
+    score = max(0, min(100, score))
+    trigger = score < CONFIDENCE_THRESHOLD
+    reason = "confidence below threshold" if trigger else ""
+    
+    return {
+        "trigger": trigger,
+        "reason": reason,
+        "confidence": score
+    }
 
 
 async def evaluate_explicit_user_request(message: str) -> Dict[str, Any]:
     """LLM-based classifier for explicit user request or frustration."""
-    # TODO: Use LLM to classify if user is asking for human help
-    # 1. Get Settings.llm (raise ValueError if None)
-    # 2. Prompt: Ask LLM to return "YES" or "NO" if user wants human help
-    # 3. Check if "YES" in response.text.upper()
-    # 4. Return {"trigger": bool, "reason": str}
-    raise NotImplementedError("evaluate_explicit_user_request needs to be implemented")
+    llm = Settings.llm
+    if llm is None:
+        raise ValueError("Settings.llm is not configured")
+        
+    prompt = (
+        "Determine if the user is explicitly asking for human help, a customer support agent, "
+        "escalation, or transfer to a human. Reply with YES or NO.\n\n"
+        f"User Message: {message}"
+    )
+    try:
+        response = llm.complete(prompt)
+        response_text = response.text.strip().upper()
+        trigger = "YES" in response_text
+    except Exception as e:
+        logger.error(f"Error evaluating explicit user request: {e}", exc_info=True)
+        trigger = False
+        
+    reason = "explicit user request" if trigger else ""
+    return {
+        "trigger": trigger,
+        "reason": reason
+    }
 
 
 def send_handoff_email(context: Dict[str, Any]):
     """Send human handoff email via SMTP with full context."""
-    # TODO: Implement email sending
-    # 1. Check SMTP config (SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD, EMAIL_FROM, EMAIL_TO)
-    # 2. Build subject: "[HUMAN HANDOFF] Ref {reference_id} – {trigger_reason}"
-    # 3. Build body with all context fields (reference_id, trace_id, timestamp, priority,
-    #    trigger_reason, user_metadata, query_history, generated_answer, evaluation_scores,
-    #    retrieved_chunks, conversation_flow)
-    # 4. Create MIMEText message and set headers
-    # 5. Send via SMTP with TLS (use try/except, log errors)
-    raise NotImplementedError("send_handoff_email needs to be implemented")
+    if not all([SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD, EMAIL_FROM, EMAIL_TO]):
+        logger.warning("SMTP configuration is missing. Handoff email not sent.")
+        return
+        
+    subject = f"[HUMAN HANDOFF] Ref {context.get('reference_id')} – {context.get('trigger_reason')}"
+    
+    body = f"""Human Handoff Escalation Request
+==================================
+Reference ID: {context.get('reference_id')}
+Trace ID: {context.get('trace_id')}
+Timestamp: {context.get('timestamp')}
+Priority: {context.get('priority')}
+Trigger Reason: {context.get('trigger_reason')}
+
+User Metadata:
+--------------
+{context.get('user_metadata')}
+
+Query History:
+--------------
+{context.get('query_history')}
+
+Generated Answer:
+-----------------
+{context.get('generated_answer')}
+
+Evaluation Scores:
+------------------
+{context.get('evaluation_scores')}
+
+Retrieved Chunks:
+-----------------
+{context.get('retrieved_chunks')}
+
+Conversation Flow:
+------------------
+{context.get('conversation_flow')}
+"""
+
+    msg = MIMEText(body)
+    msg['Subject'] = subject
+    msg['From'] = EMAIL_FROM
+    msg['To'] = EMAIL_TO
+    
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.send_message(msg)
+        logger.info(f"Handoff email sent successfully for reference {context.get('reference_id')}")
+    except Exception as e:
+        logger.error(f"Failed to send handoff email: {e}", exc_info=True)
+
