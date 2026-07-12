@@ -38,6 +38,13 @@ class EmbeddingService:
         # TODO: Implement embeddings initialization.
         # Expected:
         # - Read Azure settings from `self.config`
+        embeddingModel = AzureOpenAIEmbeddings(
+            api_key=self.config.get('azure_api_key'),
+            azure_endpoint=self.config.get('azure_endpoint'),
+            azure_deployment=self.config.get('azure_embedding_deployment'),
+            api_version=self.config.get('api_version')
+        )
+        return embeddingModel 
         # - Create `AzureOpenAIEmbeddings(...)` with endpoint, deployment, api_key, api_version
         # - Return the embeddings instance
         raise NotImplementedError(
@@ -49,6 +56,15 @@ class EmbeddingService:
         # TODO: Implement vectorstore initialization.
         # Expected:
         # - If `self.vectorstore` exists, return it
+        if self.vectorstore is not None:
+            return self.vectorstore
+        else:
+            self.vectorstore = PGVector(
+                embeddings=self.embeddings,
+                collection_name=self.collection_name,
+                connection=self.config.get('database_url')
+            )
+        return self.vectorstore
         # - Else, create `PGVector(embeddings=self.embeddings, collection_name=..., connection=...)`
         # - Assign to `self.vectorstore` and return it
         raise NotImplementedError(
@@ -69,6 +85,25 @@ class EmbeddingService:
         # TODO: Implement vector storage of documents.
         # Expected:
         # - Validate input (return [] if empty)
+        try:
+            if len(documents) == 0:
+                self.logger.info('The Documnets are Empty.')
+                return []
+            
+            vectorstore = self._initialize_vectorstore()
+
+            self.logger.info('vectorstore instance intialized')
+
+            docIds = vectorstore.add_documents(documents=documents)
+
+            self.logger.info('docs are added to vectorstore.')
+
+
+            return docIds
+        except Exception as e:
+            self.logger.error(f'Documents are not added : {e}')
+            raise Exception("documents are not added")
+
         # - Get vectorstore via `_initialize_vectorstore()`
         # - Call `add_documents(documents)` and return IDs
         # - Add basic logging and error handling
@@ -84,6 +119,15 @@ class EmbeddingService:
             PGVector instance
         """
         # TODO: Return initialized vectorstore.
+        if self.vectorstore is not None:
+            return self.vectorstore
+        else:
+            self.vectorstore = PGVector(
+                embeddings=self.embeddings,
+                collection_name=self.collection_name,
+                connection=self.config.get('database_url')
+            )
+        return self.vectorstore
         # Expected:
         # - Delegate to `_initialize_vectorstore()` and return the result
         raise NotImplementedError(

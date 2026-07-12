@@ -3,8 +3,9 @@ Vector similarity search service.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional,Tuple
 from langchain_postgres import PGVector
+from langchain_core.documents import Document
 
 from main.config import logger
 from main.services.embedding_service import EmbeddingService
@@ -50,7 +51,7 @@ class QueryService:
         try:
             # TODO: Get the vectorstore instance using the helper method
             # Hint: Use self._get_vectorstore()
-            vectorstore = None
+            vectorstore = self._get_vectorstore()
             
             self.logger.debug(f"Performing similarity search: query='{query}', top_k={top_k}")
             
@@ -59,12 +60,30 @@ class QueryService:
             # - If filter is provided, pass it as a parameter
             # - Use top_k for the k parameter
             # - Store results in a variable called 'results'
-            results = None
+            results = []
+
+            if filter is None:
+                answer : List[Tuple[Document, float]]= vectorstore.similarity_search_with_score(query=query,k=top_k)
+            else:
+                  answer : List[Tuple[Document, float]] = vectorstore.similarity_search_with_score(query=query,k=top_k,filter=filter)
+            
+            self.logger.info(f'the number of results are : {len(results)}')
+
+
             
             # TODO: Log the number of results found
             # Hint: Use self.logger.info() with the count of results
             
             # TODO: Return the results
+            for doc,score in answer:
+                results.append(
+                    {
+                        'content':doc.page_content,
+                        'metadata':doc.metadata,
+                        'score':score
+                    }
+                )
+
             # Note: Results should be a list of tuples (Document, distance_score)
             return results
             

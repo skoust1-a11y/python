@@ -39,6 +39,29 @@ class TextLoaderService:
             Exception: If loading fails
         """
         # TODO: Implement text file loading.
+        if not os.path.exists(file_path):
+            self.logger.error('Text filePath does not exist')
+            raise FileNotFoundError("Text File not Found.")
+        # 2) Initialize `PyPDFLoader(file_path)` and call `loader.load()` to get List[Document]
+        try:
+            pdf_loader = TextLoader(file_path=file_path,encoding=self.encoding)
+
+            all_docs : List[Document] = pdf_loader.load()
+            self.logger.info(f"Eager loading Text {file_path}: FINISHED")
+
+            updated_docs = []
+
+            for doc in all_docs:
+                self.logger.info(f"Entered the loop for iterating docs")
+                doc.metadata['source_file'] = os.path.basename(file_path)
+                doc.metadata['file_type'] = "txt"
+                self.logger.info(f"Metadata Updated for DOC_OBJECT FOR A Text path: {file_path}.")
+                updated_docs.append(doc)
+            
+            return updated_docs
+        except Exception as e:
+            logger.error(f"Error loading Text {file_path}: {e}")
+            return []
         # Expected steps:
         # 1) Validate that `file_path` exists (raise FileNotFoundError if missing)
         # 2) Initialize `TextLoader(file_path, encoding=self.encoding)` and call `load()` to get List[Document]

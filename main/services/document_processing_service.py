@@ -81,6 +81,26 @@ class DocumentProcessingService:
         # TODO: Implement file processing.
         # Expected steps:
         # 1) Validate `file_path` exists
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+        
+        all_docs = []
+        if is_supported_file(file_path=file_path):
+            file_type : str = detect_file_type(file_path=file_path)
+            match file_type.upper():
+                case "PDF":
+                    all_docs.extend(self.pdf_loader.load(file_path=file_path))
+                case "TXT":
+                    all_docs.extend(self.text_loader.load(file_path=file_path))
+                case "HTML":
+                    all_docs.extend(self.html_loader.load(file_path=file_path))
+                case _:
+                    raise FileNotFoundError(f"File cannot be proccessed to ingestion.")
+        else:
+            raise FileNotFoundError(f"The Given File Extension {detect_file_type(file_path)} is not Supported")
+        
+        return all_docs
+
         # 2) Detect file type via `detect_file_type`
         # 3) Route to the appropriate loader service:
         #    - PDF: `self.pdf_loader.load(file_path)`
@@ -129,9 +149,22 @@ class DocumentProcessingService:
         # TODO: Implement directory processing.
         # Expected:
         # - Validate directory exists
+        if not os.path.isdir(directory):
+            raise NotADirectoryError(f"The Directory: {directory} is not valid")
         # - Iterate over supported files (optionally recursively)
+        SUPPORTED = {".pdf", ".txt", ".html", ".htm"}
+
+        all_docs = []
+
+        for root, dirs, files in os.walk(directory):
+            for file in files:
+                if os.path.splitext(file)[1].lower() in SUPPORTED:
+                    full_path = os.path.join(root, file)
+                    docs = self.process_file(full_path)
+                    all_docs.extend(docs)
         # - Use `self.process_file` for each file
         # - Collect and return all `Document` objects
+        return all_docs
         raise NotImplementedError(
             "process_directory() not implemented. Validate dir, iterate supported files (optional recursion), aggregate results."
         )

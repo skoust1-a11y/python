@@ -5,7 +5,7 @@ FastAPI routes for document ingestion and query operations.
 import os
 from pathlib import Path
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional,Dict,Any
 from fastapi import APIRouter, File, UploadFile, HTTPException
 from pydantic import BaseModel
 
@@ -35,6 +35,7 @@ async def save_uploaded_file(
     logger.info(f"File saved successfully: {file_path}")
     return filename, file_path
 
+
 def validate_and_prepare_upload(
     file: UploadFile,
     allowed_extensions: set = ALLOWED_EXT,
@@ -45,17 +46,25 @@ def validate_and_prepare_upload(
         error_msg = f"Invalid file type: {file_extension}. Allowed types: {', '.join(allowed_extensions)}"
         logger.warning(error_msg)
         raise HTTPException(status_code=400, detail=error_msg)
-    file.file.seek(0, 2)
-    file_size = file.file.tell()
+
+    content = file.file.read()
+    file_size = len(content)
     file.file.seek(0)
-    is_valid_size = file_size <= max_size and file_size > 0
-    if not is_valid_size:
-        if file_size == 0:
-            error_msg = f"Empty file: {file.filename}"
-        else:
-            error_msg = f"File too large: {file_size} bytes (max {max_size} bytes)"
+
+    # ✅ Guard moved BEFORE the comparison
+    if file_size is None:
+        raise HTTPException(status_code=400, detail="Could not determine file size.")
+
+    if file_size == 0:
+        error_msg = f"Empty file: {file.filename}"
         logger.warning(error_msg)
         raise HTTPException(status_code=400, detail=error_msg)
+
+    if file_size > max_size:
+        error_msg = f"File too large: {file_size} bytes (max {max_size} bytes)"
+        logger.warning(error_msg)
+        raise HTTPException(status_code=400, detail=error_msg)
+
     return file_extension, file_size
 
 def list_documents_in_directory(directory: str, allowed_extensions: Optional[set] = None):
@@ -122,6 +131,16 @@ async def root():
     # TODO: Implement API info response.
     # Expected:
     # - Return a dict with name, version, description, and list of endpoints
+    return {
+       "name": "Smart Auto Advisor - RAG Ingestion API",
+        "description": "AI-powered conversational assistant for car manufacturers",
+        "version": "1.0.0",
+        'endpoints':[
+            "/documents",
+            "/upload",
+            "/query"
+        ]
+    }
     raise NotImplementedError("root() not implemented. Return API info dictionary.")
 
 
@@ -131,7 +150,10 @@ async def list_documents():
     # TODO: Implement list documents.
     # Expected:
     # - Read files in DOCUMENTS_DIR filtered by ALLOWED_EXT
+    docs = list_documents_in_directory(DOCUMENTS_DIR,allowed_extensions=ALLOWED_EXT)
     # - Map to List[DocumentInfo]
+    doc_info = [DocumentInfo(filename=doc["filename"], size=doc["size"], extension=doc["extension"], uploaded_at=doc["uploaded_at"]) for doc in docs]
+    return doc_info
     raise NotImplementedError("list_documents() not implemented. Return list of DocumentInfo.")
 
 
@@ -146,8 +168,38 @@ async def upload_document(file: UploadFile = File(...)):
     # TODO: Implement single file upload and processing.
     # Expected:
     # - Validate file (extension and size)
-    # - Save uploaded file to DOCUMENTS_DIR (timestamped)
-    # - Run InjectionPipelineService().process_file(file_path)
+    try:
+        file_extension,file_size = validate_and_prepare_upload(file=file,allowed_extensions=ALLOWED_EXT,max_size=MAX_FILE_SIZE)
+        # - Save uploaded file to DOCUMENTS_DIR (timestamped)
+        await file.seek(0)
+        filename, file_path = await save_uploaded_file(file=file,directory=DOCUMENTS_DIR)
+        # - Run InjectionPipelineService().process_file(file_path)
+        file_process : dict = InjectionPipelineService().process_file(file_path=file_path)
+        if file_process.get('status') == 'warning':
+            raise HTTPException(
+                status_code=404,
+                detail=f"No documents loaded from {file_path}"
+            )
+        return UploadResponse(
+            filename=file_process.get('filename'),
+            chunks_created=file_process.get('chunks_created'),
+            embeddings_stored=file_process.get('embeddings_stored'),
+            message=file_process.get('message'),
+            saved_path=file_path,
+            size=file_size
+        )
+    except HTTPException as e:
+        raise
+    except FileNotFoundError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=f'File Not Found'
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unkonwn Error : {e}"
+        )
     # - Build and return UploadResponse; handle HTTPException and general errors
     raise NotImplementedError("upload_document() not implemented. Validate, save, process, and return UploadResponse.")
 
@@ -163,10 +215,30 @@ async def query_vectorstore(request: QueryRequest):
     # TODO: Implement vector database query.
     # Expected:
     # - Initialize QueryService()
+    try:
+        queryService = QueryService()
+        
+        docs :  List[Dict[str, Any]] = queryService.similarity_search(query=request.query,top_k=request.top_k)
+
+        query_results : List[QueryResult]= []
+
+        for doc in docs:
+            query_results.append(
+                QueryResult(content=doc.get('content'),metadata=doc.get('metadata'),distance=doc.get('score')))
+        
+        return QueryResponse(success=True,count=request.top_k,query=request.query,results=query_results)
+    except Exception as e:
+        logger.error(f'Unknown Error : {e}')
+        raise HTTPException(
+            status_code=500,
+            detail=f'Unknown Error : {e}'
+        )
+
     # - Call similarity_search(request.query, top_k=request.top_k)
     # - Results are tuples: (Document, distance_score)
     # - Map results to List[QueryResult] with content, metadata, and distance
     # - Build and return QueryResponse(success, query, results, count)
+
     # - Handle exceptions: log errors and raise HTTPException(status_code=500)
     raise NotImplementedError("query_vectorstore() not implemented. Query vector database and return QueryResponse.")
 
