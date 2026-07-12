@@ -47,8 +47,8 @@ def evaluate_score(
     if relevance < RELEVANCE_THRESHOLD:
         return {"trigger": True, "reason": "answer relevance below threshold"}
     
-    keywords = ["human", "agent", "support", "escalate"]
-    if any(k in user_question.lower() for k in keywords):
+    import re
+    if re.search(r'\b(human|agent|support|escalate)\b', user_question, re.IGNORECASE):
         return {"trigger": True, "reason": "explicit user request"}
         
     return {"trigger": False}
@@ -56,13 +56,27 @@ def evaluate_score(
 
 async def evaluate_confidence_score(answer: str) -> Dict[str, Any]:
     """Evaluate LLM confidence score (0-100) and trigger handoff if below threshold (40)."""
-    llm = Settings.llm
+    try:
+        llm = Settings.llm
+    except Exception as e:
+        logger.warning(f"Settings.llm could not be resolved: {e}. Returning default confidence score.")
+        return {
+            "trigger": False,
+            "reason": "",
+            "confidence": 50
+        }
+        
     if llm is None:
-        raise ValueError("Settings.llm is not configured")
+        logger.warning("Settings.llm is not configured. Returning default confidence score.")
+        return {
+            "trigger": False,
+            "reason": "",
+            "confidence": 50
+        }
     
     prompt = f"Rate confidence 0–100.\nAnswer: {answer}"
     try:
-        response = llm.complete(prompt)
+        response = await llm.acomplete(prompt)
         response_text = response.text
         
         import re
@@ -88,9 +102,21 @@ async def evaluate_confidence_score(answer: str) -> Dict[str, Any]:
 
 async def evaluate_explicit_user_request(message: str) -> Dict[str, Any]:
     """LLM-based classifier for explicit user request or frustration."""
-    llm = Settings.llm
+    try:
+        llm = Settings.llm
+    except Exception as e:
+        logger.warning(f"Settings.llm could not be resolved: {e}. Returning trigger=False for user request classification.")
+        return {
+            "trigger": False,
+            "reason": ""
+        }
+        
     if llm is None:
-        raise ValueError("Settings.llm is not configured")
+        logger.warning("Settings.llm is not configured. Returning trigger=False for user request classification.")
+        return {
+            "trigger": False,
+            "reason": ""
+        }
         
     prompt = (
         "Determine if the user is explicitly asking for human help, a customer support agent, "
@@ -98,7 +124,7 @@ async def evaluate_explicit_user_request(message: str) -> Dict[str, Any]:
         f"User Message: {message}"
     )
     try:
-        response = llm.complete(prompt)
+        response = await llm.acomplete(prompt)
         response_text = response.text.strip().upper()
         trigger = "YES" in response_text
     except Exception as e:
