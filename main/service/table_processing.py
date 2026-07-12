@@ -32,9 +32,36 @@ def summarize_table(llm: AzureOpenAI, table_md: str) -> str:
     # HINT: Keep the summary concise and factual (include key figures/relationships).
     # HINT: Decide how you want to handle model/content-filter failures (retry/fallback).
     # Your code here:
-    raise NotImplementedError(
-        "summarize_table method is not implemented yet. Please complete the implementation."
-    )
+    if not table_md or not table_md.strip():
+        return ""
+        
+        # Truncate very long table data to avoid token limits and content filter issues
+    max_table_length = 5000  # characters
+    truncated_table = table_md[:max_table_length]
+    if len(table_md) > max_table_length:
+        truncated_table += "\n[... table truncated ...]"
+        logger.warning(f"Table data truncated from {len(table_md)} to {max_table_length} characters")
+        
+    prompt = f"""You are a data analyst. Analyze the following table and provide a clear, factual summary.
+
+        Focus on:
+        - Key numerical values and figures
+        - Important trends or patterns
+        - Significant data points
+
+        Table data:
+        {truncated_table}
+
+        Provide a concise summary of the key information in this table."""
+        
+    try:
+        response = llm.complete(prompt)
+        summary = str(response).strip()
+        return summary
+    except Exception as e:
+        logger.error(f"Unexpected error generating table summary: {e}")
+        raise
+        
 
 
 def build_nodes_from_tables(
@@ -67,6 +94,28 @@ def build_nodes_from_tables(
     #   - table_index: incremental index
     # HINT: Merge `additional_metadata` into each node's metadata if provided.
     # Your code here:
-    raise NotImplementedError(
-        "build_nodes_from_tables method is not implemented yet. Please complete the implementation."
-    )
+
+    all_nodes = []
+    
+    for i,mds in enumerate(table_markdowns,start=0):
+        node_metadata = {}
+        node_metadata["content_type"] = "table_summary"
+        node_metadata["source"] = source_name
+        node_metadata["table_index"] = i
+
+        # Generate summary and coerce to a safe string value
+        summary = summarize_table(llm=llm, table_md=mds)
+        if summary is None:
+            summary = "[table summary unavailable]"
+        elif not isinstance(summary, str):
+            summary = str(summary)
+        elif not summary.strip():
+            summary = "[no table content]"
+
+        merged_metadata = {**node_metadata, **(additional_metadata or {})}
+        all_nodes.append(TextNode(
+            text=summary,
+            metadata=merged_metadata,
+        ))
+        
+    return all_nodes

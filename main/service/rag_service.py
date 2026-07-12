@@ -6,7 +6,7 @@ from typing import List, Optional, Dict, Any, Tuple
 
 from dotenv import load_dotenv
 from llama_parse import LlamaParse
-from llama_index.core import VectorStoreIndex, Document, Settings
+from llama_index.core import VectorStoreIndex, Document, Settings,StorageContext
 from llama_index.core.schema import TextNode
 from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
 from llama_index.llms.azure_openai import AzureOpenAI
@@ -19,9 +19,13 @@ from .table_processing import build_nodes_from_tables
 from .image_extraction import extract_images_from_pdf
 from .captioning import generate_caption
 from .query_engine import create_query_engine
+from llama_index.core.schema import BaseNode
 
 logger = logging.getLogger(__name__)
 
+class NodeInsertionError(Exception):
+    """Raised when inserting nodes into the index fails."""
+    pass
 
 def configure_llm_and_embeddings() -> Tuple[AzureOpenAI, AzureOpenAIEmbedding]:
     """
@@ -55,13 +59,16 @@ def configure_llm_and_embeddings() -> Tuple[AzureOpenAI, AzureOpenAIEmbedding]:
         raise EnvironmentError("Missing environment variables: " + ", ".join(missing))
 
     logger.info(f"Configuring Azure OpenAI LLM: deployment={llm_deployment}, endpoint={endpoint}")
+    llm_model_name = os.getenv('AZURE_OPENAI_LLM_MODEL', 'gpt-4o-mini')
     llm = AzureOpenAI(
-        model="gpt-4o-mini",
-        deployment_name=llm_deployment,
-        api_key=api_key,
-        azure_endpoint=endpoint,
-        api_version=api_version,
-    )
+            model=llm_model_name,
+            deployment_name=llm_deployment,
+            api_key=api_key,
+            azure_endpoint=endpoint,
+            api_version=api_version,
+            temperature=0.1,
+            max_completion_tokens=1000,
+        )
 
     logger.info(f"Configuring Azure OpenAI Embedding: deployment={embedding_deployment}")
     embed_model = AzureOpenAIEmbedding(
@@ -101,8 +108,8 @@ def load_documents(pdf_path: str) -> str:
         )
 
     logger.info("Initializing LlamaParse parser...")
-    parser_lp = LlamaParse(result_type="markdown", verbose=True)
-    documents = parser_lp.load_data(pdf_path)
+    parser_lp = LlamaParse(api_key=llama_parse_api_key,result_type="markdown", verbose=True)
+    documents : List[Document] = parser_lp.load_data(pdf_path)
 
     if not documents:
         logger.error("No content returned by LlamaParse")
@@ -252,9 +259,109 @@ class RAGService:
         #   - documents_indexed: int
         #   - optional: total_nodes/text_nodes/table_nodes/image_nodes, file_path, etc.
         # Your code here:
-        raise NotImplementedError(
-            "process_document method is not implemented yet. Please complete the implementation."
-        )
+        try:
+            if not self._initialized:
+                self.initialize()
+            metadata = get_file_metadata(file_path=pdf_path)
+            if original_filename:
+                source_name = original_filename
+                metadata["source"] = original_filename
+                metadata = extract_diet_metadata_from_filename(metadata.get('source'))
+            else:
+                source_name = metadata.get("source", pdf_path)
+            full_text = load_documents(pdf_path)
+
+
+            all_nodes: List[BaseNode] = []
+            length_of_text_nodes = 0
+            length_of_table_nodes = 0
+            length_of_image_nodes = 0
+
+            # Step 3: Extract and process tables from document (process first)
+            logger.info("Step 3: Extracting markdown tables from document...")
+            table_tuples = find_markdown_tables(full_text)
+            if table_tuples:
+                table_markdowns = [t[2] for t in table_tuples]
+                table_nodes = build_nodes_from_tables(
+                    source_name=source_name,
+                    table_markdowns=table_markdowns,
+                    llm=self.llm,
+                    additional_metadata=metadata,
+                )
+                length_of_table_nodes = len(table_nodes)
+                for node in table_nodes:
+                   if hasattr(node,'metadata'):
+                       if hasattr(node.metadata,'content_type') and node.metadata['content_type'] == 'table_summary':
+                           logger.info(f'The metadata of the table node index: {node.metadata['table_index']} is:{node.metadata}')  
+                logger.info(f'The metadata of the table nodes are inserted')
+                all_nodes.extend(table_nodes)
+
+            # Extract and process images (process second)
+            os.makedirs("Documents", exist_ok=True)
+            output_dir = "Documents"
+            images = extract_images_from_pdf(pdf_path=pdf_path, output_dir=output_dir)
+            if images:
+                for image in images:
+                    meta = {
+                        'content_type': "image_caption",
+                        'page_index': image['page'],
+                        'image_index': image['image_index'],
+                        'image_path':image['path']
+                    }
+                    imageNode = TextNode(
+                        text=generate_caption(image['path']),
+                        metadata={**metadata, **meta}
+                    )
+                    length_of_image_nodes += 1
+                    all_nodes.append(imageNode)
+
+            # Always process text content with semantic chunking so text, tables and images are all indexed
+            logger.info("Processing text content with semantic chunking (always run)...")
+            text_nodes = self.semantic_chunker.process(
+                full_text,
+                metadata={"source": source_name, "page": "all", **metadata},
+            )
+            length_of_text_nodes = len(text_nodes)
+            all_nodes.extend(text_nodes)
+            logger.info(f"Created {len(text_nodes)} text nodes")
+
+            # Prepare vector store and deterministically load or create the index before inserting nodes
+            vector_store = create_vector_store(embed_dim=1536)
+            storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+            try:
+                # Try to load existing index from this vector store
+                Settings.embed_model = self.embed_model
+                index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
+                logger.info("Loaded existing index from vector store")
+            except Exception as e_load:
+                logger.info(f"No existing index found in vector store or failed to load ({type(e_load).__name__}): {e_load}; creating a new index.")
+                index = VectorStoreIndex(nodes=[], embed_model=self.embed_model, storage_context=storage_context)
+
+            # Assign index to self.index deterministically
+            self.index = index
+
+            try:
+                for node in all_nodes:
+                    self.index.insert(node)
+            except NodeInsertionError as e:
+                raise NodeInsertionError(f'The Nodes are not inserted correctly..:{e}')
+            except Exception:
+                raise
+#   - message: str
+#   - documents_indexed: int
+#   - optional: total_nodes/text_nodes/table_nodes/image_nodes, file_path, etc.
+
+            return {
+                'message':f'Documents indexing done for {len(all_nodes)}',
+                'documents_indexed':len(all_nodes),
+                'total_nodes':len(all_nodes),
+                'text_nodes':length_of_text_nodes,
+                'table_nodes':length_of_table_nodes,
+                'image_nodes':length_of_image_nodes
+            }
+        except Exception as e:
+            raise
     
     def query(
         self,

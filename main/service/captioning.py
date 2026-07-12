@@ -6,8 +6,12 @@ This module provides:
 """
 import logging
 from typing import Optional
-
+from pathlib import Path
+import base64
 from dotenv import load_dotenv
+from openai import AzureOpenAI as AzureOpenAIClient
+from llama_index.llms.azure_openai import AzureOpenAI
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +42,10 @@ def generate_caption(image_path: str, prompt: Optional[str] = None) -> str:
     # with open(image_path, "rb") as f:
     #     image_bytes = f.read()
     #
+    with open(image_path,"rb") as f:
+        image_bytes = f.read()
+        image_data = base64.b64encode(image_bytes).decode("utf-8")
+        
     # 2) Call your vision model (e.g., Azure OpenAI vision / OpenAI vision)
     # HINT: Provide both the prompt text and the image payload.
     # HINT: If your API expects a data URL, base64-encode the image bytes.
@@ -45,7 +53,61 @@ def generate_caption(image_path: str, prompt: Optional[str] = None) -> str:
     # 3) Parse response and return caption string
     # caption = ...
     # return caption
+    image_size_mb = len(image_bytes) / (1024 * 1024)
+    logger.debug(f"Image size: {image_size_mb:.2f} MB, base64 encoded length: {len(image_data)} characters")
+    
+    # Determine image MIME type from file extension
+    ext = Path(image_path).suffix.lower()
+    mime_type_map = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif": "image/gif",
+        ".webp": "image/webp",
+    }
+    mime_type = mime_type_map.get(ext, "image/png")
+    logger.debug(f"Detected MIME type: {mime_type} for extension: {ext}")
 
-    raise NotImplementedError(
-        "generate_caption method is not implemented yet. Please complete the implementation."
+    api_key = os.environ.get("AZURE_OPENAI_API_KEY")
+    endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+    api_version = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
+    llm_deployment = os.environ.get("AZURE_OPENAI_LLM_DEPLOYMENT")
+    
+    if not all([api_key, endpoint, llm_deployment]):
+        logger.error("Missing required environment variables for Azure OpenAI")
+        raise EnvironmentError(
+            "Missing required environment variables for Azure OpenAI"
+        )
+    
+    logger.debug(f"Initializing Azure OpenAI client: endpoint={endpoint}, deployment={llm_deployment}")
+    client = AzureOpenAIClient(
+        api_key=api_key,
+        api_version=api_version,
+        azure_endpoint=endpoint,
     )
+
+
+    logger.info(f"Calling Azure OpenAI vision API for caption generation (deployment: {llm_deployment})")
+    response = client.chat.completions.create(
+        model=llm_deployment,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{mime_type};base64,{image_data}"
+                        }
+                    }
+                ]
+            }
+        ],
+        max_tokens=300,
+    )
+    
+    caption = response.choices[0].message.content.strip()
+    logger.info(f"Caption generated successfully (length: {len(caption)} characters): {caption[:100]}...")
+
+    return caption

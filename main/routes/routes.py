@@ -3,14 +3,18 @@ import logging
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field, field_validator
-
+import os,re
 from ..service.rag_service import RAGService
+import tempfile
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 rag_service = RAGService()
 
+
+ALLOWED_EXTENSIONS = {'.pdf','.txt','.md'}
+MAX_FILE_SIZE = 10 * 1024 * 1024 
 
 class QueryRequest(BaseModel):
     """Request model for query endpoint with metadata filtering."""
@@ -62,6 +66,35 @@ class UploadResponse(BaseModel):
     message: str
     documents_indexed: int
 
+
+def sanitize_filename(filename: str) -> str:
+    """
+    Sanitize filename to prevent path traversal and other security issues.
+    
+    Args:
+        filename: Original filename
+        
+    Returns:
+        Sanitized filename safe for filesystem operations
+    """
+    if not filename:
+        raise ValueError("Filename cannot be empty")
+    
+    # Remove path components
+    filename = os.path.basename(filename)
+    
+    # Remove any remaining path separators
+    filename = filename.replace('/', '_').replace('\\', '_')
+    
+    # Remove dangerous characters
+    filename = re.sub(r'[^\w\s.-]', '', filename)
+    
+    # Limit length
+    if len(filename) > 255:
+        name, ext = os.path.splitext(filename)
+        filename = name[:250] + ext
+    
+    return filename
 
 @router.get("/health")
 async def health_check():
@@ -144,7 +177,34 @@ async def upload_document(file: UploadFile = File(...)):
 
     # TODO: Validate the uploaded file and process it for indexing.
     # HINT: Validate filename and file extension (e.g., allow .pdf/.txt/.md).
+    filename = sanitize_filename(file.filename)
+    ext = os.path.splitext(filename)[1].lower()
+
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+                status_code=400,
+                detail=f"File type not supported. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
+            )
+
     # HINT: Enforce a max upload size (e.g., 10MB) and return HTTP 400 when exceeded.
+    content = await file.read()
+    file_size = len(content)
+
+    if file_size >= MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File size not supported. Allowed size :{MAX_FILE_SIZE}"
+            )
+    try:
+        with tempfile.NamedTemporaryFile(
+            suffix=ext,
+            delete=False,
+            mode='wb'
+        ) as tmpFile:
+            tmpFile.write(content)
+            filepath = tmpFile.name
+        logger.info(f"File uploaded: {filename} ({len(content)} bytes)")
+
     # HINT: Persist the uploaded bytes somewhere accessible to your processing logic
     #       (temporary file, object storage, etc.).
     # HINT: Call your document processing/indexing service and return:
@@ -152,9 +212,29 @@ async def upload_document(file: UploadFile = File(...)):
     #   - documents_indexed: int
     # HINT: Ensure cleanup of any temporary artifacts you create.
     # Your code here:
-    raise NotImplementedError(
-        "upload_document endpoint is not implemented yet. Please complete the implementation."
-    )
+        try:
+            # Process document (pass original filename for metadata)
+            logger.info(f"Processing document: {file.filename}")
+            result = rag_service.process_document(pdf_path=filepath, original_filename=file.filename)
+            
+            logger.info(f"Document processed successfully: {result}")
+            
+            return UploadResponse(
+                documents_indexed=result['documents_indexed'],
+                message=result['message'],
+            )
+        finally:
+            # Clean up temporary file
+            if os.path.exists(filepath):
+                os.unlink(filepath)
+                logger.debug(f"Cleaned up temporary file: {filepath}")
+        
+    except Exception as e:
+        logger.error(f"Error processing document {file.filename}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing document: {str(e)}"
+        )
 
 
 @router.post(
