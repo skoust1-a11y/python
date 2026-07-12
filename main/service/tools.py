@@ -41,22 +41,53 @@ def get_vector_tool():
     # from environment variables using os.getenv. The embedding deployment name, API key, endpoint, and API version all need to be
     # retrieved from the environment. Once you create the embedding model instance, assign it to Settings.embed_model so it can be
     # used throughout the application.
+    required_vars = [
+        'AZURE_OPENAI_ENDPOINT',
+        'AZURE_OPENAI_API_KEY',
+        'AZURE_OPENAI_LLM_DEPLOYMENT',
+        'AZURE_OPENAI_EMBEDDING_DEPLOYMENT'
+    ]
+
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    if missing_vars:
+        error_msg = f"Vector search is not configured with variables: {', '.join(missing_vars)}"
+        raise RuntimeError(error_msg)
+    
+    if Settings.embed_model is None:
+        _embed_model = AzureOpenAIEmbedding(
+            model=os.getenv('AZURE_OPENAI_EMBEDDING_DEPLOYMENT'),
+            deployment_name=os.getenv('AZURE_OPENAI_EMBEDDING_DEPLOYMENT'),
+            api_key=os.getenv('AZURE_OPENAI_API_KEY'),
+            azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT'),
+            api_version=os.getenv('AZURE_OPENAI_API_VERSION')
+        )
+
+        Settings.embed_model =_embed_model
     
     # TODO: Step 2 - Load vector index from database
     # Hint: You need to load the previously stored vector index from the PostgreSQL database. Use the static method load_from_db on
     # the DocumentIngestionPipeline class. This method requires a table name parameter, which you should retrieve from the environment
     # variable DB_TABLE_NAME, with a default fallback value of "policy_document_embeddings" if the environment variable is not set.
     # Store the returned vector index in a variable so you can use it in the next steps.
+    table_name = os.getenv("DB_TABLE_NAME", "policy_document_embeddings")
+    logger.info(f"Loading vector index from table: {table_name}")
+    vector_index = DocumentIngestionPipeline.load_from_db(table_name=table_name)
     
     # TODO: Step 3 - Check if vector index is None and raise error
     # Hint: Verify that the vector index was successfully loaded. If the vector_index variable
     # is None, it means no index was found in the database. In this case, you should raise a RuntimeError with a clear error message
     # that informs the user that they need to ingest documents before they can use this tool.
+    if vector_index is None:
+        error_msg = f"No policy document embeddings found in table {table_name}. Please upload and ingest documents before querying."
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
+
     
     # TODO: Step 4 - Create query engine from vector index
     # Hint: You need to create a query engine from the vector index. The vector index object has a method
     # called as_query_engine that will create a query engine instance. Call this method on your vector_index variable and store the
     # result in a variable, as you will need to pass it to the QueryEngineTool in the next step.
+    query_engine = vector_index.as_query_engine()
     
     # TODO: Step 5 - Return QueryEngineTool
     # Hint: You need to create and return a QueryEngineTool instance. Use the from_defaults class method of QueryEngineTool
@@ -65,8 +96,16 @@ def get_vector_tool():
     # contains and when to use it. The description should mention that it contains healthcare policy documents, quality metrics targets,
     # patient safety protocols, capacity management guidelines, and regulatory compliance information, and that it should be used for
     # questions about targets, benchmarks, protocols, guidelines, or policy information.
-    
-    raise NotImplementedError("This function is not yet implemented. Please complete the TODO steps above.")
+    vector_tool = QueryEngineTool.from_defaults(
+        query_engine=query_engine,
+        name="policy_documents",
+        description=("it contains healthcare policy documents, quality metrics targets,"
+    "patient safety protocols, capacity management guidelines, and regulatory compliance information, and that it should be used for "
+    " questions about targets, benchmarks, protocols, guidelines, or policy information."
+    )
+    )
+
+    return vector_tool
 
 
 def get_sql_tool():
@@ -87,6 +126,7 @@ def get_sql_tool():
     # Hint: You need to retrieve the SQL database connection object. There is a function called get_sql_database that has already been
     # imported at the top of this file. Call this function to get the database connection, and store the result in a variable so you
     # can use it in the next step to create the query engine.
+    sql_database_connection = get_sql_database()
     
     # TODO: Step 2 - Create NLSQLTableQueryEngine
     # Hint: You need to create a natural language SQL query engine that can translate questions into SQL queries. Instantiate the
@@ -94,6 +134,11 @@ def get_sql_tool():
     # should be accessible through this query engine by providing a list containing the table names "patients" and "department_capacity".
     # Additionally, set the verbose parameter to True so that the query engine will provide detailed output during query execution.
     # Store the created query engine instance in a variable for use in the next step.
+    sql_query_engine = NLSQLTableQueryEngine(
+        sql_database=sql_database_connection,
+        tables=['patients','department_capacity'],
+        verbose=True
+    )
     
     # TODO: Step 3 - Return QueryEngineTool
     # Hint: You need to wrap your query engine in a QueryEngineTool so it can be used by the agent. Use the from_defaults class
@@ -103,8 +148,18 @@ def get_sql_tool():
     # discharge information, readmission rates, department capacity metrics, bed utilization rates, and operational statistics, and that
     # it should be used for questions about actual patient counts, utilization rates, readmission statistics, or any quantitative
     # operational metrics.
-    
-    raise NotImplementedError("This function is not yet implemented. Please complete the TODO steps above.")
+    sql_query_tool = QueryEngineTool.from_defaults(
+        query_engine=sql_query_engine,
+        name="hospital_database",
+        description=(
+            "this tool contains patient admission data, "
+    " discharge information, readmission rates, department capacity metrics, bed utilization rates, and operational statistics, and that"
+    " it should be used for questions about actual patient counts, utilization rates, readmission statistics, or any quantitative"
+    "operational metrics."
+        )
+    )
+
+    return sql_query_tool
 
 
 # ----- Public API: Document Ingestion -----
@@ -131,16 +186,16 @@ def add_documents(documents: list[Document]) -> dict:
         return {"documents_count": 0, "nodes_count": 0, "table_name": None}
 
     # Initialize Azure embeddings if not already set
-    if Settings._embed_model is None:
+    if Settings.embed_model is None:
         logger.info("Initializing Azure OpenAI embeddings...")
-        embed_model = AzureOpenAIEmbedding(
+        _embed_model = AzureOpenAIEmbedding(
             model=os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT"),
             deployment_name=os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT"),
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
             api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
         )
-        Settings.embed_model = embed_model
+        Settings.embed_model = _embed_model
     
     # Chunk the documents
     logger.info("Chunking documents...")
