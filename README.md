@@ -1,92 +1,264 @@
-# C4-Autonomous-Investment-Strategy-Board
+# Autonomous Investment Strategy Board
 
+Prototype of a stateful multi-agent financial decision-support system.
 
+This repository currently contains the **foundation layer**, the **LLM provider abstraction**, the **external-data provider abstraction**, **portfolio upload / validation**, the **investment-analysis agent framework**, the **compiled LangGraph workflow**, the **portfolio workflow HTTP API**, the **Stock Analyzer HTTP API**, the **Watchlist HTTP API**, the **Dashboard overview HTTP API**, and the **frontend**: environment configuration, logging, exception handling, provider-agnostic contracts, Groq / OpenAI / Google / Azure LLM adapters, factory-selected market / fundamental / news adapters including a Yahoo Finance market-data client, CSV/XLSX portfolio ingestion with preview-then-confirm persistence, specialist agents behind a common execution wrapper, a one-shot manager-coordinated graph, HTTP routes for upload, preview, confirm, holdings, summary, and structured portfolio analysis, independent stock search / selection / market / fundamental / analysis routes, watchlist add / list / current-information / remove / Stock Analyzer open routes, a Dashboard overview of NIFTY 50, major indices, and imported-portfolio totals, and a React UI with routing, shared layout, reusable states, typed models, an API service layer, **Dashboard**, **Upload Portfolio**, **Portfolio Analyzer**, **Stock Analyzer**, and **Watchlist** screens.
 
-## Getting started
+## Current technology stack
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+The original repository was an empty GitLab template (README only). The foundation introduces:
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+| Layer | Choice | Role |
+| --- | --- | --- |
+| Language | Python 3.11+ | Application runtime |
+| API | FastAPI + Uvicorn | HTTP entrypoint |
+| Settings | pydantic-settings | Environment-variable configuration |
+| LLM | openai + google-genai (behind `LLMProvider`) | Groq, OpenAI, Google, Azure adapters |
+| External data | `MarketDataProvider`, `FundamentalDataProvider`, `NewsDataProvider` | Factory-selected adapters; Yahoo Finance for live market data, stub otherwise |
+| Portfolio files | openpyxl + csv | CSV/XLSX parsing only; no market enrichment |
+| Persistence | In-memory stores | Staged uploads, confirmed portfolios, stock analyses, and watchlist symbols |
+| Models | Pydantic v2 | Structured data, provenance, LLM structured output |
+| Orchestration | LangGraph (`app/workflow`) | Manager graph with conditional routing and one reflection cycle |
+| Tests | pytest + httpx | Foundation, agent, and workflow checks |
+| UI | React + TypeScript + Vite | Application shell, routing, and API client |
 
-## Add your files
+Live market quotes and Indian index levels are retrieved through the Yahoo Finance adapter when `MARKET_DATA_PROVIDER=yahoo`. LLM vendor SDKs are used only inside `app/providers/llm/` adapters. Market, fundamental, and news vendor SDKs belong only in their adapter modules. Agents must not instantiate LangGraph; `build_strategy_graph` / `invoke_strategy_board` own orchestration.
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+## Architecture
 
+```mermaid
+flowchart LR
+    subgraph ui [Frontend]
+        SHELL[React application shell]
+    end
+    subgraph api [API]
+        HTTP[FastAPI routes]
+    end
+    subgraph services [Services]
+        SVC[Use-case orchestration]
+        PF[Portfolio upload / confirm]
+        AN[Portfolio analysis]
+        DASH[Dashboard overview]
+        ST[Stock Analyzer]
+        WL[Watchlist]
+    end
+    subgraph persistence [Persistence]
+        STORE[In-memory stores]
+    end
+    subgraph workflow [LangGraph workflow]
+        GRAPH[Portfolio Manager graph]
+    end
+    subgraph agents [Agents]
+        A[Agent interface + execution wrapper]
+    end
+    subgraph providers [Providers]
+        C[Provider contracts]
+        R[Registry]
+        LF[LLM factory]
+        MF[Market / fundamental / news factories]
+        L[LLM adapters]
+        S[Stub data adapters]
+        Y[Yahoo market adapter]
+    end
+    CFG[Environment configuration]
+
+    SHELL --> HTTP
+    HTTP --> DASH
+    HTTP --> SVC
+    HTTP --> PF
+    HTTP --> AN
+    HTTP --> ST
+    HTTP --> WL
+    DASH --> STORE
+    DASH --> C
+    PF --> STORE
+    AN --> STORE
+    AN --> GRAPH
+    ST --> GRAPH
+    ST --> C
+    ST --> STORE
+    WL --> ST
+    WL --> STORE
+    WL --> C
+    SVC --> GRAPH
+    GRAPH --> A
+    A --> C
+    SVC --> C
+    CFG --> R
+    R --> LF
+    R --> MF
+    LF --> L
+    MF --> S
+    MF --> Y
+    L --> C
+    S --> C
+    Y --> C
 ```
-cd existing_repo
-git remote add origin https://gitlab.example.com/c4-autonomous-investement-strategy/c4-autonomous-investment-strategy-board.git
-git branch -M main
-git push -uf origin main
+
+**Rules encoded in this layout**
+
+- Business logic depends on **provider contracts**, never on a vendor SDK.
+- The selected LLM, market-data, fundamental, and news adapters come from environment variables (`LLM_PROVIDER`, `MARKET_DATA_PROVIDER`, `FUNDAMENTAL_DATA_PROVIDER`, `NEWS_PROVIDER`).
+- Stub adapters refuse to invent prices, fundamentals, or headlines.
+- Agents run through an execution wrapper (logging, timing, errors, evidence). They must not start their own graphs, instantiate an LLM adapter, or hardcode a provider.
+- The LangGraph workflow plans once, fans out independent specialists, collects results, records conflicts, optionally critiques, may re-run flagged specialists once, and synthesizes a structured recommendation. It does not loop.
+- Deterministic calculations belong in `app/tools`; LLMs are for interpretation, routing, critique, and synthesis only. Chain-of-thought is not returned.
+- The uploaded portfolio is the **only** user-provided financial dataset. Upload does not call market, fundamental, or news providers.
+- A staged preview is not available as a portfolio until the client **confirms** import.
+- Frontend screens are independently developed: each page owns its data loading and talks to the API client, not to other screens.
+
+Prototype graph (one request, at most one re-analysis cycle):
+
+```mermaid
+flowchart TD
+    req[User request] --> plan[Manager planning]
+    plan -->|conditional| market[Market agent]
+    plan -->|conditional| fund[Fundamental agent]
+    plan -->|conditional| join[Join research]
+    market --> join
+    fund --> join
+    join -->|conditional| risk[Risk agent]
+    join -->|conditional| opt[Portfolio optimizer]
+    join -->|conditional| collect[Result collection]
+    risk -->|conditional| opt
+    risk -->|conditional| collect
+    opt --> collect
+    collect --> conflicts[Conflict detection]
+    conflicts -->|optional| critique[Critique]
+    conflicts --> synth[Manager synthesis]
+    critique -->|critical issues, cycle 0| reanalyze[Re-analysis]
+    critique --> synth
+    reanalyze -->|flagged specialists once| market
+    reanalyze --> fund
+    reanalyze --> risk
+    reanalyze --> opt
+    reanalyze --> collect
+    synth --> out[Structured final result]
 ```
 
-## Integrate with your tools
+Market and fundamental run in parallel when both are requested. Risk and the optimizer run only when the plan needs them and a portfolio (uploaded or synthetic) is available. Critique runs when structured findings exist. Critical findings may re-invoke flagged specialists once; remaining issues are recorded as unresolved and synthesis always follows.
 
-- [ ] [Set up project integrations](https://gitlab.example.com/c4-autonomous-investement-strategy/c4-autonomous-investment-strategy-board/-/settings/integrations)
+## Project structure
 
-## Collaborate with your team
+```text
+app/
+  main.py                 # Application factory and startup
+  exceptions.py           # Shared error types
+  config/                 # Settings and logging
+  api/                    # HTTP routes, deps, exception handlers
+  agents/                 # Manager + market, fundamental, risk, optimizer specialists
+  workflow/               # InvestmentState, compiled LangGraph graph, node mapping
+  providers/              # Contracts, registry, LLM + data-provider factories, stub adapters
+  tools/                  # Deterministic tools (portfolio parsing, later risk math)
+  models/                 # Shared Pydantic models (quotes, statements, news, portfolio, stock, watchlist)
+  services/              # Use-case services (upload, analysis mapping, stock retrieval, watchlist)
+  repositories/           # Persistence contracts (in-memory portfolio, stock-analysis, and watchlist stores)
+tests/                    # Foundation, portfolio, agent, and workflow tests
+frontend/                 # React application shell
+  src/api/                # Typed HTTP client split by domain
+  src/models/             # Frontend contracts matching the API
+  src/components/         # Shared UI, loading, error, and empty states
+  src/layout/             # Navigation and app chrome
+  src/pages/              # One independently developed screen per file
+.env.example              # Documented configuration
+```
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+## Configuration
 
-## Test and Deploy
+Copy `.env.example` to `.env` and adjust values. `.env` is gitignored.
 
-Use the built-in continuous integration in GitLab.
+Provider selection is configuration, not code:
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+```text
+LLM_PROVIDER=groq
+FALLBACK_LLM_PROVIDER=openai
+MARKET_DATA_PROVIDER=yahoo
+FUNDAMENTAL_DATA_PROVIDER=stub
+NEWS_PROVIDER=stub
+```
 
-***
+LLM adapters: `stub`, `openai`, `groq`, `google`, `azure`. Each vendor reads its own model and API key (`OPENAI_LLM_MODEL` / `OPENAI_LLM_API_KEY`, and the Groq, Google, and Azure equivalents). Azure also needs `AZURE_LLM_ENDPOINT`. If the primary LLM times out or fails, the configured fallback is tried once.
 
-# Editing this README
+Adding another LLM vendor means a new adapter under `app/providers/llm/` and a registry entry in `app/providers/llm/factory.py`. Agents keep calling the `LLMProvider` contract (`complete`, `complete_structured`) through `AgentRuntime`; they never construct a vendor client.
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!).  Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Market adapters: `stub`, `yahoo` (alias `yfinance`). Fundamental and news adapters in this layer: `stub` only. The contracts are provider-independent:
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+- `MarketDataProvider`: instrument search, current quote, historical OHLC, index information, volume, basic market information
+- `FundamentalDataProvider`: company profile, financial statements, key financial metrics, valuation metrics
+- `NewsDataProvider`: company news, market news
 
-## Name
-Choose a self-explaining name for your project.
+Adding a data vendor means a new adapter under `app/providers/market_data/`, `app/providers/fundamentals/`, or `app/providers/news/` plus a registry entry in that package's `factory.py`. Agents and services keep calling the generic interfaces.
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Secrets (`*_API_KEY`) stay in the environment and are never logged. The `/health` endpoint reports adapter names only.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## Run
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env
+python -m app
+```
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+The API listens on `APP_HOST`/`APP_PORT` (default `http://127.0.0.1:8000`).
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Frontend (from `frontend/`):
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+The UI listens on `http://127.0.0.1:5173` and proxies API calls to the backend. Dashboard, Upload Portfolio, Portfolio Analyzer, Stock Analyzer, and Watchlist are implemented independently. Dashboard is an overview and entry point; it does not run specialist analysis.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+- Health: `GET /health`
+- Dashboard overview: `GET /dashboard`
+- Portfolio upload + validate: `POST /portfolios/uploads`
+- Portfolio preview: `GET /portfolios/uploads/{upload_id}`
+- Confirm import: `POST /portfolios/uploads/{upload_id}/confirm`
+- Imported portfolios: `GET /portfolios`
+- Portfolio summary: `GET /portfolios/{portfolio_id}/summary`
+- Portfolio holdings: `GET /portfolios/{portfolio_id}/holdings`
+- Confirmed portfolio: `GET /portfolios/{portfolio_id}`
+- Submit analysis: `POST /portfolios/{portfolio_id}/analysis`
+- Stored analyses: `GET /portfolios/{portfolio_id}/analysis`
+- Analysis result: `GET /portfolios/{portfolio_id}/analysis/{analysis_id}`
+- Stock search: `GET /stocks/search?q=`
+- Stock selection: `POST /stocks/select`
+- Current stock information: `GET /stocks/{symbol}`
+- Market data: `GET /stocks/{symbol}/market`
+- Fundamental data: `GET /stocks/{symbol}/fundamentals`
+- Suggested questions: `GET /stocks/{symbol}/questions`
+- Stock analysis: `POST /stocks/{symbol}/analysis`
+- Stored stock analyses: `GET /stocks/{symbol}/analysis`
+- Stock analysis result: `GET /stocks/{symbol}/analysis/{analysis_id}`
+- Watchlist: `GET /watchlist`
+- Add to watchlist: `POST /watchlist`
+- Watchlist stock information: `GET /watchlist/{symbol}`
+- Remove from watchlist: `DELETE /watchlist/{symbol}`
+- Open watchlist stock in Stock Analyzer: `POST /watchlist/{symbol}/open`
+- OpenAPI: `/docs`
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+Supported prototype files: CSV and XLSX. Required columns: `symbol` (aliases: ticker, instrument) and `quantity` (aliases: qty, shares, units). Optional columns: `average_cost`, `currency`, `name`, `weight`. Validation errors and warnings are returned as structured `issues`. Confirmation is rejected until every error is resolved. Upload does not attach market prices.
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+Portfolio analysis accepts a question against an imported portfolio, runs the one-shot manager graph, and returns a structured result (recommendation, specialist summaries, critique findings, evidence with source metadata, risk/optimization snapshots). Graph node names, specialist extras, prompts, and chain-of-thought are not returned.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+Stock Analyzer search, selection, current information, market data, fundamentals, suggested questions, and custom questions work without an uploaded portfolio. Retrieved figures come from the configured market and fundamental adapters. AI stock analysis runs the same one-shot manager graph with `analysis_type=stock_analysis` and returns evidence with source metadata. The Stock Analyzer screen can add the selected symbol to Watchlist without leaving the page; Watchlist itself does not run AI analysis. Opening a holding from Portfolio Analyzer still uses this independent single-stock view.
 
-## License
-For open source projects, say how it is licensed.
+The Dashboard is a lightweight overview. It shows NIFTY 50, major Indian indices, current-day performance, market session, and the data timestamp from the configured market-data adapter. When a portfolio has been imported, it also shows portfolio value, allocation, holding count, and high-level concentration / diversification labels. Missing quotes stay blank. Detailed Q&A stays on Portfolio Analyzer and Stock Analyzer.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+The Watchlist is a monitoring and navigation feature. The screen lists watched symbols with current price, day change, percentage change, and last-updated time. It can add, list, refresh current information for, and remove symbols. Duplicate symbols are rejected. Invalid or unknown symbols are not added. If a monitored symbol later becomes unavailable, list and current-information routes keep the entry and record the gap instead of inventing prices. Opening a watchlist symbol reuses Stock Analyzer selection (`/stocks/{symbol}`) and does not run AI analysis.
+
+## Test
+
+```bash
+pytest
+```
+
+## Intentionally not in this task
+
+- Live fundamental or news vendor APIs
+- Brokerage or trade execution
+- Continuous autonomous agent loops
