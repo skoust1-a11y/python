@@ -54,6 +54,7 @@ export function StockAnalyzerPage() {
 
   const [query, setQuery] = useState(symbol ?? "");
   const [debouncedQuery, setDebouncedQuery] = useState(symbol ?? "");
+  const [country, setCountry] = useState<"IN" | "US" | "GLOBAL">("IN");
   const [search, setSearch] = useState<AsyncState<InstrumentMatch[]>>(idleState());
   const [selecting, setSelecting] = useState(false);
   const [selectionError, setSelectionError] = useState<unknown>(null);
@@ -94,7 +95,7 @@ export function StockAnalyzerPage() {
     }
     const requestId = ++searchRequest.current;
     setSearch((current) => loadingState(current.data));
-    void searchStocks(debouncedQuery)
+    void searchStocks(debouncedQuery, undefined, country)
       .then((response) => {
         if (searchRequest.current !== requestId) {
           return;
@@ -106,7 +107,7 @@ export function StockAnalyzerPage() {
           setSearch(errorState(asError(error)));
         }
       });
-  }, [debouncedQuery]);
+  }, [debouncedQuery, country]);
 
   useEffect(() => {
     if (symbol) {
@@ -414,6 +415,7 @@ export function StockAnalyzerPage() {
       <div className="space-y-4">
         <SearchCard
           query={query}
+          country={country}
           search={search}
           selecting={selecting}
           selectionError={selectionError}
@@ -421,6 +423,10 @@ export function StockAnalyzerPage() {
           activeSymbol={symbol}
           onQueryChange={(value) => {
             setQuery(value);
+            setSearchHint(null);
+          }}
+          onCountryChange={(val) => {
+            setCountry(val);
             setSearchHint(null);
           }}
           onSubmit={onSearchSubmit}
@@ -497,23 +503,27 @@ export function StockAnalyzerPage() {
 
 function SearchCard({
   query,
+  country,
   search,
   selecting,
   selectionError,
   searchHint,
   activeSymbol,
   onQueryChange,
+  onCountryChange,
   onSubmit,
   onSelect,
   onOpenTicker,
 }: {
   query: string;
+  country: "IN" | "US" | "GLOBAL";
   search: AsyncState<InstrumentMatch[]>;
   selecting: boolean;
   selectionError: unknown;
   searchHint: string | null;
   activeSymbol: string | null;
   onQueryChange: (value: string) => void;
+  onCountryChange: (value: "IN" | "US" | "GLOBAL") => void;
   onSubmit: (event: FormEvent) => void;
   onSelect: (match: InstrumentMatch) => void;
   onOpenTicker: () => void;
@@ -521,14 +531,33 @@ function SearchCard({
   const matches = search.data ?? [];
   return (
     <Card title="Stock search">
-      <form className="flex flex-col gap-3 sm:flex-row" onSubmit={onSubmit}>
+      <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={onSubmit}>
+        <label className="block w-full sm:w-48 text-sm">
+          <span className="font-medium text-slate-700">Market / Country</span>
+          <select
+            className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-600"
+            value={country}
+            onChange={(event) => onCountryChange(event.target.value as "IN" | "US" | "GLOBAL")}
+            disabled={selecting}
+          >
+            <option value="IN">🇮🇳 India (NSE / BSE)</option>
+            <option value="US">🇺🇸 US (NYSE / NASDAQ)</option>
+            <option value="GLOBAL">🌐 Global Markets</option>
+          </select>
+        </label>
         <label className="block flex-1 text-sm">
-          <span className="font-medium text-slate-700">Ticker or company name</span>
+          <span className="font-medium text-slate-700">Ticker, company name, or idea</span>
           <input
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-600"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Search AAPL, Microsoft, or another listed name"
+            placeholder={
+              country === "IN"
+                ? "Search Reliance, TCS, Tata Motors, or theme (e.g. EV, Solar)..."
+                : country === "US"
+                ? "Search AAPL, Microsoft, Tesla..."
+                : "Search AAPL, Reliance, or another listed name"
+            }
             maxLength={64}
             autoComplete="off"
             disabled={selecting}

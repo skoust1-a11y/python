@@ -119,8 +119,14 @@ def invoke_strategy_board(
     specialists: Mapping[str, Agent] | None = None,
 ) -> InvestmentState:
     """Run the compiled graph once and return the typed final state."""
+    from app.workflow.observability import create_langfuse_handler, record_workflow_evaluations
+
     graph = build_strategy_graph(context, specialists=specialists)
-    result = graph.invoke(state)
+    handler = create_langfuse_handler(state)
+    config = {"callbacks": [handler]} if handler is not None else None
+    result = graph.invoke(state, config=config)
+    if handler is not None:
+        record_workflow_evaluations(handler, state, result)
     return result  # type: ignore[return-value]
 
 

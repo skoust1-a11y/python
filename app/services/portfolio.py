@@ -6,6 +6,7 @@ before a staged upload becomes an available portfolio.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -19,6 +20,8 @@ from app.models.portfolio import (
 )
 from app.repositories.portfolio import PortfolioDraft, PortfolioStore, draft_expiry
 from app.tools.portfolio import parse_portfolio_file, validate_upload_file
+
+logger = logging.getLogger("app.services")
 
 
 def stage_portfolio_upload(

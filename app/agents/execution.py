@@ -20,16 +20,22 @@ logger = logging.getLogger("app.agents")
 _GENERIC_FAILURE = "An unexpected agent error occurred."
 
 
+def _agent_logger(name: str) -> logging.Logger:
+    clean = name.strip().lower().replace("-", "_")
+    return logging.getLogger(f"app.agents.{clean}")
+
+
 def execute_agent(agent: Agent, payload: AgentInput, context: AgentContext) -> AgentOutput:
     """Run `agent.analyze` with logging, timing, and error isolation."""
     started = time.perf_counter()
+    agent_logger = _agent_logger(agent.name)
     runtime = AgentRuntime(
         providers=context.providers,
         agent_name=agent.name,
         request_id=payload.request_id,
         extras=dict(context.extras or {}),
     )
-    logger.info(
+    agent_logger.info(
         "agent.start name=%s role=%s request_id=%s llm=%s",
         agent.name,
         agent.metadata.role,
@@ -42,11 +48,11 @@ def execute_agent(agent: Agent, payload: AgentInput, context: AgentContext) -> A
             raise AgentError("Agent analyze() must return AgentAnalysis.")
         duration_ms = _elapsed_ms(started)
         output = _succeeded_output(agent, context, analysis, runtime, duration_ms)
-        _log_finish(output)
+        _log_finish(output, agent_logger)
         return output
     except AppError as exc:
         output = _failed_output(agent, context, runtime, started, exc)
-        logger.warning(
+        agent_logger.warning(
             "agent.finish name=%s status=failed duration_ms=%.1f error_code=%s",
             output.agent,
             output.duration_ms,
@@ -54,7 +60,7 @@ def execute_agent(agent: Agent, payload: AgentInput, context: AgentContext) -> A
         )
         return output
     except Exception:
-        logger.exception("agent.crash name=%s request_id=%s", agent.name, payload.request_id)
+        agent_logger.exception("agent.crash name=%s request_id=%s", agent.name, payload.request_id)
         output = _failed_output(
             agent,
             context,
@@ -62,7 +68,7 @@ def execute_agent(agent: Agent, payload: AgentInput, context: AgentContext) -> A
             started,
             AgentError(_GENERIC_FAILURE),
         )
-        logger.warning(
+        agent_logger.warning(
             "agent.finish name=%s status=failed duration_ms=%.1f error_code=%s",
             output.agent,
             output.duration_ms,
@@ -190,8 +196,9 @@ def _elapsed_ms(started: float) -> float:
     return max(0.0, (time.perf_counter() - started) * 1000.0)
 
 
-def _log_finish(output: AgentOutput) -> None:
-    logger.info(
+def _log_finish(output: AgentOutput, log: logging.Logger | None = None) -> None:
+    target_logger = log or _agent_logger(output.agent)
+    target_logger.info(
         "agent.finish name=%s status=%s duration_ms=%.1f evidence=%d",
         output.agent,
         output.status,

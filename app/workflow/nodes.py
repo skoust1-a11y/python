@@ -127,7 +127,7 @@ def plan_node(state: InvestmentState, runtime: WorkflowRuntime) -> dict[str, Any
         )
     except AppError as exc:
         runtime.payload = payload
-        logger.info(
+        logger.warning(
             "workflow.plan_failed request_id=%s error=%s",
             payload.request_id,
             exc.message,
@@ -151,6 +151,11 @@ def plan_node(state: InvestmentState, runtime: WorkflowRuntime) -> dict[str, Any
         payload.request_id,
         plan.analysis_type,
         ",".join(plan.requested_agents),
+    )
+    logger.debug(
+        "workflow.plan_details symbols=%s specialist_extras_keys=%s",
+        symbols,
+        list(specialist_extras.keys()),
     )
     update: dict[str, Any] = {
         "user_request": request.model_copy(
@@ -178,7 +183,7 @@ def specialist_node(
     now = datetime.now(tz=UTC)
     agent = runtime.specialists.get(name)
     if agent is None:
-        logger.info("workflow.skip name=%s reason=unregistered", name)
+        logger.warning("workflow.skip name=%s reason=unregistered", name)
         return {
             "execution": ExecutionMetadata(
                 current_node=name,
@@ -306,9 +311,9 @@ def critique_node(state: InvestmentState, runtime: WorkflowRuntime) -> dict[str,
                 resolved=False,
             )
         )
-    except (AppError, ValidationError):
-        logger.info(
-            "workflow.critique_skipped request_id=%s", state.get("request_id")
+    except (AppError, ValidationError) as exc:
+        logger.warning(
+            "workflow.critique_skipped request_id=%s reason=%s", state.get("request_id"), exc
         )
     runtime.issued_critiques = [
         item for item in records if item.category is not None
@@ -333,7 +338,7 @@ def critique_node(state: InvestmentState, runtime: WorkflowRuntime) -> dict[str,
 def reanalyze_node(state: InvestmentState, runtime: WorkflowRuntime) -> dict[str, Any]:
     now = datetime.now(tz=UTC)
     if runtime.reflection_cycle >= MAX_REFLECTION_CYCLES:
-        logger.info(
+        logger.warning(
             "workflow.reanalyze_blocked request_id=%s cycle=%s",
             state.get("request_id"),
             runtime.reflection_cycle,
@@ -389,6 +394,7 @@ def synthesize_node(
             if execution is not None and execution.errors
             else "Provide symbols or an uploaded portfolio."
         )
+        logger.error("workflow.synthesize_aborted reason=no_plan detail=%s", detail)
         return {
             "final_recommendation": FinalRecommendation(
                 summary=message,
@@ -450,9 +456,9 @@ def synthesize_node(
             system=SYNTHESIS_SYSTEM_PROMPT,
             metadata={"task": "manager-synthesis"},
         )
-    except (AppError, ValidationError):
-        logger.info(
-            "workflow.synthesis_fallback request_id=%s", payload.request_id
+    except (AppError, ValidationError) as exc:
+        logger.warning(
+            "workflow.synthesis_fallback request_id=%s error=%s", payload.request_id, exc
         )
         synthesis = _fallback_synthesis(results, missing, conflicts)
 

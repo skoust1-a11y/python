@@ -7,11 +7,14 @@ service never runs the analysis workflow or invents missing prices.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from typing import TypeVar
 
 from app.exceptions import ProviderError, ProviderNotImplementedError
 from app.models.common import Evidence
+
+logger = logging.getLogger("app.services")
 from app.models.dashboard import (
     AllocationSlice,
     DashboardOverview,

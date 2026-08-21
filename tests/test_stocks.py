@@ -51,14 +51,20 @@ def _source(provider: str, symbol: str | None = "AAPL") -> DataSourceMetadata:
 class _FakeMarketDataProvider(MarketDataProvider):
     def __init__(self, settings=None) -> None:
         self._settings = settings
-        self.search_queries: list[tuple[str, int]] = []
+        self.search_queries: list[tuple[str, int, str | None]] = []
 
     @property
     def name(self) -> str:
         return "fake-market"
 
-    def search_instruments(self, query: str, *, limit: int = 10) -> list[InstrumentMatch]:
-        self.search_queries.append((query, limit))
+    def search_instruments(
+        self,
+        query: str,
+        *,
+        limit: int = 10,
+        country: str | None = None,
+    ) -> list[InstrumentMatch]:
+        self.search_queries.append((query, limit, country))
         catalog = [
             InstrumentMatch(
                 symbol="AAPL",
@@ -73,6 +79,13 @@ class _FakeMarketDataProvider(MarketDataProvider):
                 exchange="NASDAQ",
                 currency="USD",
                 source=_source(self.name, "MSFT"),
+            ),
+            InstrumentMatch(
+                symbol="RELIANCE.NS",
+                name="Reliance Industries Limited",
+                exchange="NSE",
+                currency="INR",
+                source=_source(self.name, "RELIANCE.NS"),
             ),
         ]
         token = query.strip().lower()
@@ -216,14 +229,19 @@ def test_search_returns_provider_matches_without_hardcoded_vendor_logic() -> Non
     market = _FakeMarketDataProvider()
     application = _stock_app(market=market)
     with TestClient(application) as client:
-        response = client.get("/stocks/search", params={"q": "apple", "limit": 5})
+        response = client.get("/stocks/search", params={"q": "apple", "limit": 5, "country": "US"})
         assert response.status_code == 200
         body = response.json()
         assert body["query"] == "apple"
         assert body["matches"][0]["symbol"] == "AAPL"
         assert body["matches"][0]["name"] == "Apple Inc."
         assert body["matches"][0]["source"]["provider"] == "fake-market"
-        assert market.search_queries == [("apple", 5)]
+        assert market.search_queries == [("apple", 5, "US")]
+        
+        in_response = client.get("/stocks/search", params={"q": "reliance", "country": "IN"})
+        assert in_response.status_code == 200
+        assert in_response.json()["matches"][0]["symbol"] == "RELIANCE.NS"
+
         empty = client.get("/stocks/search", params={"q": "no-such-name"})
         assert empty.status_code == 200
         assert empty.json()["matches"] == []
@@ -476,7 +494,13 @@ def test_stock_service_depends_on_contracts_not_vendor_adapters() -> None:
 
 def test_unimplemented_search_adapter_is_not_replaced_by_hardcoded_listings() -> None:
     class _NoSearchMarket(_FakeMarketDataProvider):
-        def search_instruments(self, query: str, *, limit: int = 10) -> list[InstrumentMatch]:
+        def search_instruments(
+            self,
+            query: str,
+            *,
+            limit: int = 10,
+            country: str | None = None,
+        ) -> list[InstrumentMatch]:
             raise ProviderNotImplementedError("Instrument search is not implemented.")
 
     application = _stock_app(market=_NoSearchMarket())

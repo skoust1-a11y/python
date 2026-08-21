@@ -90,7 +90,17 @@ def test_get_settings_cache_can_be_reset(monkeypatch) -> None:
 
 
 def test_configure_logging_accepts_invalid_level() -> None:
-    configure_logging(make_settings(log_level="not-a-level"))
+    configure_logging(make_settings(log_level="not-a-level", log_file=""))
+
+
+def test_configure_logging_with_file(tmp_path) -> None:
+    import logging
+    log_file = tmp_path / "subdir" / "test.log"
+    settings = make_settings(log_file=str(log_file))
+    configure_logging(settings)
+    logging.getLogger("app").info("Test log entry")
+    assert log_file.exists()
+    assert "Test log entry" in log_file.read_text(encoding="utf-8")
 
 
 def test_gitignore_excludes_env_file() -> None:
@@ -99,3 +109,18 @@ def test_gitignore_excludes_env_file() -> None:
     gitignore = Path(".gitignore").read_text(encoding="utf-8")
     assert ".env" in gitignore
     assert ".env.example" in gitignore or "!.env.example" in gitignore
+
+
+def test_settings_langfuse_configuration(monkeypatch) -> None:
+    settings = Settings(_env_file=None)
+    assert not settings.is_langfuse_enabled
+
+    monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-lf-test")
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-lf-test")
+    monkeypatch.setenv("LANGFUSE_HOST", "https://us.cloud.langfuse.com")
+    configured = Settings(_env_file=None)
+    assert configured.is_langfuse_enabled
+    assert configured.langfuse_public_key == "pk-lf-test"
+    assert configured.langfuse_secret_key == "sk-lf-test"
+    assert configured.langfuse_host == "https://us.cloud.langfuse.com"
+

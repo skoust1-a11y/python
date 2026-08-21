@@ -46,6 +46,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def handle_validation_error(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
+        logger.warning("validation_error path=%s errors=%s", request.url.path, exc.errors())
         return JSONResponse(
             status_code=422,
             content=_error_body("validation_error", "Request validation failed."),
@@ -55,6 +56,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def handle_http_exception(
         request: Request, exc: StarletteHTTPException
     ) -> JSONResponse:
+        logger.warning("http_exception path=%s status=%d detail=%s", request.url.path, exc.status_code, exc.detail)
         return JSONResponse(
             status_code=exc.status_code,
             content=_error_body("http_error", str(exc.detail)),

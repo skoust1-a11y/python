@@ -91,7 +91,13 @@ class MarketDataProvider(ABC):
         """Configured adapter identifier."""
 
     @abstractmethod
-    def search_instruments(self, query: str, *, limit: int = 10) -> list[InstrumentMatch]:
+    def search_instruments(
+        self,
+        query: str,
+        *,
+        limit: int = 10,
+        country: str | None = None,
+    ) -> list[InstrumentMatch]:
         """Return instruments matching a ticker or name query.
 
         `query` is a domain search string. Adapters map it onto vendor lookup

@@ -23,6 +23,7 @@ export function WatchlistPage() {
   const [reloadNonce, setReloadNonce] = useState(0);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [country, setCountry] = useState<"IN" | "US" | "GLOBAL">("IN");
   const [search, setSearch] = useState<AsyncState<InstrumentMatch[]>>(idleState());
   const [searchHint, setSearchHint] = useState<string | null>(null);
   const [busySymbol, setBusySymbol] = useState<string | null>(null);
@@ -45,7 +46,7 @@ export function WatchlistPage() {
     }
     const requestId = ++searchRequest.current;
     setSearch((current) => loadingState(current.data));
-    void searchStocks(debouncedQuery)
+    void searchStocks(debouncedQuery, undefined, country)
       .then((response) => {
         if (searchRequest.current !== requestId) {
           return;
@@ -57,7 +58,7 @@ export function WatchlistPage() {
           setSearch(errorState(asError(error)));
         }
       });
-  }, [debouncedQuery]);
+  }, [debouncedQuery, country]);
 
   useEffect(() => {
     const requestId = ++listRequest.current;
@@ -248,6 +249,7 @@ export function WatchlistPage() {
       <div className="space-y-4">
         <AddCard
           query={query}
+          country={country}
           search={search}
           searchHint={searchHint}
           adding={adding}
@@ -260,6 +262,10 @@ export function WatchlistPage() {
             setQuery(value);
             setSearchHint(null);
             setActionError(null);
+          }}
+          onCountryChange={(val) => {
+            setCountry(val);
+            setSearchHint(null);
           }}
           onSubmit={onAddSubmit}
           onAnalyze={onAnalyzeClick}
@@ -301,6 +307,7 @@ export function WatchlistPage() {
 
 function AddCard({
   query,
+  country,
   search,
   searchHint,
   adding,
@@ -310,12 +317,14 @@ function AddCard({
   actionMessage,
   actionError,
   onQueryChange,
+  onCountryChange,
   onSubmit,
   onAnalyze,
   onAddMatch,
   onAnalyzeMatch,
 }: {
   query: string;
+  country: "IN" | "US" | "GLOBAL";
   search: AsyncState<InstrumentMatch[]>;
   searchHint: string | null;
   adding: boolean;
@@ -325,6 +334,7 @@ function AddCard({
   actionMessage: string | null;
   actionError: unknown;
   onQueryChange: (value: string) => void;
+  onCountryChange: (value: "IN" | "US" | "GLOBAL") => void;
   onSubmit: (event: FormEvent) => void;
   onAnalyze: () => void;
   onAddMatch: (match: InstrumentMatch) => void;
@@ -337,14 +347,33 @@ function AddCard({
       <p className="text-sm text-slate-600">
         Adding a symbol keeps monitoring here. Analysis always opens in Stock Analyzer.
       </p>
-      <form className="mt-3 flex flex-col gap-3 lg:flex-row" onSubmit={onSubmit}>
+      <form className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-end" onSubmit={onSubmit}>
+        <label className="block w-full lg:w-48 text-sm">
+          <span className="font-medium text-slate-700">Market / Country</span>
+          <select
+            className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-600"
+            value={country}
+            onChange={(event) => onCountryChange(event.target.value as "IN" | "US" | "GLOBAL")}
+            disabled={busy}
+          >
+            <option value="IN">🇮🇳 India (NSE / BSE)</option>
+            <option value="US">🇺🇸 US (NYSE / NASDAQ)</option>
+            <option value="GLOBAL">🌐 Global Markets</option>
+          </select>
+        </label>
         <label className="block flex-1 text-sm">
-          <span className="font-medium text-slate-700">Ticker or company name</span>
+          <span className="font-medium text-slate-700">Ticker, company name, or idea</span>
           <input
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-600"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Search AAPL, Microsoft, or another listed name"
+            placeholder={
+              country === "IN"
+                ? "Search Reliance, TCS, Tata Motors, or Indian theme..."
+                : country === "US"
+                ? "Search AAPL, Microsoft, Tesla..."
+                : "Search AAPL, Reliance, or another listed name"
+            }
             maxLength={64}
             autoComplete="off"
             disabled={busy}

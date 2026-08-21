@@ -1,0 +1,5 @@
+{
+  "name": "ponytail",
+  "version": "4.9.0",
+  "description": "Lazy senior dev mode for AI agents. Enforces YAGNI, standard library, and minimal clean code."
+}

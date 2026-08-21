@@ -150,8 +150,9 @@ def test_create_app_accepts_yahoo_market_provider() -> None:
 def test_index_aliases_map_nifty50_to_vendor_ticker() -> None:
     assert _vendor_candidates("NIFTY50") == ["^NSEI"]
     assert _vendor_candidates("SENSEX") == ["^BSESN"]
-    assert _vendor_candidates("RELIANCE")[0] == "RELIANCE"
+    assert _vendor_candidates("RELIANCE", country="GLOBAL")[0] == "RELIANCE"
     assert "RELIANCE.NS" in _vendor_candidates("RELIANCE")
+    assert _vendor_candidates("RELIANCE", country="IN")[0] == "RELIANCE.NS"
 
 
 def test_yahoo_get_index_maps_vendor_payload() -> None:

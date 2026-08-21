@@ -9,7 +9,9 @@ google-genai>=1.0.0,<2
 numpy>=1.26.0,<3
 scipy>=1.11.0,<2
 langgraph>=0.2.45,<1
+langchain>=0.3.0,<1
 yfinance>=0.2.40,<1
+langfuse>=2.0.0,<3
 
 # Tests
 pytest>=8.0.0,<9

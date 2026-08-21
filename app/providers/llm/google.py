@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from google import genai
@@ -14,6 +15,8 @@ from app.providers.contracts import LLMProvider, TModel
 from app.providers.llm.config import require_configured
 from app.providers.llm.errors import to_provider_error
 from app.providers.llm.parsing import STRUCTURED_OUTPUT_INSTRUCTION, parse_structured_output
+
+logger = logging.getLogger("app.providers.llm")
 
 
 class GoogleLLMProvider(LLMProvider):

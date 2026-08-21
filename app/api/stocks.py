@@ -40,10 +40,11 @@ router = APIRouter(prefix="/stocks", tags=["stocks"])
 def search(
     q: str = Query(..., min_length=1, max_length=64),
     limit: int = Query(DEFAULT_SEARCH_LIMIT, ge=1, le=MAX_SEARCH_LIMIT),
+    country: str | None = Query(default=None, max_length=10),
     providers: ProviderBundle = Depends(get_providers_dep),
 ) -> StockSearchResponse:
     """Search instruments through the configured market-data provider."""
-    return search_stocks(providers, q, limit=limit)
+    return search_stocks(providers, q, limit=limit, country=country)
 
 
 @router.post("/select", response_model=StockOverview)

@@ -11,12 +11,15 @@ import logging
 from app.config.settings import Settings
 from app.providers.contracts import NewsDataProvider
 from app.providers.news.stub import StubNewsDataProvider
+from app.providers.news.yahoo import YahooNewsDataProvider
 from app.providers.selection import normalize_provider_name, resolve_provider
 
 logger = logging.getLogger("app.providers.news")
 
 NEWS_ADAPTERS: dict[str, type[NewsDataProvider]] = {
     "stub": StubNewsDataProvider,
+    "yahoo": YahooNewsDataProvider,
+    "yfinance": YahooNewsDataProvider,
 }
 
 

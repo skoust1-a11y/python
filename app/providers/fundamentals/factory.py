@@ -11,12 +11,15 @@ import logging
 from app.config.settings import Settings
 from app.providers.contracts import FundamentalDataProvider
 from app.providers.fundamentals.stub import StubFundamentalDataProvider
+from app.providers.fundamentals.yahoo import YahooFundamentalDataProvider
 from app.providers.selection import normalize_provider_name, resolve_provider
 
 logger = logging.getLogger("app.providers.fundamentals")
 
 FUNDAMENTAL_DATA_ADAPTERS: dict[str, type[FundamentalDataProvider]] = {
     "stub": StubFundamentalDataProvider,
+    "yahoo": YahooFundamentalDataProvider,
+    "yfinance": YahooFundamentalDataProvider,
 }
 
 

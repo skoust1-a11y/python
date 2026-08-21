@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Protocol
 
 from app.exceptions import ProviderError
 from app.providers.contracts import LLMProvider, TModel
 from app.providers.llm.errors import to_provider_error
 from app.providers.llm.parsing import STRUCTURED_OUTPUT_INSTRUCTION, parse_structured_output
+
+logger = logging.getLogger("app.providers.llm")
 
 
 class _Completions(Protocol):
@@ -84,6 +87,13 @@ class OpenAICompatibleLLMProvider(LLMProvider):
         return messages
 
     def _chat(self, messages: list[dict[str, str]], *, json_mode: bool) -> str:
+        logger.debug(
+            "Dispatching LLM completion provider=%s model=%s json_mode=%s messages=%d",
+            self._name,
+            self._model,
+            json_mode,
+            len(messages),
+        )
         kwargs: dict[str, Any] = {
             "model": self._model,
             "messages": messages,

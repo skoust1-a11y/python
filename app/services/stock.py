@@ -7,11 +7,14 @@ an uploaded portfolio.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from typing import TypeVar
 
 from app.exceptions import AppError, NotFoundError, ProviderError, ProviderNotImplementedError
 from app.models.common import Evidence
+
+logger = logging.getLogger("app.services")
 from app.models.stock import (
     StockFundamentalData,
     StockMarketData,
@@ -64,11 +67,12 @@ def search_stocks(
     query: str,
     *,
     limit: int = DEFAULT_SEARCH_LIMIT,
+    country: str | None = None,
 ) -> StockSearchResponse:
     """Search instruments through the configured market-data adapter."""
     token = _require_query(query)
     capped = _require_limit(limit)
-    matches = providers.market_data.search_instruments(token, limit=capped)
+    matches = providers.market_data.search_instruments(token, limit=capped, country=country)
     return StockSearchResponse(query=token, matches=list(matches)[:capped])
 
 

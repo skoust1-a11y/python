@@ -10,8 +10,12 @@ import type {
   SuggestedQuestionList,
 } from "@/models";
 
-export function searchStocks(query: string, limit?: number): Promise<StockSearchResponse> {
-  return getJson<StockSearchResponse>("/stocks/search", { q: query, limit });
+export function searchStocks(
+  query: string,
+  limit?: number,
+  country?: string,
+): Promise<StockSearchResponse> {
+  return getJson<StockSearchResponse>("/stocks/search", { q: query, limit, country });
 }
 
 export function selectStock(symbol: string): Promise<StockOverview> {

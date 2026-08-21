@@ -25,7 +25,13 @@ class StubMarketDataProvider(MarketDataProvider):
     def name(self) -> str:
         return "stub"
 
-    def search_instruments(self, query: str, *, limit: int = 10) -> list[InstrumentMatch]:
+    def search_instruments(
+        self,
+        query: str,
+        *,
+        limit: int = 10,
+        country: str | None = None,
+    ) -> list[InstrumentMatch]:
         raise self._unavailable("Instrument search")
 
     def get_quote(self, instrument: str) -> MarketQuote:

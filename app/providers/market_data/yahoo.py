@@ -5,6 +5,7 @@ Vendor SDK usage stays in this module. Callers depend on `MarketDataProvider`.
 
 from __future__ import annotations
 
+import logging
 import math
 from datetime import datetime, timezone
 from typing import Any
@@ -24,6 +25,7 @@ from app.models.market import (
 from app.models.types import normalize_period, normalize_symbol
 from app.providers.contracts import MarketDataProvider
 
+logger = logging.getLogger("app.providers.market_data")
 UTC = timezone.utc
 
 _SOURCE_NAME = "yahoo-finance"
@@ -81,17 +83,52 @@ class YahooMarketDataProvider(MarketDataProvider):
     def name(self) -> str:
         return "yahoo"
 
-    def search_instruments(self, query: str, *, limit: int = 10) -> list[InstrumentMatch]:
+    def search_instruments(
+        self,
+        query: str,
+        *,
+        limit: int = 10,
+        country: str | None = None,
+    ) -> list[InstrumentMatch]:
         token = query.strip()
         if not token:
             return []
         capped = max(1, min(limit, 25))
+        target_country = (country or (self._settings.default_market_country if self._settings else "IN") or "").strip().upper()
         try:
-            search = self._yf().Search(token, max_results=capped)
+            search = self._yf().Search(token, max_results=max(capped * 2, 25))
             rows = list(getattr(search, "quotes", None) or [])
         except Exception as exc:
             raise self._failed("Instrument search", exc) from exc
-        matches: list[InstrumentMatch] = []
+
+        # If searching Indian market and query looks like a plain symbol, probe .NS ticker
+        if target_country == "IN" and "." not in token and " " not in token and not token.startswith("^"):
+            ns_sym = f"{token.upper()}.NS"
+            if not any(isinstance(r, dict) and str(r.get("symbol", "")).upper() == ns_sym for r in rows):
+                try:
+                    ns_search = self._yf().Search(ns_sym, max_results=5)
+                    ns_rows = list(getattr(ns_search, "quotes", None) or [])
+                    rows = ns_rows + rows
+                except Exception:
+                    pass
+
+        def _is_indian(sym: str, exch: str | None, curr: str | None) -> bool:
+            sym_u = sym.upper()
+            return (
+                sym_u.endswith(".NS")
+                or sym_u.endswith(".BO")
+                or sym_u.startswith("^NSE")
+                or sym_u.startswith("^BSE")
+                or exch in {"NSE", "BSE", "NSI", "BOM"}
+                or curr == "INR"
+            )
+
+        def _is_us(sym: str, exch: str | None, curr: str | None) -> bool:
+            if _is_indian(sym, exch, curr):
+                return False
+            return exch in {"NASDAQ", "NYSE", "AMEX", "NYQ", "NMS", "NGM"} or curr == "USD"
+
+        parsed_items: list[tuple[InstrumentMatch, bool, bool]] = []
         seen: set[str] = set()
         retrieved_at = datetime.now(tz=UTC)
         for row in rows:
@@ -109,24 +146,38 @@ class YahooMarketDataProvider(MarketDataProvider):
             seen.add(normalized)
             exchange = _exchange_code(row.get("exchange") or row.get("exchDisp"))
             quote_type = _optional_text(row.get("quoteType") or row.get("typeDisp"))
-            matches.append(
-                InstrumentMatch(
-                    symbol=normalized,
-                    name=_optional_text(row.get("shortname") or row.get("longname") or row.get("name")),
-                    exchange=exchange,
-                    currency=_currency_code(row.get("currency")),
-                    asset_class=_asset_class(quote_type),
-                    source=self._source(normalized, retrieved_at),
-                    extra=_public_extra(
-                        {
-                            "quote_type": quote_type,
-                            "exchange_display": _optional_text(row.get("exchDisp")),
-                        }
-                    ),
-                )
+            currency = _currency_code(row.get("currency"))
+            match = InstrumentMatch(
+                symbol=normalized,
+                name=_optional_text(row.get("shortname") or row.get("longname") or row.get("name")),
+                exchange=exchange,
+                currency=currency,
+                asset_class=_asset_class(quote_type),
+                source=self._source(normalized, retrieved_at),
+                extra=_public_extra(
+                    {
+                        "quote_type": quote_type,
+                        "exchange_display": _optional_text(row.get("exchDisp")),
+                    }
+                ),
             )
-            if len(matches) >= capped:
-                break
+            parsed_items.append((
+                match,
+                _is_indian(normalized, exchange, currency),
+                _is_us(normalized, exchange, currency),
+            ))
+
+        if target_country == "IN":
+            indian_matches = [item[0] for item in parsed_items if item[1]]
+            other_matches = [item[0] for item in parsed_items if not item[1]]
+            matches = (indian_matches + other_matches)[:capped]
+        elif target_country == "US":
+            us_matches = [item[0] for item in parsed_items if item[2]]
+            other_matches = [item[0] for item in parsed_items if not item[2]]
+            matches = (us_matches + other_matches)[:capped]
+        else:
+            matches = [item[0] for item in parsed_items][:capped]
+
         return matches
 
     def get_quote(self, instrument: str) -> MarketQuote:
@@ -274,6 +325,10 @@ class YahooMarketDataProvider(MarketDataProvider):
         if timestamp is None:
             raise ProviderError(f"Quote timestamp is unavailable for {requested}.")
         session = _session(info.get("marketState") or fast.get("market_state"))
+        bid = _first_finite(info.get("bid"), fast.get("last_bid"))
+        ask = _first_finite(info.get("ask"), fast.get("last_ask"))
+        if bid is not None and ask is not None and bid > ask:
+            bid, ask = None, None
         return _YahooSnapshot(
             requested=requested,
             vendor_symbol=vendor_symbol,
@@ -286,8 +341,8 @@ class YahooMarketDataProvider(MarketDataProvider):
                 or info.get("longName")
                 or _INDEX_NAMES.get(vendor_symbol)
             ),
-            bid=_first_finite(info.get("bid"), fast.get("last_bid")),
-            ask=_first_finite(info.get("ask"), fast.get("last_ask")),
+            bid=bid,
+            ask=ask,
             change=change,
             change_percent=change_percent,
             volume=_first_finite(
@@ -311,7 +366,8 @@ class YahooMarketDataProvider(MarketDataProvider):
 
     def _resolve_ticker(self, instrument: str) -> tuple[Any, str]:
         errors: list[str] = []
-        for vendor_symbol in _vendor_candidates(instrument):
+        country = (self._settings.default_market_country if self._settings else "IN") or "IN"
+        for vendor_symbol in _vendor_candidates(instrument, country=country):
             try:
                 ticker = self._yf().Ticker(vendor_symbol)
                 if _ticker_exists(ticker):
@@ -354,15 +410,21 @@ class _YahooSnapshot:
             setattr(self, key, value)
 
 
-def _vendor_candidates(instrument: str) -> list[str]:
+def _vendor_candidates(instrument: str, country: str = "IN") -> list[str]:
     token = instrument.strip().upper()
     mapped = _VENDOR_INDEX_TICKERS.get(token)
     if mapped:
         return [mapped]
-    candidates = [instrument.strip()]
-    if "." not in token and not token.startswith("^"):
+    candidates: list[str] = []
+    if country.upper() == "IN" and "." not in token and not token.startswith("^"):
         candidates.append(f"{token}.NS")
         candidates.append(f"{token}.BO")
+        candidates.append(instrument.strip())
+    else:
+        candidates.append(instrument.strip())
+        if "." not in token and not token.startswith("^"):
+            candidates.append(f"{token}.NS")
+            candidates.append(f"{token}.BO")
     unique: list[str] = []
     seen: set[str] = set()
     for item in candidates:
