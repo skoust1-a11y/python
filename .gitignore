@@ -1,3 +1,4 @@
+# Autonomous Investment Strategy Board — Git Ignore Rules
 # Environment and secrets
 .env
 .env.local
