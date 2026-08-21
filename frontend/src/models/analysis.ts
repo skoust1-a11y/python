@@ -23,6 +23,8 @@ export interface PortfolioAnalysisRequest {
   risk_tolerance?: RiskTolerance | null;
   horizon?: InvestmentHorizon | null;
   objective?: string | null;
+  benchmark?: string | null;
+  index_symbol?: string | null;
 }
 
 export interface StockAnalysisRequest {
@@ -31,6 +33,8 @@ export interface StockAnalysisRequest {
   risk_tolerance?: RiskTolerance | null;
   horizon?: InvestmentHorizon | null;
   objective?: string | null;
+  benchmark?: string | null;
+  index_symbol?: string | null;
 }
 
 export interface SpecialistResult {

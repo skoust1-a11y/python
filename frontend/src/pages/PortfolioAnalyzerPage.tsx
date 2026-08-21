@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
+  ArrowRight,
+  ArrowUpRight,
   Brain,
   BriefcaseBusiness,
   CircleAlert,
@@ -18,6 +20,10 @@ import {
 } from "@/api/portfolios";
 import { errorState, idleState, loadingState, successState, type AsyncState } from "@/lib/asyncState";
 import { toErrorMessage } from "@/models/errors";
+import {
+  RISK_TOLERANCE_OPTIONS,
+  HORIZON_OPTIONS,
+} from "@/models";
 import type {
   AnalysisType,
   Evidence,
@@ -119,8 +125,6 @@ const ANALYSIS_TYPE_LABELS: Record<AnalysisType, string> = {
   portfolio_rebalancing: "Portfolio rebalancing",
 };
 
-const RISK_TOLERANCE_OPTIONS: RiskTolerance[] = ["conservative", "moderate", "aggressive"];
-const HORIZON_OPTIONS: InvestmentHorizon[] = ["short", "medium", "long"];
 const PORTFOLIO_ANALYSIS_TYPES: AnalysisType[] = [
   "portfolio_review",
   "portfolio_risk",
@@ -375,10 +379,21 @@ export function PortfolioAnalyzerPage() {
                     metrics={metrics}
                     marketBySymbol={marketBySymbol}
                     fundamentalBySymbol={fundamentalBySymbol}
+                    riskTolerance={riskTolerance}
+                    horizon={horizon}
                   />
                   <div className="grid gap-4 lg:grid-cols-2">
-                    <AllocationCard metrics={metrics} />
-                    <ConcentrationCard metrics={metrics} risk={result?.risk_analysis ?? null} />
+                    <AllocationCard
+                      metrics={metrics}
+                      riskTolerance={riskTolerance}
+                      horizon={horizon}
+                    />
+                    <ConcentrationCard
+                      metrics={metrics}
+                      risk={result?.risk_analysis ?? null}
+                      riskTolerance={riskTolerance}
+                      horizon={horizon}
+                    />
                   </div>
                   <RiskAndMetricsCard
                     portfolio={portfolio}
@@ -402,7 +417,13 @@ export function PortfolioAnalyzerPage() {
                   {analyses.length ? (
                     <PriorRuns analyses={analyses} activeId={result?.id ?? null} onOpen={openStoredAnalysis} />
                   ) : null}
-                  <AnalysisOutput analyzing={analyzing} error={resultError} result={result} />
+                  <AnalysisOutput
+                    analyzing={analyzing}
+                    error={resultError}
+                    result={result}
+                    riskTolerance={riskTolerance}
+                    horizon={horizon}
+                  />
                 </div>
               ) : null}
             </PageStatus>
@@ -529,11 +550,15 @@ function HoldingsCard({
   metrics,
   marketBySymbol,
   fundamentalBySymbol,
+  riskTolerance,
+  horizon,
 }: {
   holdings: Holding[];
   metrics: PortfolioViewMetrics;
   marketBySymbol: Map<string, MarketDataSnapshot>;
   fundamentalBySymbol: Map<string, FundamentalDataSnapshot>;
+  riskTolerance: RiskTolerance | "";
+  horizon: InvestmentHorizon | "";
 }) {
   const weightBySymbol = new Map(metrics.rows.map((row) => [row.symbol, row.weight]));
   const hasMarket = marketBySymbol.size > 0;
@@ -565,7 +590,7 @@ function HoldingsCard({
                 return (
                   <tr key={holding.symbol} className="border-b border-slate-100">
                     <td className="px-2 py-2 font-medium text-slate-800">
-                      <Link className="text-brand-700 hover:underline" to={stockPath(holding.symbol)}>
+                      <Link className="text-brand-700 hover:underline" to={stockPath(holding.symbol, { riskTolerance, horizon })}>
                         {holding.symbol}
                       </Link>
                     </td>
@@ -599,7 +624,7 @@ function HoldingsCard({
                     <td className="px-2 py-2">
                       <Link
                         className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
-                        to={stockPath(holding.symbol)}
+                        to={stockPath(holding.symbol, { riskTolerance, horizon })}
                       >
                         Analyze holding
                       </Link>
@@ -612,33 +637,84 @@ function HoldingsCard({
         </div>
       )}
       <p className="mt-3 text-xs text-slate-500">
-        Analyze a holding in Stock Analyzer for single-instrument research. That view does not reuse this
-        portfolio run.
+        Analyze a holding in Stock Analyzer for single-instrument research with current parameters.
       </p>
     </Card>
   );
 }
 
-function AllocationCard({ metrics }: { metrics: PortfolioViewMetrics }) {
+function AllocationCard({
+  metrics,
+  riskTolerance,
+  horizon,
+}: {
+  metrics: PortfolioViewMetrics;
+  riskTolerance: RiskTolerance | "";
+  horizon: InvestmentHorizon | "";
+}) {
   const sorted = [...metrics.rows].sort((left, right) => right.weight - left.weight);
+  const activeParamsLabel = [
+    riskTolerance ? `Risk: ${riskTolerance}` : null,
+    horizon ? `Horizon: ${horizon}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
   return (
-    <Card title="Allocation">
-      <p className="mb-3 text-xs text-slate-500">{BASIS_LABELS[metrics.basis]}</p>
+    <Card
+      title="Allocation"
+      action={
+        activeParamsLabel ? (
+          <span
+            className="inline-flex items-center gap-1 rounded bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700"
+            title="These user-provided parameters will be pre-filled when opening Stock Analyzer"
+          >
+            Carries: {activeParamsLabel}
+          </span>
+        ) : undefined
+      }
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-xs text-slate-500">{BASIS_LABELS[metrics.basis]}</p>
+        <span className="text-xs text-slate-400">Click any symbol to analyze</span>
+      </div>
       {sorted.length === 0 ? (
         <p className="text-sm text-slate-500">Allocation cannot be formed from the available holdings.</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-2.5">
           {sorted.map((row) => (
-            <li key={row.symbol}>
+            <li key={row.symbol} className="group rounded-md p-1.5 -mx-1.5 transition hover:bg-slate-50">
               <div className="flex items-center justify-between text-sm">
-                <Link className="font-medium text-brand-700 hover:underline" to={stockPath(row.symbol)}>
-                  {row.symbol}
-                </Link>
-                <span className="tabular-nums text-slate-600">{formatWeight(row.weight)}</span>
+                <div className="flex items-center gap-2">
+                  <Link
+                    className="inline-flex items-center gap-1 font-medium text-brand-700 hover:text-brand-900 hover:underline"
+                    to={stockPath(row.symbol, { riskTolerance, horizon })}
+                    title={`Analyze ${row.symbol} in Stock Analyzer${activeParamsLabel ? ` (${activeParamsLabel})` : ""}`}
+                  >
+                    <span>{row.symbol}</span>
+                    <ArrowUpRight className="h-3.5 w-3.5 opacity-60 transition-transform group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </Link>
+                  {row.name ? (
+                    <span className="max-w-[140px] truncate text-xs text-slate-400" title={row.name}>
+                      {row.name}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="tabular-nums font-medium text-slate-700">{formatWeight(row.weight)}</span>
+                  <Link
+                    to={stockPath(row.symbol, { riskTolerance, horizon })}
+                    className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium text-brand-700 hover:bg-brand-50 hover:text-brand-900 transition-colors"
+                    title={`Open ${row.symbol} in Stock Analyzer with user parameters`}
+                  >
+                    <span>Analyze</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
               </div>
               <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
                 <div
-                  className="h-full rounded-full bg-brand-600"
+                  className="h-full rounded-full bg-brand-600 transition-all duration-300"
                   style={{ width: `${Math.min(row.weight * 100, 100)}%` }}
                 />
               </div>
@@ -653,9 +729,13 @@ function AllocationCard({ metrics }: { metrics: PortfolioViewMetrics }) {
 function ConcentrationCard({
   metrics,
   risk,
+  riskTolerance,
+  horizon,
 }: {
   metrics: PortfolioViewMetrics;
   risk: RiskAnalysisSnapshot | null;
+  riskTolerance: RiskTolerance | "";
+  horizon: InvestmentHorizon | "";
 }) {
   const largestSymbol = risk?.largest_symbol ?? metrics.largestSymbol;
   const largestWeight = risk?.largest_weight ?? metrics.largestWeight;
@@ -677,7 +757,7 @@ function ConcentrationCard({
           {metrics.oversized.map((symbol, index) => (
             <span key={symbol}>
               {index > 0 ? ", " : ""}
-              <Link className="font-medium text-brand-700 hover:underline" to={stockPath(symbol)}>
+              <Link className="font-medium text-brand-700 hover:underline" to={stockPath(symbol, { riskTolerance, horizon })}>
                 {symbol}
               </Link>
             </span>
@@ -834,13 +914,18 @@ function AskCard({
               onChange={(event) => onRiskToleranceChange(event.target.value as RiskTolerance | "")}
               disabled={analyzing}
             >
-              <option value="">Not specified</option>
+              <option value="">Not specified (Standard profile)</option>
               {RISK_TOLERANCE_OPTIONS.map((item) => (
-                <option key={item} value={item}>
-                  {item}
+                <option key={item.value} value={item.value}>
+                  {item.label}
                 </option>
               ))}
             </select>
+            <p className="mt-1 text-xs text-slate-500">
+              {riskTolerance
+                ? RISK_TOLERANCE_OPTIONS.find((opt) => opt.value === riskTolerance)?.description
+                : "Defines maximum loss appetite: Conservative (<10%), Moderate (10–20%), Aggressive (>20%)."}
+            </p>
           </label>
           <label className="block text-sm">
             <span className="font-medium text-slate-700">Horizon</span>
@@ -850,13 +935,18 @@ function AskCard({
               onChange={(event) => onHorizonChange(event.target.value as InvestmentHorizon | "")}
               disabled={analyzing}
             >
-              <option value="">Not specified</option>
+              <option value="">Not specified (Standard profile)</option>
               {HORIZON_OPTIONS.map((item) => (
-                <option key={item} value={item}>
-                  {item}
+                <option key={item.value} value={item.value}>
+                  {item.label}
                 </option>
               ))}
             </select>
+            <p className="mt-1 text-xs text-slate-500">
+              {horizon
+                ? HORIZON_OPTIONS.find((opt) => opt.value === horizon)?.description
+                : "Expected holding duration: Short (<1 yr), Medium (1–5 yrs), Long (5+ yrs)."}
+            </p>
           </label>
         </div>
 
@@ -916,10 +1006,14 @@ function AnalysisOutput({
   analyzing,
   error,
   result,
+  riskTolerance,
+  horizon,
 }: {
   analyzing: boolean;
   error: unknown;
   result: PortfolioAnalysisResult | null;
+  riskTolerance: RiskTolerance | "";
+  horizon: InvestmentHorizon | "";
 }) {
   if (analyzing) {
     return (
@@ -943,10 +1037,18 @@ function AnalysisOutput({
       />
     );
   }
-  return <AnalysisReport result={result} />;
+  return <AnalysisReport result={result} riskTolerance={riskTolerance} horizon={horizon} />;
 }
 
-function AnalysisReport({ result }: { result: PortfolioAnalysisResult }) {
+function AnalysisReport({
+  result,
+  riskTolerance,
+  horizon,
+}: {
+  result: PortfolioAnalysisResult;
+  riskTolerance: RiskTolerance | "";
+  horizon: InvestmentHorizon | "";
+}) {
   const recommendation = result.recommendation;
   return (
     <div className="space-y-4">
@@ -1038,7 +1140,10 @@ function AnalysisReport({ result }: { result: PortfolioAnalysisResult }) {
                 .sort((left, right) => right[1] - left[1])
                 .map(([symbol, weight]) => (
                   <li key={symbol} className="flex justify-between">
-                    <Link className="font-medium text-brand-700 hover:underline" to={stockPath(symbol)}>
+                    <Link
+                      className="font-medium text-brand-700 hover:underline"
+                      to={stockPath(symbol, { riskTolerance, horizon })}
+                    >
                       {symbol}
                     </Link>
                     <span className="tabular-nums">{formatWeight(weight)}</span>
@@ -1443,8 +1548,26 @@ function portfolioLabel(item: PortfolioSummary): string {
   return item.name?.trim() || item.source_filename || "Untitled portfolio";
 }
 
-function stockPath(symbol: string): string {
-  return `/stocks/${encodeURIComponent(symbol)}`;
+function stockPath(
+  symbol: string,
+  params?: {
+    riskTolerance?: RiskTolerance | "";
+    horizon?: InvestmentHorizon | "";
+    benchmark?: string;
+  },
+): string {
+  const query = new URLSearchParams();
+  if (params?.riskTolerance) {
+    query.set("risk_tolerance", params.riskTolerance);
+  }
+  if (params?.horizon) {
+    query.set("horizon", params.horizon);
+  }
+  if (params?.benchmark) {
+    query.set("benchmark", params.benchmark);
+  }
+  const qs = query.toString();
+  return `/stocks/${encodeURIComponent(symbol)}${qs ? `?${qs}` : ""}`;
 }
 
 function formatNumber(value: number | null | undefined, digits = 4): string {

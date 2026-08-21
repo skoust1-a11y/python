@@ -59,6 +59,9 @@ class UserRequest(DomainModel):
     symbols: list[Symbol] = Field(default_factory=list)
     analysis_type: AnalysisType | None = None
     portfolio_id: str | None = None
+    benchmark: str | None = None
+    index_symbol: str | None = None
+
 
 
 class InvestmentProfile(DomainModel):
@@ -150,6 +153,8 @@ class RiskAnalysisSnapshot(DomainModel):
     hhi: float | None = None
     portfolio_volatility: float | None = None
     max_drawdown: float | None = None
+    beta: float | None = None
+    benchmark_correlation: float | None = None
     major_risks: list[NonEmptyText] = Field(default_factory=list)
     unavailable: list[NonEmptyText] = Field(default_factory=list)
     portfolio_id: str | None = None

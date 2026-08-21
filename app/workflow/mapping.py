@@ -141,6 +141,8 @@ def risk_snapshot(output: AgentOutput) -> RiskAnalysisSnapshot | None:
             hhi=_as_float(metrics.get("hhi")),
             portfolio_volatility=_as_float(metrics.get("portfolio_volatility")),
             max_drawdown=_as_float(metrics.get("max_drawdown")),
+            beta=_as_float(metrics.get("beta")),
+            benchmark_correlation=_as_float(metrics.get("benchmark_correlation")),
             major_risks=_as_str_list(extras.get("major_risks")),
             unavailable=_as_str_list(extras.get("unavailable")),
             portfolio_id=_as_optional_str(extras.get("portfolio_id")),

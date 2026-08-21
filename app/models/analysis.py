@@ -35,6 +35,8 @@ class PortfolioAnalysisRequest(DomainModel):
     risk_tolerance: RiskTolerance | None = None
     horizon: InvestmentHorizon | None = None
     objective: str | None = None
+    benchmark: str | None = None
+    index_symbol: str | None = None
 
 
 class SpecialistResult(DomainModel):
@@ -102,6 +104,8 @@ class StockAnalysisRequest(DomainModel):
     risk_tolerance: RiskTolerance | None = None
     horizon: InvestmentHorizon | None = None
     objective: str | None = None
+    benchmark: str | None = None
+    index_symbol: str | None = None
 
 
 class StockAnalysisSummary(DomainModel):

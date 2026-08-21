@@ -50,6 +50,7 @@ from app.tools.risk import (
     mean_pairwise_correlation,
     oversized_symbols,
     pairwise_correlation,
+    pearson_correlation,
     relative_volatility,
     resolve_weight_vector,
     sector_weights,
@@ -94,6 +95,7 @@ class PositionRiskMetrics(DomainModel):
     volatility: float | None = None
     max_drawdown: float | None = None
     beta: float | None = None
+    benchmark_correlation: float | None = None
     bar_count: int | None = None
     history_start: AwareDatetime | None = None
     history_end: AwareDatetime | None = None
@@ -139,6 +141,7 @@ class RiskMetrics(DomainModel):
     large_position_threshold: float
     oversized_symbols: list[Symbol] = Field(default_factory=list)
     beta: float | None = None
+    benchmark_correlation: float | None = None
     tracking_error: float | None = None
     benchmark_volatility: float | None = None
     relative_volatility: float | None = None
@@ -690,8 +693,7 @@ def _compute_portfolio_risk(snapshot: _PortfolioSnapshot, windows: _Windows) -> 
     average_corr = mean_pairwise_correlation(
         closes_by_symbol, min_returns=windows.min_returns
     )
-    if average_corr is None:
-        unavailable.append("correlation")
+    _mark_missing(unavailable, "correlation", average_corr, len(holdings) > 1)
 
     pairwise = _pairwise_rows(closes_by_symbol, windows.min_returns)
     position_vols = [
@@ -731,6 +733,15 @@ def _compute_portfolio_risk(snapshot: _PortfolioSnapshot, windows: _Windows) -> 
         if aligned_returns is not None
         else None
     )
+    port_bench_corr = (
+        pearson_correlation(
+            aligned_returns[0],
+            aligned_returns[1],
+            min_observations=windows.min_returns,
+        )
+        if aligned_returns is not None
+        else None
+    )
     active_error = (
         tracking_error(
             aligned_returns[0],
@@ -752,6 +763,12 @@ def _compute_portfolio_risk(snapshot: _PortfolioSnapshot, windows: _Windows) -> 
     )
     rel_vol = relative_volatility(portfolio_vol, bench_vol)
     _mark_missing(unavailable, "beta", port_beta, snapshot.index_history is not None)
+    _mark_missing(
+        unavailable,
+        "benchmark_correlation",
+        port_bench_corr,
+        snapshot.index_history is not None,
+    )
     _mark_missing(
         unavailable, "tracking_error", active_error, snapshot.index_history is not None
     )
@@ -803,6 +820,7 @@ def _compute_portfolio_risk(snapshot: _PortfolioSnapshot, windows: _Windows) -> 
         large_position_threshold=windows.large_position_threshold,
         oversized_symbols=oversized,
         beta=port_beta,
+        benchmark_correlation=port_bench_corr,
         tracking_error=active_error,
         benchmark_volatility=bench_vol,
         relative_volatility=rel_vol,
@@ -844,6 +862,11 @@ def _position_metrics(
     position_beta = (
         beta(aligned[0], aligned[1], min_returns=min_returns) if aligned is not None else None
     )
+    position_bench_corr = (
+        pearson_correlation(aligned[0], aligned[1], min_observations=min_returns)
+        if aligned is not None
+        else None
+    )
     weight_vs_equal = None
     if weight is not None and equal not in (None, 0):
         weight_vs_equal = weight / equal
@@ -861,6 +884,7 @@ def _position_metrics(
         volatility=volatility,
         max_drawdown=series_drawdown(closes),
         beta=position_beta,
+        benchmark_correlation=position_bench_corr,
         bar_count=len(timestamps) if timestamps else None,
         history_start=timestamps[0] if timestamps else None,
         history_end=timestamps[-1] if timestamps else None,
@@ -1007,6 +1031,8 @@ def _factual_observations(metrics: RiskMetrics, unavailable: list[str]) -> list[
         )
     if metrics.beta is not None:
         observations.append(f"Portfolio beta versus the benchmark is {metrics.beta}.")
+    if metrics.benchmark_correlation is not None:
+        observations.append(f"Portfolio correlation versus the benchmark is {metrics.benchmark_correlation}.")
     if metrics.tracking_error is not None:
         observations.append(f"Tracking error versus the benchmark is {metrics.tracking_error}.")
     if metrics.relative_volatility is not None:
@@ -1043,7 +1069,7 @@ def _limitations(
         notes.append("Historical window is too short to compute portfolio volatility.")
     if metrics.max_drawdown is None:
         notes.append("Max drawdown was not computed because a complete positive value series was unavailable.")
-    if metrics.average_pairwise_correlation is None:
+    if metrics.holding_count > 1 and metrics.average_pairwise_correlation is None:
         notes.append("Pairwise correlations were not computed because overlapping returns were insufficient.")
     if metrics.beta is None:
         notes.append("Market beta was not computed because aligned benchmark history was insufficient.")

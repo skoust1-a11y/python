@@ -4,6 +4,8 @@
 .env.local
 .env.*.local
 !.env.example
+environment_env_file.txt
+
 
 # Python
 __pycache__/
@@ -59,6 +61,12 @@ checkpoints.sqlite-*
 *.sqlite-shm
 *.sqlite-wal
 
-# Knowledge Graph / Tooling Caches
+# AI / Agent & Knowledge Graph Tooling
+.agents/
 graphify-out/
+
+# Sample Data / Uploads
+samples/
+
+
 

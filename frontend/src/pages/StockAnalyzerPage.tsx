@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Brain,
   CircleAlert,
@@ -24,6 +24,10 @@ import {
 import { addWatchlistStock, getWatchlistStock } from "@/api/watchlist";
 import { errorState, idleState, loadingState, successState, type AsyncState } from "@/lib/asyncState";
 import { ApiError, toErrorMessage } from "@/models/errors";
+import {
+  RISK_TOLERANCE_OPTIONS,
+  HORIZON_OPTIONS,
+} from "@/models";
 import type {
   Evidence,
   FinalRecommendation,
@@ -43,13 +47,59 @@ import type {
 } from "@/models";
 
 const SEARCH_DEBOUNCE_MS = 300;
-const RISK_TOLERANCE_OPTIONS: RiskTolerance[] = ["conservative", "moderate", "aggressive"];
-const HORIZON_OPTIONS: InvestmentHorizon[] = ["short", "medium", "long"];
 const SYMBOL_PATTERN = /^\^?[A-Za-z0-9][A-Za-z0-9.\-]{0,31}$/;
+
+export interface BenchmarkOption {
+  symbol: string;
+  name: string;
+  category: "sector" | "nifty_cap" | "us";
+}
+
+export const BENCHMARK_OPTIONS: BenchmarkOption[] = [
+  // Sectoral Indices
+  { symbol: "^CNXAUTO", name: "NIFTY Auto", category: "sector" },
+  { symbol: "^CNXIT", name: "NIFTY IT", category: "sector" },
+  { symbol: "^NSEBANK", name: "NIFTY Bank", category: "sector" },
+  { symbol: "^CNXPHARMA", name: "NIFTY Pharma", category: "sector" },
+  { symbol: "^CNXFMCG", name: "NIFTY FMCG", category: "sector" },
+  { symbol: "^CNXMETAL", name: "NIFTY Metal", category: "sector" },
+  { symbol: "^CNXREALTY", name: "NIFTY Realty", category: "sector" },
+  { symbol: "^CNXENERGY", name: "NIFTY Energy", category: "sector" },
+  { symbol: "^CNXINFRA", name: "NIFTY Infra", category: "sector" },
+
+  // Cap-wise Nifty Indices
+  { symbol: "^NSEI", name: "NIFTY 50 (Large Cap)", category: "nifty_cap" },
+  { symbol: "^NSMIDCP", name: "NIFTY Next 50", category: "nifty_cap" },
+  { symbol: "NIFTYMIDCAP150.NS", name: "NIFTY Midcap 150", category: "nifty_cap" },
+  { symbol: "^CNXSC", name: "NIFTY Smallcap 100", category: "nifty_cap" },
+  { symbol: "^CRSLDX", name: "NIFTY 500 (Broad Market)", category: "nifty_cap" },
+  { symbol: "^BSESN", name: "SENSEX", category: "nifty_cap" },
+
+  // US Indices
+  { symbol: "^GSPC", name: "S&P 500 (US Market)", category: "us" },
+  { symbol: "^IXIC", name: "NASDAQ Composite", category: "us" },
+];
+
+export function isIndianStock(sym: string): boolean {
+  const token = sym.trim().toUpperCase();
+  return (
+    token.endsWith(".NS") ||
+    token.endsWith(".BO") ||
+    token.startsWith("^NSE") ||
+    token.startsWith("^BSE") ||
+    token.startsWith("^CNX")
+  );
+}
+
+export function defaultBenchmarkForSymbol(sym: string): string {
+  if (!sym) return "^NSEI";
+  return isIndianStock(sym) ? "^NSEI" : "^GSPC";
+}
 
 export function StockAnalyzerPage() {
   const navigate = useNavigate();
   const { symbol: routeSymbol } = useParams();
+  const [searchParams] = useSearchParams();
   const symbol = normalizeRouteSymbol(routeSymbol);
 
   const [query, setQuery] = useState(symbol ?? "");
@@ -72,8 +122,18 @@ export function StockAnalyzerPage() {
   const [searchHint, setSearchHint] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
-  const [riskTolerance, setRiskTolerance] = useState<RiskTolerance | "">("");
-  const [horizon, setHorizon] = useState<InvestmentHorizon | "">("");
+  const [riskTolerance, setRiskTolerance] = useState<RiskTolerance | "">(() => {
+    const p = searchParams.get("risk_tolerance") || searchParams.get("riskTolerance");
+    return p === "conservative" || p === "moderate" || p === "aggressive" ? p : "";
+  });
+  const [horizon, setHorizon] = useState<InvestmentHorizon | "">(() => {
+    const p = searchParams.get("horizon");
+    return p === "short" || p === "medium" || p === "long" ? p : "";
+  });
+  const [benchmark, setBenchmark] = useState<string>(() => {
+    const p = searchParams.get("benchmark");
+    return p || defaultBenchmarkForSymbol(symbol ?? "");
+  });
   const [onWatchlist, setOnWatchlist] = useState(false);
   const [watchlistBusy, setWatchlistBusy] = useState(false);
   const [watchlistMessage, setWatchlistMessage] = useState<string | null>(null);
@@ -82,6 +142,33 @@ export function StockAnalyzerPage() {
   const searchRequest = useRef(0);
   const symbolRequest = useRef(0);
   const analysisRequest = useRef(0);
+
+  useEffect(() => {
+    const riskParam = searchParams.get("risk_tolerance") || searchParams.get("riskTolerance");
+    if (riskParam === "conservative" || riskParam === "moderate" || riskParam === "aggressive") {
+      setRiskTolerance(riskParam);
+    }
+    const horizonParam = searchParams.get("horizon");
+    if (horizonParam === "short" || horizonParam === "medium" || horizonParam === "long") {
+      setHorizon(horizonParam);
+    }
+    const benchmarkParam = searchParams.get("benchmark");
+    if (benchmarkParam) {
+      setBenchmark(benchmarkParam);
+    }
+    const questionParam = searchParams.get("question");
+    if (questionParam) {
+      setQuestion(questionParam);
+      setSelectedPrompt(null);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (symbol) {
+      const benchmarkParam = searchParams.get("benchmark");
+      setBenchmark(benchmarkParam || defaultBenchmarkForSymbol(symbol));
+    }
+  }, [symbol, searchParams]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => setDebouncedQuery(query.trim()), SEARCH_DEBOUNCE_MS);
@@ -178,7 +265,11 @@ export function StockAnalyzerPage() {
       if (questionResult.status === "fulfilled") {
         const items = questionResult.value.questions;
         setQuestions(items);
-        if (items[0]) {
+        const queryQuestion = searchParams.get("question");
+        if (queryQuestion) {
+          setQuestion(queryQuestion);
+          setSelectedPrompt(null);
+        } else if (items[0]) {
           setQuestion(items[0].question);
           setSelectedPrompt(items[0].id);
         }
@@ -302,6 +393,7 @@ export function StockAnalyzerPage() {
         analysis_type: "stock_analysis",
         risk_tolerance: riskTolerance || null,
         horizon: horizon || null,
+        benchmark: benchmark || null,
       });
       if (analysisRequest.current !== requestId) {
         return;
@@ -477,12 +569,14 @@ export function StockAnalyzerPage() {
               questionsError={questionsError}
               riskTolerance={riskTolerance}
               horizon={horizon}
+              benchmark={benchmark}
               analyzing={analyzing}
               locked={loadingStored}
               onQuestionChange={onQuestionChange}
               onSelectPrompt={applyPrompt}
               onRiskToleranceChange={setRiskTolerance}
               onHorizonChange={setHorizon}
+              onBenchmarkChange={setBenchmark}
               onSubmit={runAnalysis}
             />
             {analyses.length ? (
@@ -996,12 +1090,14 @@ function AskCard({
   questionsError,
   riskTolerance,
   horizon,
+  benchmark,
   analyzing,
   locked,
   onQuestionChange,
   onSelectPrompt,
   onRiskToleranceChange,
   onHorizonChange,
+  onBenchmarkChange,
   onSubmit,
 }: {
   symbol: string;
@@ -1011,12 +1107,14 @@ function AskCard({
   questionsError: unknown;
   riskTolerance: RiskTolerance | "";
   horizon: InvestmentHorizon | "";
+  benchmark: string;
   analyzing: boolean;
   locked: boolean;
   onQuestionChange: (value: string) => void;
   onSelectPrompt: (prompt: SuggestedQuestion) => void;
   onRiskToleranceChange: (value: RiskTolerance | "") => void;
   onHorizonChange: (value: InvestmentHorizon | "") => void;
+  onBenchmarkChange: (value: string) => void;
   onSubmit: (event: FormEvent) => void;
 }) {
   const busy = analyzing || locked;
@@ -1066,6 +1164,43 @@ function AskCard({
           />
         </label>
 
+        <div>
+          <label className="block text-sm">
+            <span className="font-medium text-slate-700">Benchmark comparison</span>
+            <select
+              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-600 font-medium text-slate-800"
+              value={benchmark}
+              onChange={(event) => onBenchmarkChange(event.target.value)}
+              disabled={busy}
+            >
+              <optgroup label="1. Sector Indices">
+                {BENCHMARK_OPTIONS.filter((item) => item.category === "sector").map((item) => (
+                  <option key={item.symbol} value={item.symbol}>
+                    {item.name} ({item.symbol})
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="2. All Nifty (Cap-wise)">
+                {BENCHMARK_OPTIONS.filter((item) => item.category === "nifty_cap").map((item) => (
+                  <option key={item.symbol} value={item.symbol}>
+                    {item.name} ({item.symbol})
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="3. S&P 500 / US">
+                {BENCHMARK_OPTIONS.filter((item) => item.category === "us").map((item) => (
+                  <option key={item.symbol} value={item.symbol}>
+                    {item.name} ({item.symbol})
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </label>
+          <p className="mt-1 text-xs text-slate-500">
+            Auto-selected based on stock region. Used by AI agents to calculate Beta, Relative Return, and Correlation.
+          </p>
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-sm">
             <span className="font-medium text-slate-700">Risk tolerance</span>
@@ -1075,13 +1210,18 @@ function AskCard({
               onChange={(event) => onRiskToleranceChange(event.target.value as RiskTolerance | "")}
               disabled={busy}
             >
-              <option value="">Not specified</option>
+              <option value="">Not specified (Standard profile)</option>
               {RISK_TOLERANCE_OPTIONS.map((item) => (
-                <option key={item} value={item}>
-                  {item}
+                <option key={item.value} value={item.value}>
+                  {item.label}
                 </option>
               ))}
             </select>
+            <p className="mt-1 text-xs text-slate-500">
+              {riskTolerance
+                ? RISK_TOLERANCE_OPTIONS.find((opt) => opt.value === riskTolerance)?.description
+                : "Defines maximum loss appetite: Conservative (<10%), Moderate (10–20%), Aggressive (>20%)."}
+            </p>
           </label>
           <label className="block text-sm">
             <span className="font-medium text-slate-700">Horizon</span>
@@ -1091,13 +1231,18 @@ function AskCard({
               onChange={(event) => onHorizonChange(event.target.value as InvestmentHorizon | "")}
               disabled={busy}
             >
-              <option value="">Not specified</option>
+              <option value="">Not specified (Standard profile)</option>
               {HORIZON_OPTIONS.map((item) => (
-                <option key={item} value={item}>
-                  {item}
+                <option key={item.value} value={item.value}>
+                  {item.label}
                 </option>
               ))}
             </select>
+            <p className="mt-1 text-xs text-slate-500">
+              {horizon
+                ? HORIZON_OPTIONS.find((opt) => opt.value === horizon)?.description
+                : "Expected holding duration: Short (<1 yr), Medium (1–5 yrs), Long (5+ yrs)."}
+            </p>
           </label>
         </div>
 
@@ -1235,13 +1380,15 @@ function AnalysisReport({ result }: { result: StockAnalysisResult }) {
         ) : null}
       </Card>
 
-      {(market || fundamental) && (
+      {(market || fundamental || risk) && (
         <Card title="Analysis snapshots">
           <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <Metric label="Price" value={formatMoney(market?.current_price ?? null, market?.currency)} />
             <Metric label="Trend" value={market?.trend ?? "—"} />
             <Metric label="Volatility" value={formatPercent(market?.volatility)} />
             <Metric label="Momentum" value={formatPercent(market?.momentum)} />
+            <Metric label="Beta" value={formatNumber(risk?.beta, 2)} />
+            <Metric label="Benchmark corr." value={formatNumber(risk?.benchmark_correlation, 2)} />
             <Metric label="Profitability" value={fundamental?.profitability ?? "—"} />
             <Metric label="Financial health" value={fundamental?.financial_health ?? "—"} />
             <Metric label="P/E" value={formatNumber(fundamental?.pe_ratio)} />

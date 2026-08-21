@@ -798,3 +798,27 @@ def test_risk_agent_module_depends_on_provider_contracts_only() -> None:
     assert "complete_structured" in text
     assert "app/agents/market.py" not in text
     assert "app/agents/fundamental.py" not in text
+
+
+def test_single_holding_portfolio_does_not_mark_correlation_unavailable() -> None:
+    market = _full_market()
+    single_portfolio = _portfolio(_holding("AAPL", 10.0, average_cost=150.0, weight=1.0))
+    output = execute_agent(
+        RiskAssessmentAgent(),
+        _payload(
+            symbols=["AAPL"],
+            extras={"portfolio": single_portfolio, "index_symbol": "^TEST"},
+        ),
+        _context(market),
+    )
+    assert output.status == "succeeded"
+    assert "correlation" not in output.extras["unavailable"]
+    metrics = output.extras["risk_metrics"]
+    assert metrics["average_pairwise_correlation"] is None
+    assert metrics["benchmark_correlation"] is not None
+    assert isinstance(metrics["benchmark_correlation"], float)
+    assert metrics["positions"][0]["benchmark_correlation"] is not None
+    assert not any("Pairwise correlations were not computed" in note for note in output.extras["limitations"])
+
+
+

@@ -57,6 +57,8 @@ export interface RiskAnalysisSnapshot {
   hhi: number | null;
   portfolio_volatility: number | null;
   max_drawdown: number | null;
+  beta?: number | null;
+  benchmark_correlation?: number | null;
   major_risks: string[];
   unavailable: string[];
   portfolio_id: string | null;

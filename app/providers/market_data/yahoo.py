@@ -30,24 +30,70 @@ UTC = timezone.utc
 
 _SOURCE_NAME = "yahoo-finance"
 _VENDOR_INDEX_TICKERS: dict[str, str] = {
+    # Broad Indian Indices
     "NIFTY50": "^NSEI",
     "NIFTY": "^NSEI",
     "^NSEI": "^NSEI",
     "SENSEX": "^BSESN",
     "^BSESN": "^BSESN",
+    "NIFTYNEXT50": "^NSMIDCP",
+    "^NSMIDCP": "^NSMIDCP",
+    "NIFTYMIDCAP150": "NIFTYMIDCAP150.NS",
+    "NIFTYMIDCAP": "NIFTYMIDCAP150.NS",
+    "NIFTYMIDCAP100": "NIFTY_MIDCAP_100.NS",
+    "NIFTY_MIDCAP_100.NS": "NIFTY_MIDCAP_100.NS",
+    "NIFTYSMALLCAP": "^CNXSC",
+    "^CNXSC": "^CNXSC",
+    "NIFTY500": "^CRSLDX",
+    "^CRSLDX": "^CRSLDX",
+    "INDIAVIX": "^INDIAVIX",
+    "^INDIAVIX": "^INDIAVIX",
+    # Sectoral Indices
+    "NIFTYAUTO": "^CNXAUTO",
+    "^CNXAUTO": "^CNXAUTO",
+    "NIFTYIT": "^CNXIT",
+    "^CNXIT": "^CNXIT",
     "NIFTYBANK": "^NSEBANK",
     "BANKNIFTY": "^NSEBANK",
     "^NSEBANK": "^NSEBANK",
-    "NIFTYIT": "^CNXIT",
-    "^CNXIT": "^CNXIT",
-    "INDIAVIX": "^INDIAVIX",
-    "^INDIAVIX": "^INDIAVIX",
+    "NIFTYPHARMA": "^CNXPHARMA",
+    "^CNXPHARMA": "^CNXPHARMA",
+    "NIFTYFMCG": "^CNXFMCG",
+    "^CNXFMCG": "^CNXFMCG",
+    "NIFTYMETAL": "^CNXMETAL",
+    "^CNXMETAL": "^CNXMETAL",
+    "NIFTYREALTY": "^CNXREALTY",
+    "^CNXREALTY": "^CNXREALTY",
+    "NIFTYENERGY": "^CNXENERGY",
+    "^CNXENERGY": "^CNXENERGY",
+    "NIFTYINFRA": "^CNXINFRA",
+    "^CNXINFRA": "^CNXINFRA",
+    # US / Global Indices
+    "SP500": "^GSPC",
+    "S&P500": "^GSPC",
+    "^GSPC": "^GSPC",
+    "NASDAQ": "^IXIC",
+    "^IXIC": "^IXIC",
 }
 _INDEX_NAMES: dict[str, str] = {
     "^NSEI": "NIFTY 50",
     "^BSESN": "SENSEX",
+    "^NSMIDCP": "NIFTY Next 50",
+    "NIFTYMIDCAP150.NS": "NIFTY Midcap 150",
+    "NIFTY_MIDCAP_100.NS": "NIFTY Midcap 100",
+    "^CNXSC": "NIFTY Smallcap 100",
+    "^CRSLDX": "NIFTY 500",
     "^NSEBANK": "NIFTY Bank",
     "^CNXIT": "NIFTY IT",
+    "^CNXAUTO": "NIFTY Auto",
+    "^CNXPHARMA": "NIFTY Pharma",
+    "^CNXFMCG": "NIFTY FMCG",
+    "^CNXMETAL": "NIFTY Metal",
+    "^CNXREALTY": "NIFTY Realty",
+    "^CNXENERGY": "NIFTY Energy",
+    "^CNXINFRA": "NIFTY Infra",
+    "^GSPC": "S&P 500",
+    "^IXIC": "NASDAQ Composite",
     "^INDIAVIX": "India VIX",
 }
 _SESSION_BY_MARKET_STATE: dict[str, str] = {
@@ -70,6 +116,20 @@ _INTERVAL_MAP: dict[str, str] = {
     "30m": "30m",
     "60m": "1h",
 }
+
+
+def is_indian_symbol(symbol: str) -> bool:
+    token = symbol.strip().upper()
+    return token.endswith(".NS") or token.endswith(".BO") or token.startswith(("^NSE", "^BSE", "^CNX", "NIFTY", "SENSEX"))
+
+
+def resolve_default_benchmark(symbol: str, country: str | None = None) -> str:
+    if country and country.upper() == "IN":
+        return "^NSEI"
+    if country and country.upper() in ("US", "GLOBAL"):
+        return "^GSPC"
+    return "^NSEI" if is_indian_symbol(symbol) else "^GSPC"
+
 
 
 class YahooMarketDataProvider(MarketDataProvider):

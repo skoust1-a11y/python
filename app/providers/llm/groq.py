@@ -20,7 +20,7 @@ class GroqLLMProvider(OpenAICompatibleLLMProvider):
                 api_key=api_key,
                 base_url=GROQ_OPENAI_BASE_URL,
                 timeout=settings.llm_timeout_seconds,
-                max_retries=0,
+                max_retries=3,
             ),
             timeout_seconds=settings.llm_timeout_seconds,
             api_key=api_key,

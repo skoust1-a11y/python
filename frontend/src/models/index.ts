@@ -1,6 +1,9 @@
 export { ApiError, toErrorMessage } from "./errors";
-
 export type { DataSourceMetadata, Evidence, JsonObject } from "./common";
+export {
+  RISK_TOLERANCE_OPTIONS,
+  HORIZON_OPTIONS,
+} from "./enums";
 export type {
   AgentRunStatus,
   AnalysisType,
@@ -13,6 +16,7 @@ export type {
   PortfolioFormat,
   PortfolioStatus,
   PreviewStatus,
+  ProfileOption,
   ReportingPeriod,
   RiskTolerance,
   StatementType,

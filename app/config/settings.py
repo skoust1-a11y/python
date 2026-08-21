@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     azure_llm_api_version: str = Field(default="2024-10-21")
     azure_llm_deployment: str = Field(default="")
 
-    google_llm_model: str = Field(default="gemini-2.0-flash")
+    google_llm_model: str = Field(default="gemini-2.5-flash")
     google_llm_api_key: str = Field(default="")
 
     market_data_provider: str = Field(default="stub")

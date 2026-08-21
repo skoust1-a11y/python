@@ -614,8 +614,13 @@ def _planning_extras(
     extras = dict(runtime.context.extras or {})
     extras.pop("specialists", None)
     request = state.get("user_request")
-    if isinstance(request, UserRequest) and request.analysis_type:
-        extras["analysis_type"] = request.analysis_type
+    if isinstance(request, UserRequest):
+        if request.analysis_type:
+            extras["analysis_type"] = request.analysis_type
+        bench = request.benchmark or request.index_symbol
+        if bench:
+            extras["index_symbol"] = bench
+            extras["benchmark"] = bench
     portfolio = state.get("portfolio")
     if portfolio is not None:
         extras["portfolio"] = portfolio

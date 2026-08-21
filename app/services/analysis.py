@@ -54,10 +54,13 @@ def analyze_portfolio(
     portfolio = get_imported_portfolio(store, portfolio_id)
     analysis_id = uuid4().hex
     profile = _investment_profile(request)
+    benchmark = request.benchmark or request.index_symbol or "^NSEI"
     user_request = UserRequest(
         text=request.question,
         analysis_type=request.analysis_type,
         portfolio_id=portfolio.id,
+        benchmark=benchmark,
+        index_symbol=benchmark,
     )
     state = create_investment_state(
         analysis_id,
@@ -121,10 +124,16 @@ def analyze_stock(
     analysis_type = _stock_analysis_type(request)
     analysis_id = uuid4().hex
     profile = _investment_profile(request)
+    benchmark = request.benchmark or request.index_symbol
+    if not benchmark:
+        from app.providers.market_data.yahoo import resolve_default_benchmark
+        benchmark = resolve_default_benchmark(token)
     user_request = UserRequest(
         text=request.question,
         symbols=[token],
         analysis_type=analysis_type,
+        benchmark=benchmark,
+        index_symbol=benchmark,
     )
     state = create_investment_state(
         analysis_id,
