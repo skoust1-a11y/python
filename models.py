@@ -1,26 +1,34 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 
-# TODO: Step 1 - Define ResumeFlowState BaseModel
-# Hint: This model holds the internal state of the flow (inputs and outputs).
-class ResumeFlowState(BaseModel):
-    """Flow state model for resume screening."""
-    # TODO: Add state fields
-    # Hint: candidate_name, resume_text, applying_for, classified_role, justification, evaluator_role
-    pass
 
-# TODO: Step 2 - Define ResumeRequest BaseModel
-# Hint: This is the input payload for the API endpoint.
 class ResumeRequest(BaseModel):
     """Request model for resume screening."""
-    # TODO: Add request fields
-    # Hint: candidate_name, resume_text, applying_for (all strings)
-    pass
+    candidate_name: str
+    resume_text: str
+    applying_for: str
 
-# TODO: Step 3 - Define ResumeResponse BaseModel
-# Hint: This is the structured response returned by the API.
+
 class ResumeResponse(BaseModel):
     """Response model for resume screening."""
-    # TODO: Add response fields
-    # Hint: success, candidate_name, classified_role, evaluator, feedback
-    pass
+    success: bool
+    candidate_name: str
+    classified_role: str
+    evaluator: str
+    feedback: str
+
+
+class ResumeFlowState(BaseModel):
+    # REQUIRED - populated from the API request once the flow is kicked off.
+    # NOTE: must have defaults - CrewAI instantiates the state class with no
+    # arguments when the Flow is created, before kickoff(inputs=...) runs.
+    candidate_name: str = ""
+    resume_text: str = ""
+
+    # OPTIONAL - User can provide or defaults to None
+    applying_for: Optional[str] = Field(default=None)
+
+    # AUTO-FILLED BY FLOW - Start as None
+    classified_role: Optional[str] = Field(default=None)
+    feedback: Optional[str] = Field(default=None)
+    evaluator: Optional[str] = Field(default=None)

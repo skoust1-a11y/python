@@ -17,22 +17,29 @@ async def root():
 async def screen_resume(request: ResumeRequest):
     """
     Screen a resume and provide AI-based feedback.
-    
-    TODOs:
-    1. Validate required fields (optional if Pydantic handles it, but good practice).
-    2. Call the process_resume service function.
-    3. Map the flow state to the ResumeResponse model.
-    4. Handle errors with HTTPException.
+
+    Pydantic validates required fields on ResumeRequest automatically.
     """
-    # TODO: Step 1 - Call Service
-    # Hint: await process_resume(request.candidate_name, request.resume_text, request.applying_for)
-    
-    # TODO: Step 2 - Create Response
-    # Hint: Return ResumeResponse with data from the flow state (flow.state.candidate_name, etc.)
-    
-    # TODO: Step 3 - Handle Errors
-    
-    raise NotImplementedError("This route is not yet implemented. Please complete the TODO steps above.")
+    try:
+        flow, result = await process_resume(request.candidate_name, request.resume_text, request.applying_for)
+
+        return ResumeResponse(
+            candidate_name=flow.state.candidate_name,
+            classified_role=flow.state.classified_role,
+            feedback=flow.state.feedback,
+            evaluator=flow.state.evaluator,
+            success=True
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing resume: {str(e)}"
+        )
 
 if __name__ == "__main__":
     import uvicorn
