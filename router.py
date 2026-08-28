@@ -1,28 +1,42 @@
+COMPLEX_KEYWORDS = [
+    "500", "error", "bug", "crash", "analyze", "failed", "failure",
+    "deployment", "critical", "api", "exception", "traceback",
+    "timeout", "latency", "stack trace", "outage", "debug",
+]
+
+SIMPLE_KEYWORDS = [
+    "billing", "invoice", "address", "update", "status", "account",
+    "reset", "password", "subscription", "refund", "plan", "cancel",
+]
+
+
 def assess_complexity(description: str) -> str:
     """
-    TASK 1: Implement heuristic-based routing for support tickets.
-    
-    Heuristic Rules:
-    1. Check for Complex Keywords:
-       If the description contains words like '500', 'error', 'bug', 'crash', 
-       'analyze', 'failed', 'deployment', 'critical', 'api', etc.
-       -> Return "complex"
-       
-    2. Check for Simple Keywords:
-       If the description contains words like 'billing', 'invoice', 
-       'address', 'update', 'status', 'account', 'reset', etc.
-       -> Return "simple"
-       
-    3. Length Metric:
-       If the word count of the description is > 50 words.
-       -> Return "complex"
-       
-    Default: Return "simple"
+    Heuristic-based routing for support tickets (no LLM, zero latency).
+
+    Rules:
+      1. Any complex keyword present            -> "complex"
+      2. Any simple keyword present (no complex) -> "simple"
+      3. Word count > 50                         -> "complex"
+      4. Default                                 -> "simple"
     """
-    
-    # TODO: Implement the heuristic logic here
-    # 1. Lowercase the content
-    # 2. Define keyword lists
-    # 3. Apply the rules
-    
-    return 
+    if not description or not description.strip():
+        return "simple"
+
+    text = description.lower()
+    word_count = len(text.split())
+
+    # Rule 1: complex keyword triggers win outright
+    if any(keyword in text for keyword in COMPLEX_KEYWORDS):
+        return "complex"
+
+    # Rule 2: no complex triggers, so a simple keyword forces the cheap tier
+    if any(keyword in text for keyword in SIMPLE_KEYWORDS):
+        return "simple"
+
+    # Rule 3: long descriptions need more reasoning power
+    if word_count > 50:
+        return "complex"
+
+    # Rule 4: default
+    return "simple"

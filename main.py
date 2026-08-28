@@ -1,7 +1,6 @@
-import os
 import uvicorn
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from openai import OpenAI
 from dotenv import load_dotenv
 from router import assess_complexity
@@ -9,50 +8,69 @@ from router import assess_complexity
 load_dotenv()
 
 # ---------- Configuration & Clients ----------
-# LiteLLM already handles the model routing via config
 LITELLM_GATEWAY_URL = "http://localhost:4000/v1"
 
-# TODO: Initialize the OpenAI client pointing to the LiteLLM Gateway
-client = None 
+client = OpenAI(
+    base_url=LITELLM_GATEWAY_URL,
+    api_key="dummy-key",
+)
 
 app = FastAPI(title="Support Gateway Router")
 
+SYSTEM_PROMPT = (
+    "You are a professional customer support assistant. "
+    "Provide helpful and concise resolutions."
+)
+
+# Maps the router's assessment to the model tier defined in litellm_config.yaml
+MODEL_MAP = {
+    "simple": "simple-agent",    # -> ollama/llama3.2 (local, low cost/latency)
+    "complex": "complex-agent",  # -> azure/gpt-4o-mini (cloud, high reasoning)
+}
+
+
 # ---------- Schema ----------
-# TODO: Define the Pydantic model for the incoming request (TicketRequest)
-# It should ONLY take a 'description' field.
 class TicketRequest(BaseModel):
-    pass
+    description: str = Field(..., min_length=1, description="Support ticket description")
+
+    @field_validator("description")
+    @classmethod
+    def description_must_not_be_blank(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("description must not be empty or whitespace only")
+        return cleaned
+
 
 # ---------- Core Logic ----------
-
 @app.post("/resolve")
 async def resolve_ticket(ticket: TicketRequest):
-    """
-    TASK 2: Implement the Gateway Router Logic.
-    
-    Steps:
-    1. Call the 'assess_complexity' function from router.py.
-    2. Determine which model tier to use:
-       - complexity == "complex" -> "complex-agent"
-       - complexity == "simple"  -> "simple-agent"
-    3. Call the LiteLLM Gateway via the OpenAI client.
-    4. Return the resolution and the routing metadata.
-    """
-    
-    # TODO: Step 1 & 2 - Heuristic Assessment & Model Selection
-    
+    """Route a support ticket to the appropriate model tier via the LiteLLM gateway."""
+    # Step 1 & 2 - Heuristic assessment & model tier selection
+    complexity = assess_complexity(ticket.description)
+    model_tier = MODEL_MAP[complexity]
+
     try:
-        # TODO: Step 3 - Call GateWay (LiteLLM)
-        # Use a system message: "You are a professional customer support assistant. Provide helpful and concise resolutions."
-        
-       
-        
-        # TODO: Step 4 - Return the response
-        return ""
-            
-        
+        # Step 3 - Call the LiteLLM gateway
+        response = client.chat.completions.create(
+            model=model_tier,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": ticket.description},
+            ],
+        )
+
+        # Step 4 - Return resolution plus routing metadata
+        return {
+            "query": ticket.description,
+            "complexity_assessment": complexity,
+            "routed_model_tier": model_tier,
+            "resolution": response.choices[0].message.content,
+        }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gateway Error: {str(e)}")
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
