@@ -15,4 +15,9 @@ class CustomerSupportState(TypedDict):
     Note: Use Annotated with operator.add for list fields to ensure they append rather than overwrite.
     """
     # TODO: Implement CustomerSupportState - add the 5 fields listed above
-    pass  # Remove this and add the fields
+    messages :Annotated[List,operator.add]
+    thought_history : Annotated[List[str],operator.add]
+    action_log  : Annotated[List[Dict],operator.add]
+    observation_results : Annotated[List[str],operator.add]
+    task_complete : bool
+

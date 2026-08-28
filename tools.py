@@ -45,7 +45,22 @@ def get_account_info(account_id: str) -> str:
        - Interest Rate: {interest_rate}%
     """
     # TODO: Implement get_account_info logic
-    return ""
+    if not account_id:
+        return f"Account {account_id} not found."
+
+    account_key = account_id.upper()
+    if account_key not in ACCOUNT_DB:
+        return f"Account {account_id} not found."
+
+    my_account: dict = ACCOUNT_DB[account_key]
+
+    return f"""
+Account Type: {my_account['account_type']}
+Balance: ₹{my_account['balance']:,}
+Interest Rate: {my_account['interest_rate']}%
+"""
+    
+
 
 @tool
 def calculate(expression: str) -> str:
@@ -71,4 +86,8 @@ def calculate(expression: str) -> str:
     4. If exception occurs, return f"Error calculating: {str(e)}"
     """
     # TODO: Implement calculate logic
-    return ""
+    try:
+        result = eval(expression)
+        return f"Result: {result}"
+    except Exception as e:
+        return f"Error calculating: {str(e)}"

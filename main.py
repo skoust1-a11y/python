@@ -31,7 +31,22 @@ app = FastAPI(title="Multi-Tool Banking Customer Support ReAct Agent ", descript
 #   - api_version from environment variable AZURE_OPENAI_API_VERSION
 #   - temperature=0
 # TODO: Bind tools [get_account_info, calculate] to the LLM using .bind_tools()
-llm = None
+required_env = {
+    "AZURE_OPENAI_API_KEY": os.getenv("AZURE_OPENAI_API_KEY"),
+    "AZURE_OPENAI_ENDPOINT": os.getenv("AZURE_OPENAI_ENDPOINT"),
+    "AZURE_OPENAI_API_VERSION": os.getenv("AZURE_OPENAI_API_VERSION"),
+}
+missing_env = [name for name, value in required_env.items() if not value]
+if missing_env:
+    raise ValueError(f"Missing required environment variables: {', '.join(missing_env)}")
+
+llm: AzureChatOpenAI = AzureChatOpenAI(
+    api_key=required_env["AZURE_OPENAI_API_KEY"],
+    azure_endpoint=required_env["AZURE_OPENAI_ENDPOINT"],
+    model=os.getenv("AZURE_OPENAI_MODEL", "gpt-4o-mini"),
+    api_version=required_env["AZURE_OPENAI_API_VERSION"],
+    temperature=0,
+).bind_tools([get_account_info, calculate])
 
 # ---------------- Reasoning Node ----------------
 def reasoning_node(state: CustomerSupportState):
@@ -57,7 +72,27 @@ def reasoning_node(state: CustomerSupportState):
     7. Return {"messages": [response]}
     """
     # TODO: Implement reasoning_node logic
-    return {"messages": []}
+    prompt = REASONING_PROMPT.format(
+        thought_history=state["thought_history"],
+        action_log=state["action_log"],
+        observation_results=state["observation_results"],
+    )
+    base_messages: list = state["messages"]
+    messages = [SystemMessage(content=prompt)] + base_messages
+    response = llm.invoke(messages)
+    content = response.content if isinstance(response.content, str) else str(response.content)
+
+    if content.startswith("THOUGHT"):
+        thought = content.replace("THOUGHT:", "", 1).strip() if content.startswith("THOUGHT:") else content.replace("THOUGHT", "", 1).strip()
+        if "\n" in thought:
+            thought = thought.split("\n", 1)[0].strip()
+        state["thought_history"].append(thought)
+        logger.info(f"THOUGHT: {thought}")
+
+    if "FINAL ANSWER" in content:
+        state["task_complete"] = True
+
+    return {"messages": [response]}
 
 # ---------------- Tool Execution Node ----------------
 def tool_execution_node(state: CustomerSupportState):
@@ -86,7 +121,39 @@ def tool_execution_node(state: CustomerSupportState):
     5. Return {"messages": tool_messages}
     """
     # TODO: Implement tool_execution_node logic
-    return {"messages": []}
+    last_message = state["messages"][-1]
+    if not getattr(last_message, "tool_calls", None):
+        return {"messages": []}
+
+    tool_messages = []
+    for tool_call in last_message.tool_calls:
+        action = {
+            "tool": tool_call["name"],
+            "input": tool_call["args"],
+        }
+        state["action_log"].append(action)
+        logger.info(f"ACTION: {action}")
+
+        tool_name = tool_call["name"]
+        tool_args = tool_call["args"]
+
+        if tool_name == "get_account_info":
+            result = get_account_info.invoke(tool_args)
+        elif tool_name == "calculate":
+            result = calculate.invoke(tool_args)
+        else:
+            result = f"Unknown tool: {tool_name}"
+
+        state["observation_results"].append(result)
+        logger.info(f"OBSERVATION: {result}")
+        tool_messages.append(
+            ToolMessage(
+                content=result,
+                tool_call_id=tool_call["id"],
+            )
+        )
+
+    return {"messages": tool_messages}
 
 # ---------------- Loop Condition ----------------
 def should_continue(state: CustomerSupportState) -> str:
@@ -108,7 +175,24 @@ def should_continue(state: CustomerSupportState) -> str:
     6. Default: return "end" (safety fallback)
     """
     # TODO: Implement should_continue logic
+    if state["task_complete"] is True:
+        return "end"
+
+    last_message = state["messages"][-1]
+    if getattr(last_message, "content", "") and "FINAL ANSWER" in last_message.content:
+        return "end"
+
+    if getattr(last_message, "tool_calls", None):
+        if len(state["action_log"]) >= 6:
+            return "end"
+        return "continue"
+
+    if isinstance(last_message, ToolMessage):
+        return "continue"
+
     return "end"
+       
+        
 
 # ---------------- Build Graph ----------------
 # TODO: Build the ReAct graph:
@@ -121,8 +205,16 @@ def should_continue(state: CustomerSupportState) -> str:
 #    - "end" -> END
 # 6. Add edge from "tool_execution" back to "reasoning"
 # 7. Compile the graph
-graph = None
-react_graph = None
+graph = StateGraph(CustomerSupportState)
+graph.add_node("reasoning",reasoning_node)
+graph.add_node("tool_execution",tool_execution_node)
+graph.set_entry_point("reasoning")
+graph.add_conditional_edges("reasoning",should_continue,{
+   'continue':"tool_execution",
+   "end":END
+})
+graph.add_edge("tool_execution", "reasoning")
+react_graph = graph.compile()
 
 # ---------------- API ----------------
 @app.post("/support/query")
@@ -151,7 +243,35 @@ def support_query(query: str):
     7. Return {"answer": final_answer}
     """
     # TODO: Implement support_query logic
-    return {"answer": ""}
+    logger.info(f"Query received: {query}")
+
+    state = {
+        "messages": [HumanMessage(content=query)],
+        "thought_history": [],
+        "action_log": [],
+        "observation_results": [],
+        "task_complete": False,
+    }
+
+    result = react_graph.invoke(state)
+    messages = result.get("messages", [])
+    final_answer = ""
+
+    for message in reversed(messages):
+        content = message.content if isinstance(message.content, str) else str(message.content)
+        if "FINAL ANSWER" in content:
+            final_answer = content.split("FINAL ANSWER:", 1)[1].strip()
+            final_answer = "\n".join(
+                line for line in final_answer.splitlines() if not line.startswith(("THOUGHT:", "ACTION:"))
+            ).strip()
+            break
+
+    if not final_answer and messages:
+        last_message = messages[-1]
+        final_answer = last_message.content if isinstance(last_message.content, str) else str(last_message.content)
+
+    logger.info(f"Final answer: {final_answer}")
+    return {"answer": final_answer}
 
 if __name__ == "__main__":
     uvicorn.run(

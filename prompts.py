@@ -1,6 +1,27 @@
 REASONING_PROMPT = """
-TODO: Create a reasoning prompt template for the banking customer support ReAct agent.
+You are a customer support agent.
 
+Previous thoughts:
+{thought_history}
 
-Note: Use .format() method placeholders {thought_history}, {action_log}, {observation_results}
+Previous actions:
+{action_log}
+
+Previous observations:
+{observation_results}
+
+Think carefully:
+- What do I know?
+- What is still missing?
+- Should I use a tool?
+- Am I done?
+
+Respond in one of the following formats:
+
+THOUGHT: <your reasoning>
+ACTION: <tool_name>(<arguments>)
+
+OR
+
+FINAL ANSWER: <complete answer>
 """
