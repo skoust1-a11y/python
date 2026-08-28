@@ -16,7 +16,10 @@ class SupportAgentState(TypedDict):
     4. Define conversation_stage: str
     """
     # TODO: Implement SupportAgentState fields
-    pass
+    messages : Annotated[list, add_messages]
+    user_name :  str
+    issue_type : str
+    conversation_stage :  str
 
 
 class MessageRequest(BaseModel):
@@ -28,7 +31,9 @@ class MessageRequest(BaseModel):
     2. Define thread_id: Optional[str]
     """
     # TODO: Implement MessageRequest fields
-    pass
+    message : str
+    thread_id : Optional[str] = None
+    
 
 
 class MessageResponse(BaseModel):
@@ -43,7 +48,11 @@ class MessageResponse(BaseModel):
     5. Define thread_id: str
     """
     # TODO: Implement MessageResponse fields
-    pass
+    messages : List[dict]
+    user_name : str
+    issue_type : str
+    conversation_stage :  str
+    thread_id : str
 
 
 class ConversationStateResponse(BaseModel):
@@ -58,4 +67,8 @@ class ConversationStateResponse(BaseModel):
     5. Define message_count: int
     """
     # TODO: Implement ConversationStateResponse fields
-    pass
+    thread_id : str
+    user_name : str
+    issue_type : str
+    conversation_stage : str
+    message_count : int

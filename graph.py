@@ -15,7 +15,16 @@ def greeting_node(state: SupportAgentState) -> dict:
     2. Return messages: [AIMessage("Hi! What's your name?")] and conversation_stage: "greeting"
     """
     # TODO: Implement greeting_node logic
-    return {}
+    if state.get("user_name"):
+        return {}
+
+    return {
+        "messages": [AIMessage("Hi! What's your name?")],
+        "conversation_stage": "greeting"
+    }
+
+
+
 
 
 def identify_issue_node(state: SupportAgentState) -> dict:
@@ -29,6 +38,31 @@ def identify_issue_node(state: SupportAgentState) -> dict:
     4. Otherwise return {}
     """
     # TODO: Implement identify_issue_node logic
+    messages = state.get("messages", [])
+
+    # 1. If user_name is missing, extract it from the last HumanMessage
+    if not state.get("user_name"):
+        last_human = next(
+            (m for m in reversed(messages) if isinstance(m, HumanMessage)), None
+        )
+        if last_human is not None:
+            name = last_human.content.strip()
+            return {
+                "user_name": name,
+                "messages": [
+                    AIMessage(f"Thanks, {name}! What issue can I help you with?")
+                ],
+                "conversation_stage": "identifying",
+            }
+
+    # 3. user_name exists but issue_type missing and last message is AI -> ask for issue
+    elif not state.get("issue_type") and messages and isinstance(messages[-1], AIMessage):
+        return {
+            "messages": [AIMessage("What issue can I help you with?")],
+            "conversation_stage": "identifying",
+        }
+
+    # 4. Otherwise
     return {}
 
 
@@ -43,6 +77,30 @@ def resolve_node(state: SupportAgentState) -> dict:
     4. Otherwise return {}
     """
     # TODO: Implement resolve_node logic
+    if not state.get("issue_type"):
+        messages = state.get("messages", [])
+        last_human = next(
+            (m for m in reversed(messages) if isinstance(m, HumanMessage)), None
+        )
+        content = last_human.content.lower() if last_human else ""
+
+        if "order" in content:
+            issue_type = "order"
+        elif "refund" in content:
+            issue_type = "refund"
+        else:
+            issue_type = "other"
+
+        return {
+            "issue_type": issue_type,
+            "messages": [
+                AIMessage(
+                    f"Got it — I've logged your {issue_type} issue and our team will help you resolve it."
+                )
+            ],
+            "conversation_stage": "resolved",
+        }
+
     return {}
 
 
@@ -60,4 +118,19 @@ def build_graph(checkpointer=None):
     7. Compile and return graph
     """
     # TODO: Implement build_graph function
-    return None
+    graph = StateGraph(SupportAgentState)
+
+    graph.add_node("greeting", greeting_node)
+    graph.add_node("identify_issue", identify_issue_node)
+    graph.add_node("resolve", resolve_node)
+
+    graph.add_edge("greeting", "identify_issue")
+    graph.add_edge("identify_issue", "resolve")
+
+    graph.set_entry_point("greeting")
+    graph.set_finish_point("resolve")
+
+    if checkpointer is None:
+        checkpointer = MemorySaver()
+
+    return graph.compile(checkpointer=checkpointer)

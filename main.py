@@ -29,7 +29,10 @@ def get_graph():
     3. Return _graph
     """
     # TODO: Implement get_graph function
-    return None
+    global _graph
+    if _graph is None:
+        _graph = build_graph()
+    return _graph
 
 
 @app.post("/chat", response_model=MessageResponse)
@@ -48,7 +51,44 @@ async def chat(request: MessageRequest) -> MessageResponse:
     8. Handle exceptions
     """
     # TODO: Implement POST /chat endpoint
-    raise HTTPException(status_code=501, detail="Not implemented")
+    try:
+        graph = get_graph()
+        thread_id = request.thread_id or str(uuid.uuid4())
+
+        config = {"configurable": {"thread_id": thread_id}}
+
+        # Get current state from graph for this thread
+        current_state = graph.get_state(config)
+
+        # First message: initialize state; else invoke with the new HumanMessage
+        if not current_state.values:
+            input_state = {
+                "messages": [HumanMessage(request.message)],
+                "user_name": "",
+                "issue_type": "",
+                "conversation_stage": "",
+            }
+        else:
+            input_state = {"messages": [HumanMessage(request.message)]}
+
+        result = graph.invoke(input_state, config)
+
+        # Convert messages to dict format
+        messages = [
+            {"type": m.type, "content": m.content} for m in result.get("messages", [])
+        ]
+
+        return MessageResponse(
+            messages=messages,
+            user_name=result.get("user_name", ""),
+            issue_type=result.get("issue_type", ""),
+            conversation_stage=result.get("conversation_stage", ""),
+            thread_id=thread_id,
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @app.get("/conversation/{thread_id}", response_model=ConversationStateResponse)
@@ -65,7 +105,28 @@ async def get_conversation_state(thread_id: str) -> ConversationStateResponse:
     6. Handle exceptions
     """
     # TODO: Implement GET /conversation/{thread_id} endpoint
-    raise HTTPException(status_code=501, detail="Not implemented")
+    try:
+        graph = get_graph()
+        config = {"configurable": {"thread_id": thread_id}}
+
+        state = graph.get_state(config)
+
+        if not state.values:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+        values = state.values
+        return ConversationStateResponse(
+            thread_id=thread_id,
+            user_name=values.get("user_name", ""),
+            issue_type=values.get("issue_type", ""),
+            conversation_stage=values.get("conversation_stage", ""),
+            message_count=len(values.get("messages", [])),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
