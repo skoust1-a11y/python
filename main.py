@@ -45,17 +45,33 @@ async def validate_expense(request: ExpensePolicyRequest):
     """
     # TODO: Step 1 - Validate basic request fields
     # Hint: Ensure no required field is empty before calling the service.
+    try:
+        # Validate that required fields are not empty
+        if not request.expense_type or not request.business_purpose or request.amount <= 0 or request.policy_limit <= 0:
+            raise ValueError("Missing or invalid required fields")
 
-    # TODO: Step 2 - Delegate to the service
-    # Hint: Call validate_expense_policy with the request model.
+        # TODO: Step 2 - Delegate to the service
+        # Hint: Call validate_expense_policy with the request model.
+        result = validate_expense_policy(request)
 
-    # TODO: Step 3 - Return a successful response
-    # Hint: Wrap the decision string in an ExpensePolicyResponse with success=True.
+        # TODO: Step 3 - Return a successful response
+        # Hint: Wrap the decision string in an ExpensePolicyResponse with success=True.
+        return ExpensePolicyResponse(
+            decision=str(result),
+            message='success',
+            success=True
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400,
+                            detail=str(e))
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail='SERVER ERROR'
+        )
 
     # TODO: Step 4 - Handle errors
     # Hint: Convert ValueError to a 400 response and other errors to a 500 response.
-
-    raise NotImplementedError("This route is not yet implemented. Please complete the TODO steps above.")
 
 
 if __name__ == "__main__":
