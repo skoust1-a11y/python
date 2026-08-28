@@ -114,8 +114,82 @@ async def generate_documentation(request: DocumentationRequest):
     #    - Calculate execution time
     # 
     # 4. Return DocumentationResponse
-    
-    raise HTTPException(status_code=501, detail="Not implemented")
+
+    start_time = time.time()
+  
+    init_state = {
+        'task_description' : request.task_description,
+        'quality_threshold': request.quality_threshold,
+        'max_iterations':request.max_iterations,
+        'messages':[],
+        'draft_output' : "",
+        'reflection_feedback': [],
+        'iteration_count': 0,
+        'quality_score': 0.0,
+        'output_approved': False
+    }
+    timeout_seconds = 300
+    try:
+        logger.info("Starting graph execution...")
+        result = await asyncio.wait_for(
+                asyncio.to_thread(
+                    doc_graph.invoke,
+                    init_state,
+                    {"recursion_limit": 50}
+                ),
+                timeout=timeout_seconds
+            )
+        elapsed_time = time.time() - start_time
+        logger.info(f"Graph execution completed in {elapsed_time:.2f} seconds")
+        logger.info(f"Final quality score: {result.get('quality_score', 0.0)}/10, Iterations: {result.get('iteration_count', 0)}")
+        response = DocumentationResponse(
+            status="success",
+            task_description=request.task_description,
+            generated_documentation=result.get("draft_output", ""),
+            reflection_history=result.get("reflection_feedback", []),
+            iterations=result.get("iteration_count", 0),
+            final_quality_score=result.get("quality_score", 0.0),
+            approved=result.get("output_approved", False),
+            execution_time=elapsed_time
+        )
+        print("\n" + "=" * 60)
+        print("DOCUMENTATION GENERATION RESULT:")
+        print("=" * 60)
+        print(f"Task: {response.task_description}")
+        print(f"\nStatus: {response.status}")
+        print(f"Execution Time: {response.execution_time:.2f} seconds")
+        print(f"Iterations: {response.iterations}")
+        print(f"Final Quality Score: {response.final_quality_score}/10")
+        print(f"Approved: {response.approved}")
+        
+        print("\n" + "=" * 60)
+        print("GENERATED DOCUMENTATION:")
+        print("=" * 60)
+        print(response.generated_documentation)
+        
+        print("\n" + "=" * 60)
+        print("REFLECTION HISTORY:")
+        print("=" * 60)
+        for feedback in response.reflection_history:
+            print(f"- {feedback}")
+        print("=" * 60 + "\n")
+        
+        return response
+    except HTTPException:
+        raise
+    except asyncio.TimeoutError:
+        elapsed_time = time.time() - start_time
+        logger.error(f"Request timed out after {elapsed_time:.2f} seconds")
+        raise HTTPException(
+            status_code=504,
+            detail=f"Request exceeded {timeout_seconds}s timeout. The agent may need more time to complete."
+        )
+    except Exception as e:
+        elapsed_time = time.time() - start_time
+        logger.error(f"Error during execution: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error during documentation generation: {str(e)}")
 
 @app.get("/health")
 async def health():

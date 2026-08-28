@@ -11,7 +11,7 @@
 # - output_approved: bool
 
 from typing import TypedDict, Annotated, List
-import operator
+import operator  # noqa: F401  (used by the Annotated reducers below)
 
 
 class DocumentationReflectionState(TypedDict):
@@ -49,4 +49,12 @@ class DocumentationReflectionState(TypedDict):
        - Boolean flag indicating if the documentation is approved
     """
     # TODO: content...
-    pass
+    messages : Annotated[list,operator.add]
+    task_description : str
+    draft_output : str
+    reflection_feedback : Annotated[List[str],operator.add]
+    iteration_count : int
+    quality_score :  float
+    quality_threshold : float
+    max_iterations : int
+    output_approved : bool

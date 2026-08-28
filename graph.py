@@ -30,4 +30,19 @@ from routing import should_continue # Ensure this import is executed
 def build_graph():
     """Build and compile the documentation reflection graph."""
     # TODO: Implement graph building
-    return None
+    workflow = StateGraph(DocumentationReflectionState)
+    workflow.add_node('generator',generation_node)
+    workflow.add_node('reflector',reflection_node)
+    workflow.add_edge('generator','reflector')
+    workflow.set_entry_point('generator')
+
+    workflow.add_conditional_edges(
+        'reflector',
+        should_continue,
+        {
+            'refine':'reflector',
+            'approve':END
+        }
+    )
+    app = workflow.compile()
+    return app
