@@ -11,5 +11,7 @@ class LoanApplicationState(TypedDict):
     3. Define findings: Annotated[list, operator.add] field (important for parallel merging)
     4. Define final_decision: str field
     """
-    # TODO: Implement LoanApplicationState fields
-    pass
+    loan_type: str
+    applicant_info: dict
+    findings: Annotated[list, operator.add]
+    final_decision: str

@@ -1,3 +1,14 @@
+from langgraph.graph import StateGraph, END
+from state.loan_state import LoanApplicationState
+from nodes.triage_agent import triage_agent
+from nodes.home_loan_reviewer import home_loan_reviewer
+from nodes.credit_score_reviewer import credit_score_reviewer
+from nodes.property_assessor import property_assessor
+from nodes.personal_loan_reviewer import personal_loan_reviewer
+from nodes.auto_loan_reviewer import auto_loan_reviewer
+from nodes.final_aggregator import final_aggregator
+from routing.route_loan_type import route_loan_type
+
 def build_graph():
     """
     Builds the LangGraph workflow for loan application assessment.
@@ -18,5 +29,23 @@ def build_graph():
     - Use separate add_edge calls for parallel fan-out (not list syntax for end_key)
     - Use list syntax add_edge([node1, node2], target) for fan-in/join (list for start_key)
     """
-    # TODO: Implement build_graph logic
-    return None
+    builder = StateGraph(LoanApplicationState)
+    builder.add_node("triage_agent", triage_agent)
+    builder.add_node("home_loan_reviewer", home_loan_reviewer)
+    builder.add_node("credit_score_reviewer", credit_score_reviewer)
+    builder.add_node("property_assessor", property_assessor)
+    builder.add_node("personal_loan_reviewer", personal_loan_reviewer)
+    builder.add_node("auto_loan_reviewer", auto_loan_reviewer)
+    builder.add_node("final_aggregator", final_aggregator)
+
+    builder.set_entry_point("triage_agent")
+    builder.add_conditional_edges("triage_agent", route_loan_type)
+
+    builder.add_edge("home_loan_reviewer", "credit_score_reviewer")
+    builder.add_edge("home_loan_reviewer", "property_assessor")
+    builder.add_edge(["credit_score_reviewer", "property_assessor"], "final_aggregator")
+    builder.add_edge("personal_loan_reviewer", "final_aggregator")
+    builder.add_edge("auto_loan_reviewer", "final_aggregator")
+    builder.add_edge("final_aggregator", END)
+
+    return builder.compile()

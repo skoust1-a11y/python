@@ -13,5 +13,20 @@ def final_aggregator(state):
     4. Update state["final_decision"] with the formatted report
     5. Return updated state
     """
-    # TODO: Implement final_aggregator logic
-    return {}
+    findings = state.get("findings", []) or []
+    if not isinstance(findings, list):
+        findings = [findings]
+
+    unique_findings = list(dict.fromkeys(findings))
+    loan_type = state.get("loan_type", "unknown")
+
+    report_lines = [
+        f"Loan Type: {loan_type}",
+        f"Total Findings: {len(unique_findings)}",
+        "Findings:",
+    ]
+    report_lines.extend(f"- {finding}" for finding in unique_findings)
+
+    state["findings"] = unique_findings
+    state["final_decision"] = "\n".join(report_lines)
+    return state

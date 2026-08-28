@@ -2,14 +2,21 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
 
+from graph.build_graph import build_graph
+
 app = FastAPI(
     title="Loan Application Assessment API",
     description="Multi-Agent Loan Application Assessment System using LangGraph",
     version="1.0"
 )
 
-# TODO: Build graph using build_graph() function
-# graph = build_graph()
+_graph = None
+
+def building():
+    global _graph
+    if _graph is None:
+        _graph = build_graph()
+    return _graph
 
 
 class LoanApplicationRequest(BaseModel):
@@ -27,7 +34,14 @@ class LoanApplicationRequest(BaseModel):
     8. Define vehicle_value: float = 0 field
     """
     # TODO: Implement LoanApplicationRequest fields
-    pass
+    loan_purpose: str
+    credit_score: int = 0
+    monthly_income: float = 0
+    property_value: float = 0
+    property_address: str = ""
+    vehicle_make: str = ""
+    vehicle_model: str = ""
+    vehicle_value: float = 0
 
 
 @app.post("/assess-loan")
@@ -45,10 +59,25 @@ def assess_loan(request: LoanApplicationRequest):
     3. Deduplicate findings in response (workaround for state merge)
     4. Return dict with loan_type, findings (deduplicated), and final_decision
     """
-    # TODO: Implement assess_loan endpoint logic
-    return {}
+    state = {
+        "loan_type": "",
+        "applicant_info": request.model_dump(),
+        "findings": [],
+        "final_decision": "",
+    }
+
+    graph = building()
+    response = graph.invoke(state)
+
+    findings = response.get("findings", []) or []
+    deduplicated_findings = list(dict.fromkeys(findings))
+
+    return {
+        "loan_type": response.get("loan_type", state["loan_type"]),
+        "findings": deduplicated_findings,
+        "final_decision": response.get("final_decision", ""),
+    }
 
 
 if __name__ == "__main__":
-    # TODO: Add uvicorn.run() to start the server
-    pass
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

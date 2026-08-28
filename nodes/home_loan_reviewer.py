@@ -8,5 +8,10 @@ def home_loan_reviewer(state):
     2. The actual work is done by parallel sub-agents (credit_score_reviewer, property_assessor)
     3. Return state unchanged
     """
-    # TODO: Implement home_loan_reviewer logic
-    return {}
+    # Coordinator node: no local work, just pass state through so
+    # upstream orchestration can run parallel sub-agents.
+    if state is None:
+        # Ensure we always return a dict-like state
+        return {}
+
+    return state

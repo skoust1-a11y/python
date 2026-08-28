@@ -11,5 +11,13 @@ def route_loan_type(state):
     5. Default fallback - return "final_aggregator"
     Note: This function is used in add_conditional_edges
     """
-    # TODO: Implement route_loan_type logic
-    return ""
+    loan_type = str(state.get("loan_type", "")).strip().lower()
+
+    if "home" in loan_type:
+        return "home_loan_reviewer"
+    if "personal" in loan_type:
+        return "personal_loan_reviewer"
+    if "auto" in loan_type:
+        return "auto_loan_reviewer"
+
+    return "final_aggregator"
