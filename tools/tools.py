@@ -1,11 +1,11 @@
 from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_core.tools import tool
-
+import time
 # TODO: Step 1 - Initialize DuckDuckGo search with timeout
 # Hint: Use DuckDuckGoSearchRun with a timeout parameter (e.g., 10 seconds) to prevent hanging
 # Store it in a variable like ddg_search
 # Example: ddg_search = DuckDuckGoSearchRun(timeout=10)
-
+ddg_search = DuckDuckGoSearchRun(timeout=10)
 
 @tool
 def search_web(query: str) -> str:
@@ -17,12 +17,21 @@ def search_web(query: str) -> str:
     3. Handle exceptions, return error message
     4. Return the search result
     """
+    start_time = time.time()
     # TODO: Step 1 - Invoke search
+    try:
+        result = ddg_search.invoke(query)
+        elapsed = time.time() - start_time
+        # DuckDuckGo returns text snippets
+        if not result or len(result.strip()) == 0:
+            return "No results found. Try a different search query."
+        return result
+    except Exception as e:
+        elapsed = time.time() - start_time
+        return f"Search error: {str(e)}. Try rephrasing your query."
     # TODO: Step 2 - Check empty result
     # TODO: Step 3 - Handle exceptions
     # TODO: Step 4 - Return result
-    
-    raise NotImplementedError("This method is not yet implemented. Please complete the TODO steps above.")
 
 
 @tool
@@ -35,9 +44,9 @@ def calculate(expression: str) -> str:
     3. Handle exceptions, return "Calculation error: {error}"
     4. Return formatted result
     """
-    # TODO: Step 1 - Evaluate expression
-    # TODO: Step 2 - Format result
-    # TODO: Step 3 - Handle exceptions
-    # TODO: Step 4 - Return result
-    
-    raise NotImplementedError("This method is not yet implemented. Please complete the TODO steps above.")
+    try:
+        # Safe evaluation of mathematical expressions
+        result = eval(expression, {"__builtins__": {}}, {})
+        return f"Result: {round(result, 2)}"
+    except Exception as e:
+        return f"Calculation error: {str(e)}"

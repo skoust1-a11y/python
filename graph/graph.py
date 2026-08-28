@@ -5,6 +5,7 @@ from nodes.executor import execution_node
 from nodes.verifier import verification_node
 from nodes.replanner import replanning_node
 
+
 MAX_STEPS = 10  # Safety limit for total execution steps
 
 
@@ -21,8 +22,28 @@ def should_continue(state: MarketResearchState) -> str:
     # TODO: Step 2 - Check max steps
     # TODO: Step 3 - Check replanning
     # TODO: Step 4 - Return execute
+    if state["task_complete"]:
+        return "complete"
     
-    raise NotImplementedError("This method is not yet implemented. Please complete the TODO steps above.")
+    # Safety check: prevent infinite loops by limiting total execution steps
+    execution_count = len(state.get("execution_results", []))
+    if execution_count >= MAX_STEPS:
+        state["task_complete"] = True
+        return "complete"
+    
+    # Safety check for invalid current_step or empty plan
+    if not state["plan"] or state["current_step"] < 1:
+        state["task_complete"] = True
+        return "complete"
+    
+    if state["current_step"] > len(state["plan"]):
+        state["task_complete"] = True
+        return "complete"
+    
+    if state["needs_replanning"]:
+        return "replan"
+    else:
+        return "execute"
 
 
 # TODO: Step 1 - Create workflow = StateGraph(MarketResearchState)
@@ -32,5 +53,35 @@ def should_continue(state: MarketResearchState) -> str:
 # TODO: Step 5 - Add conditional edges from verifier with should_continue, mapping: {"execute": "executor", "replan": "replanner", "complete": END}
 # TODO: Step 6 - Compile: app_graph = workflow.compile()
 
-workflow = None
-app_graph = None
+
+
+
+workflow = StateGraph(MarketResearchState)
+
+# Add nodes
+workflow.add_node("planner", planning_node)
+workflow.add_node("executor", execution_node)
+workflow.add_node("verifier", verification_node)
+workflow.add_node("replanner", replanning_node)
+
+# Define edges
+workflow.set_entry_point("planner")
+workflow.add_edge("planner", "executor")
+workflow.add_edge("executor", "verifier")
+
+# Conditional routing from verifier
+workflow.add_conditional_edges(
+    "verifier",
+    should_continue,
+    {
+        "execute": "executor",
+        "replan": "replanner",
+        "complete": END
+    }
+)
+
+workflow.add_edge("replanner", "executor")
+
+# Compile
+app_graph = workflow.compile()
+

@@ -26,13 +26,33 @@ async def research(
     6. Return {"status": "success", "task_complete": result.get("task_complete", False), "plan": result["plan"], "execution_results": result["execution_results"], "verification_status": result["verification_status"]}
     """
     # TODO: Step 1 - Validate query
-    # TODO: Step 2 - Initialize state
-    # TODO: Step 3 - Invoke graph
-    # TODO: Step 4 - Handle timeout
-    # TODO: Step 5 - Handle exception
-    # TODO: Step 6 - Return success
-    
-    raise NotImplementedError("This method is not yet implemented. Please complete the TODO steps above.")
+    try:
+        if query.strip() is None:
+            return {
+                "status" : "error",
+                "message" : "Query cannot be empty"
+            }
+        state = {
+            'messages' : [HumanMessage(content=query)],
+            'plan' : [],
+            'current_step' : 1,
+            'execution_results' : [],
+            'verification_status' : [],
+            'task_complete' : False,
+            'needs_replanning' : False,
+            'replan_attempts' :0
+        }
+        result =  await asyncio.wait_for(asyncio.to_thread(app_graph.invoke, state, {"recursion_limit": 25}), timeout=60)
+        # TODO: Step 2 - Initialize state
+        # TODO: Step 3 - Invoke graph
+        # TODO: Step 4 - Handle timeout
+        # TODO: Step 5 - Handle exception
+        # TODO: Step 6 - Return success
+        return {"status": "success", "task_complete": result.get("task_complete", False), "plan": result["plan"], "execution_results": result["execution_results"], "verification_status": result["verification_status"]}
+    except TimeoutError as e:
+        return {"status": "timeout", "message": "Request timed out..."}
+    except Exception as e:
+        return {"status": "error", "message": f"Execution error: {str(e)}"}
 
 
 @app.get("/health")
