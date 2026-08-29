@@ -21,6 +21,24 @@ load_dotenv()
 # ---------- Configuration & Clients ----------
 LITELLM_GATEWAY_URL = "http://localhost:4000/v1"
 
+# Full LiteLLM gateway configuration content as defined in litellm_config.yaml:
+LITELLM_CONFIG_YAML = """
+model_list:
+  # Simple tier -> local Ollama model (zero cost, low latency)
+  - model_name: simple-agent
+    litellm_params:
+      model: ollama/llama3.2
+      api_base: http://localhost:11434
+
+  # Complex tier -> Azure OpenAI (higher reasoning capability)
+  - model_name: complex-agent
+    litellm_params:
+      model: azure/gpt-4o-mini
+      api_key: os.environ/AZURE_OPENAI_API_KEY
+      api_base: os.environ/AZURE_OPENAI_ENDPOINT
+      api_version: os.environ/AZURE_OPENAI_API_VERSION
+"""
+
 client = OpenAI(
     base_url=LITELLM_GATEWAY_URL,
     api_key="dummy-key",
