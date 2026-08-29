@@ -1,12 +1,16 @@
 COMPLEX_KEYWORDS = [
-    "500", "error", "bug", "crash", "analyze", "failed", "failure",
-    "deployment", "critical", "api", "exception", "traceback",
-    "timeout", "latency", "stack trace", "outage", "debug",
+    "500", "502", "503", "504", "error", "bug", "crash", "analyze",
+    "failed", "failure", "deployment", "critical", "api", "exception",
+    "traceback", "timeout", "latency", "stack trace", "outage", "debug",
+    "incident", "fatal", "nullpointer", "memory leak", "segfault",
+    "unhandled", "deadlock", "corrupted",
 ]
 
 SIMPLE_KEYWORDS = [
     "billing", "invoice", "address", "update", "status", "account",
     "reset", "password", "subscription", "refund", "plan", "cancel",
+    "receipt", "faq", "pricing", "profile", "login", "email",
+    "payment", "downgrade", "upgrade",
 ]
 
 

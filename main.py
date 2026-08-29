@@ -1,9 +1,13 @@
+import logging
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from openai import OpenAI
 from dotenv import load_dotenv
 from router import assess_complexity
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -49,6 +53,7 @@ async def resolve_ticket(ticket: TicketRequest):
     # Step 1 & 2 - Heuristic assessment & model tier selection
     complexity = assess_complexity(ticket.description)
     model_tier = MODEL_MAP[complexity]
+    logger.info(f"Ticket assessed as '{complexity}', routing to tier: '{model_tier}'")
 
     try:
         # Step 3 - Call the LiteLLM gateway
