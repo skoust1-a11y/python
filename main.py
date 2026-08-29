@@ -53,8 +53,15 @@ class TicketRequest(BaseModel):
         return cleaned
 
 
+class TicketResponse(BaseModel):
+    query: str = Field(..., description="Original customer query or ticket description")
+    complexity_assessment: str = Field(..., description="Complexity assessment outcome ('simple' or 'complex')")
+    routed_model_tier: str = Field(..., description="Model tier selected for routing ('simple-agent' or 'complex-agent')")
+    resolution: str = Field(..., description="Generated resolution response from the model tier")
+
+
 # ---------- Core Logic ----------
-@app.post("/resolve")
+@app.post("/resolve", response_model=TicketResponse)
 async def resolve_ticket(ticket: TicketRequest):
     """Route a support ticket to the appropriate model tier via the LiteLLM gateway."""
     # Step 1 & 2 - Heuristic assessment & model tier selection
