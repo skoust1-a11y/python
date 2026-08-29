@@ -120,7 +120,8 @@ def validate_expense_policy(request: ExpensePolicyRequest) -> str:
     """
     task = Task(
         description=policy_summary,
-        expected_output=expected_output
+        expected_output=expected_output,
+        output_file="expense_decision.md",
     )
 
     # TODO: Step 5 - Assemble the hierarchical Crew
