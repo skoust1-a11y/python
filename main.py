@@ -1,3 +1,10 @@
+"""
+Customer Support Ticket Optimization System - FastAPI Gateway Router.
+
+LiteLLM Gateway Configuration (litellm_config.yaml):
+- simple-agent:  ollama/llama3.2  (http://localhost:11434) - Local, 0-cost, low latency
+- complex-agent: azure/gpt-4o-mini (os.environ/AZURE_OPENAI_API_KEY, os.environ/AZURE_OPENAI_ENDPOINT) - Cloud reasoning
+"""
 import logging
 import uvicorn
 from fastapi import FastAPI, HTTPException
