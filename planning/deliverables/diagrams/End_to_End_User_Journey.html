@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>End-to-End User Journey — Input | Process | Output</title>
+<style>
+  :root {
+    --bg: #f7f8fa; --text: #1a1f26; --muted: #5b6570; --line: #d8dde5;
+    --in: #16a34a; --proc: #7c3aed; --out: #2563eb; --safe: #dc2626;
+    --data: #d97706; --active: #7c3aed;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { max-width: 1100px; margin: 0 auto; padding: 20px 18px 6px; }
+  h1 { margin: 0 0 6px; font-size: 22px; }
+  .sub { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 10px 18px 40px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0; }
+  button, select {
+    font: inherit; padding: 8px 12px; border-radius: 8px;
+    border: 1px solid var(--line); background: #fff; cursor: pointer;
+  }
+  button.primary { background: var(--active); color: #fff; border-color: var(--active); }
+  .note {
+    background: #f3e8ff; border-left: 3px solid var(--active);
+    padding: 12px 14px; border-radius: 0 8px 8px 0; margin-bottom: 14px;
+    font-size: 14px; line-height: 1.45;
+  }
+  .board {
+    background: #fff; border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px; overflow-x: auto;
+  }
+  .cols {
+    display: grid;
+    grid-template-columns: 220px 1fr 220px;
+    gap: 14px;
+    min-width: 920px;
+    align-items: stretch;
+  }
+  .col {
+    border: 2px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
+    background: #fafbfc;
+    min-height: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .col-in { border-color: #86efac; background: #f0fdf4; }
+  .col-mid { border-color: #d8b4fe; background: #faf5ff; }
+  .col-out { border-color: #93c5fd; background: #eff6ff; }
+  .col.on-col { outline: 3px solid var(--active); outline-offset: 2px; }
+  .col-head {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; margin: 0 0 4px;
+  }
+  .col-in .col-head { color: #166534; }
+  .col-mid .col-head { color: #6b21a8; }
+  .col-out .col-head { color: #1e40af; }
+  .user-card {
+    border-radius: 10px; padding: 12px; text-align: center;
+    border: 2px solid #16a34a; background: #dcfce7;
+  }
+  .user-card.out {
+    border-color: #2563eb; background: #dbeafe;
+  }
+  .user-card strong { display: block; font-size: 14px; }
+  .user-card span { font-size: 12px; color: var(--muted); }
+  .user-card.on {
+    outline: 3px solid var(--active);
+    box-shadow: 0 0 0 4px rgba(124,58,237,0.12);
+  }
+  .bubble {
+    border: 1.5px solid #c5cbd3; background: #fff; border-radius: 10px;
+    padding: 10px; font-size: 12px; line-height: 1.35;
+  }
+  .bubble strong { display: block; font-size: 12.5px; margin-bottom: 3px; }
+  .bubble.on {
+    border-color: var(--active); background: #f5f3ff;
+    outline: 2px solid var(--active);
+  }
+  .bubble.dim { opacity: 0.4; }
+  .mid-stack { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .flow-label {
+    text-align: center; font-size: 11px; font-weight: 600; color: var(--muted);
+    padding: 4px 0;
+  }
+  .flow-label.on { color: var(--active); }
+  .anno {
+    font-size: 11.5px; background: #fff; border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px; color: #374151; line-height: 1.35;
+  }
+  .anno.on { border-color: var(--active); background: #f3e8ff; }
+  .bridge {
+    display: flex; justify-content: space-between; align-items: center;
+    margin: 10px 2px 0; font-size: 12px; color: var(--muted); font-weight: 600;
+  }
+  .bridge .l { color: #166534; }
+  .bridge .r { color: #1e40af; }
+  .bridge .m { color: #6b21a8; }
+  .steps { display: grid; gap: 8px; margin-top: 16px; }
+  .step {
+    text-align: left; width: 100%; padding: 12px 14px; border-radius: 10px;
+    border: 1px solid var(--line); background: #fff; cursor: pointer;
+    display: grid; grid-template-columns: 44px 1fr; gap: 8px 12px;
+  }
+  .step.on { border-color: var(--active); background: #f3e8ff; }
+  .step-num {
+    width: 40px; height: 40px; border-radius: 10px; background: #9ca3af; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700;
+  }
+  .step.on .step-num { background: var(--active); }
+  .step.done .step-num { background: #16a34a; }
+  .step-title { margin: 0; font-size: 14px; font-weight: 600; }
+  .step-note { margin: 2px 0 0; font-size: 13px; color: #374151; line-height: 1.4; }
+  @media (max-width: 800px) {
+    .cols { grid-template-columns: 1fr; min-width: 0; }
+    .col { min-height: 0; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>End-to-end user journey</h1>
+  <p class="sub">
+    Same pattern as the LLM-app architecture diagram: <b>user input on one side</b>,
+    system processing in the middle, <b>user output on the other side</b>.
+  </p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <button id="playBtn" class="primary">Pause</button>
+    <button id="prevBtn">Prev</button>
+    <button id="nextBtn">Next</button>
+    <select id="speedSelect">
+      <option value="1200">Fast</option>
+      <option value="1800" selected>Normal</option>
+      <option value="2600">Slow</option>
+    </select>
+    <span id="pill" style="font-size:12px;color:#5b6570"></span>
+  </div>
+
+  <div class="note" id="note"></div>
+
+  <div class="board">
+    <div class="bridge">
+      <span class="l">? USER INPUT</span>
+      <span class="m">SYSTEM PROCESSING ?</span>
+      <span class="r">USER OUTPUT ?</span>
+    </div>
+
+    <div class="cols">
+      <!-- LEFT: INPUT -->
+      <section class="col col-in" id="colIn">
+        <p class="col-head">User input</p>
+        <div class="user-card" id="userIn">
+          <strong>END USER</strong>
+          <span>Investment / Risk Analyst</span>
+        </div>
+        <div class="bubble" data-id="ask">
+          <strong>Query</strong>
+          “Are any assets exceeding the allowed risk thresholds for our portfolio strategy?”
+        </div>
+        <div class="bubble" data-id="auth">
+          <strong>Auth context</strong>
+          JWT · role · allowed_portfolio_ids
+        </div>
+        <div class="anno" id="annoIn">End user sends query to the system via UI.</div>
+      </section>
+
+      <!-- MIDDLE: PROCESS -->
+      <section class="col col-mid" id="colMid">
+        <p class="col-head">Input enrichment &amp; responsible AI</p>
+        <div class="mid-stack">
+          <div class="bubble" data-id="ui"><strong>1. UI / FastAPI</strong>POST /api/v1/query · trace_id</div>
+          <div class="flow-label" data-fl="a">?</div>
+          <div class="bubble" data-id="guard"><strong>2. Input guardrail</strong>Block override / bypass / injection</div>
+          <div class="flow-label" data-fl="b">?</div>
+          <div class="bubble" data-id="router"><strong>3. Router</strong>Classify C1–C5 · extract entities</div>
+          <div class="flow-label" data-fl="c">? fan-out</div>
+          <div class="bubble" data-id="rag"><strong>4a. RAG enrich</strong>Embed ? pgvector policy snippets</div>
+          <div class="bubble" data-id="sql"><strong>4b. SQL enrich</strong>Templates ? finance_risk_db (+ RBAC filter)</div>
+          <div class="flow-label" data-fl="d">?</div>
+          <div class="bubble" data-id="risk"><strong>5. Risk agent</strong>Thresholds vs scores · E1–E8 check</div>
+          <div class="flow-label" data-fl="e">?</div>
+          <div class="bubble" data-id="syn"><strong>6. Synthesis / Escalate</strong>Evidence-only answer — or human handoff</div>
+          <div class="flow-label" data-fl="f">?</div>
+          <div class="bubble" data-id="val"><strong>7. Output validator</strong>Citations · no advice · disclaimer</div>
+        </div>
+      </section>
+
+      <!-- RIGHT: OUTPUT -->
+      <section class="col col-out" id="colOut">
+        <p class="col-head">User output</p>
+        <div class="user-card out" id="userOut">
+          <strong>END USER</strong>
+          <span>Same analyst receives result</span>
+        </div>
+        <div class="bubble" data-id="answer">
+          <strong>Response envelope</strong>
+          Answer + DOC:/SQL: citations + risk summary + disclaimer
+        </div>
+        <div class="bubble" data-id="escout">
+          <strong>Or escalation</strong>
+          Refusal + handoff envelope (trigger, evidence, reviewer)
+        </div>
+        <div class="anno" id="annoOut">Output sent to end user.</div>
+      </section>
+    </div>
+  </div>
+
+  <div class="steps" id="steps"></div>
+</div>
+
+<script>
+const STEPS = [
+  {
+    title: "User input — analyst asks",
+    note: "End user (left) submits a natural-language risk/policy question with JWT session context.",
+    col: "in",
+    ids: ["ask", "auth"],
+    userIn: true, userOut: false,
+    fl: [],
+    annoIn: true, annoOut: false,
+  },
+  {
+    title: "Enter the system — UI / API",
+    note: "Query moves from user input into FastAPI: authenticate, attach portfolio scope, stamp trace_id.",
+    col: "mid",
+    ids: ["ui"],
+    userIn: true, userOut: false,
+    fl: [],
+    annoIn: false, annoOut: false,
+  },
+  {
+    title: "Guardrail (responsible AI)",
+    note: "Input guardrail screens override/bypass intent before any enrichment or LLM call.",
+    col: "mid",
+    ids: ["guard"],
+    userIn: false, userOut: false,
+    fl: ["a"],
+    annoIn: false, annoOut: false,
+  },
+  {
+    title: "Router chooses path",
+    note: "Query classified into C1–C5; entities extracted so enrichment is scoped.",
+    col: "mid",
+    ids: ["router"],
+    userIn: false, userOut: false,
+    fl: ["b"],
+    annoIn: false, annoOut: false,
+  },
+  {
+    title: "Input enrichment — RAG + SQL",
+    note: "Parallel enrichment: policy snippets from pgvector and structured rows from SQL templates, RBAC-filtered.",
+    col: "mid",
+    ids: ["rag", "sql"],
+    userIn: false, userOut: false,
+    fl: ["c"],
+    annoIn: false, annoOut: false,
+  },
+  {
+    title: "Risk reconcile + escalation gates",
+    note: "Risk agent compares policy vs data. Any E2–E8 trigger will divert to human handoff.",
+    col: "mid",
+    ids: ["risk"],
+    userIn: false, userOut: false,
+    fl: ["d"],
+    annoIn: false, annoOut: false,
+  },
+  {
+    title: "Synthesis or escalate",
+    note: "Clear path ? evidence-only synthesis. Triggered path ? escalation envelope (no autonomous answer).",
+    col: "mid",
+    ids: ["syn"],
+    userIn: false, userOut: false,
+    fl: ["e"],
+    annoIn: false, annoOut: false,
+  },
+  {
+    title: "Output validator",
+    note: "Citations required, no investment advice, disclaimer present — then package for the user.",
+    col: "mid",
+    ids: ["val"],
+    userIn: false, userOut: false,
+    fl: ["f"],
+    annoIn: false, annoOut: false,
+  },
+  {
+    title: "User output — answer delivered",
+    note: "Result returns on the output side to the same end user: grounded answer + citations, or escalation status.",
+    col: "out",
+    ids: ["answer", "escout"],
+    userIn: false, userOut: true,
+    fl: [],
+    annoIn: false, annoOut: true,
+  },
+];
+
+let step = 0, playing = true, ms = 1800, timer = null;
+
+function apply() {
+  const s = STEPS[step];
+  document.getElementById("note").innerHTML = `<strong>Step ${step + 1} of ${STEPS.length}: ${s.title}</strong><br/>${s.note}`;
+  document.getElementById("pill").textContent = `Step ${step + 1} of ${STEPS.length}`;
+
+  document.getElementById("colIn").classList.toggle("on-col", s.col === "in");
+  document.getElementById("colMid").classList.toggle("on-col", s.col === "mid");
+  document.getElementById("colOut").classList.toggle("on-col", s.col === "out");
+
+  document.getElementById("userIn").classList.toggle("on", !!s.userIn);
+  document.getElementById("userOut").classList.toggle("on", !!s.userOut);
+  document.getElementById("annoIn").classList.toggle("on", !!s.annoIn);
+  document.getElementById("annoOut").classList.toggle("on", !!s.annoOut);
+
+  document.querySelectorAll(".bubble[data-id]").forEach((el) => {
+    const on = s.ids.includes(el.dataset.id);
+    el.classList.toggle("on", on);
+    el.classList.toggle("dim", s.col === "mid" ? !on : false);
+  });
+  // don't dim input/output bubbles harshly when those cols active
+  if (s.col === "in") {
+    document.querySelectorAll(".col-in .bubble").forEach((el) => {
+      el.classList.toggle("dim", !s.ids.includes(el.dataset.id));
+    });
+  }
+  if (s.col === "out") {
+    document.querySelectorAll(".col-out .bubble").forEach((el) => {
+      el.classList.toggle("dim", !s.ids.includes(el.dataset.id));
+    });
+  }
+
+  document.querySelectorAll(".flow-label").forEach((el) => {
+    el.classList.toggle("on", s.fl.includes(el.dataset.fl));
+  });
+
+  const stepsEl = document.getElementById("steps");
+  stepsEl.innerHTML = "";
+  STEPS.forEach((st, i) => {
+    const b = document.createElement("button");
+    b.className = "step" + (i === step ? " on" : "") + (i < step ? " done" : "");
+    b.innerHTML = `<div class="step-num">${i + 1}</div>
+      <div><p class="step-title">${st.title}</p><p class="step-note">${st.note}</p></div>`;
+    b.onclick = () => { step = i; apply(); };
+    stepsEl.appendChild(b);
+  });
+}
+
+function tick() { if (!playing) return; step = (step + 1) % STEPS.length; apply(); }
+function restart() { clearInterval(timer); timer = setInterval(tick, ms); }
+
+document.getElementById("playBtn").onclick = () => {
+  playing = !playing;
+  document.getElementById("playBtn").textContent = playing ? "Pause" : "Play";
+  document.getElementById("playBtn").className = playing ? "primary" : "";
+  if (playing) restart();
+};
+document.getElementById("prevBtn").onclick = () => { step = (step - 1 + STEPS.length) % STEPS.length; apply(); };
+document.getElementById("nextBtn").onclick = () => { step = (step + 1) % STEPS.length; apply(); };
+document.getElementById("speedSelect").onchange = (e) => { ms = Number(e.target.value); restart(); };
+
+apply();
+restart();
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && typeof playing !== "undefined" && playing) {
+    if (typeof restartTimer === "function") restartTimer();
+    else if (typeof restart === "function") restart();
+  }
+});
+</script>
+</body>
+</html>

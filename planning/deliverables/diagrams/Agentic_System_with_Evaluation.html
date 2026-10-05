@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Agentic System — Evaluation on the map</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --ink: #e8eef7;
+    --muted: #8b9cb3;
+    --box: #1a3a6b;
+    --box-stroke: #5b8fd4;
+    --ext: #2a3344;
+    --ext-stroke: #8b9cb3;
+    --int: #4c2d6b;
+    --int-stroke: #c084fc;
+    --eval: #0f766e;
+    --eval-stroke: #2dd4bf;
+    --line: #c5d0e0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Segoe UI", system-ui, sans-serif;
+  }
+  header { max-width: 1280px; margin: 0 auto; padding: 20px 24px 8px; }
+  h1 { margin: 0 0 6px; font-size: 20px; font-weight: 650; letter-spacing: 0.02em; }
+  .sub { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; max-width: 90ch; }
+  .stage { max-width: 1280px; margin: 0 auto; padding: 8px 16px 28px; overflow-x: auto; }
+  svg { display: block; }
+  .lbl { font-size: 12px; fill: var(--ink); font-weight: 650; }
+  .sml { font-size: 10.5px; fill: var(--muted); }
+  .edge { fill: none; stroke: var(--line); stroke-width: 1.4; marker-end: url(#arrow); }
+  .edge-dash { stroke-dasharray: 6 5; }
+  .elbl { font-size: 10.5px; fill: #cbd5e1; }
+  footer { max-width: 1280px; margin: 0 auto; padding: 0 24px 24px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Finance Risk Agentic System — refactor only if eval score fails</h1>
+  <p class="sub">Evaluation sits where generic maps put Learning. It does not auto-train. A score-gate decides: below target → refactor Reasoning / prompts / rules; at or above target → no change.</p>
+</header>
+<div class="stage">
+<svg viewBox="0 0 1240 720" width="1240" height="720" role="img" aria-label="Agentic system; refactor gated by evaluation score">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#c5d0e0"/>
+    </marker>
+    <marker id="arrowTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#2dd4bf"/>
+    </marker>
+  </defs>
+
+  <!-- USER -->
+  <g transform="translate(40,250)">
+    <circle cx="36" cy="28" r="16" fill="none" stroke="#e8eef7" stroke-width="2"/>
+    <path d="M16 78 Q36 52 56 78" fill="none" stroke="#e8eef7" stroke-width="2"/>
+    <text x="36" y="102" text-anchor="middle" class="lbl">Analyst</text>
+    <text x="36" y="118" text-anchor="middle" class="sml">JWT · query</text>
+  </g>
+
+  <!-- AGENTIC SYSTEM -->
+  <rect x="200" y="40" width="720" height="640" rx="8" fill="none" stroke="var(--box-stroke)" stroke-width="2.4"/>
+  <text x="560" y="68" text-anchor="middle" class="lbl" style="font-size:15px;letter-spacing:0.12em">AGENTIC SYSTEM</text>
+  <text x="560" y="88" text-anchor="middle" class="sml">Finance Risk &amp; Investment Intelligence · LangGraph</text>
+
+  <!-- Reasoning -->
+  <g transform="translate(250,250)">
+    <circle cx="50" cy="40" r="42" fill="none" stroke="#e8eef7" stroke-width="2.2"/>
+    <text x="50" y="36" text-anchor="middle" class="lbl">Reasoning</text>
+    <text x="50" y="52" text-anchor="middle" class="sml">Router · Risk</text>
+    <text x="50" y="66" text-anchor="middle" class="sml">Synthesis</text>
+  </g>
+
+  <!-- Orchestrate -->
+  <g transform="translate(390,120)">
+    <circle cx="70" cy="40" r="40" fill="none" stroke="#e8eef7" stroke-width="1.8"/>
+    <text x="70" y="36" text-anchor="middle" class="lbl">orchestrate</text>
+    <text x="70" y="52" text-anchor="middle" class="sml">LangGraph C1–C5</text>
+  </g>
+
+  <!-- INTEGRATIONS -->
+  <g transform="translate(390,210)">
+    <rect x="0" y="0" width="280" height="118" rx="6" fill="#2a1840" stroke="var(--int-stroke)" stroke-width="1.8"/>
+    <text x="140" y="22" text-anchor="middle" class="lbl" style="fill:#e9d5ff;font-size:11px;letter-spacing:0.08em">INTEGRATIONS</text>
+    <text x="70" y="52" text-anchor="middle" class="sml" style="fill:#e9d5ff">LangGraph</text>
+    <text x="210" y="52" text-anchor="middle" class="sml" style="fill:#e9d5ff">FastAPI</text>
+    <text x="70" y="86" text-anchor="middle" class="sml" style="fill:#e9d5ff">SQL templates</text>
+    <text x="210" y="86" text-anchor="middle" class="sml" style="fill:#e9d5ff">hybrid RAG</text>
+    <text x="140" y="108" text-anchor="middle" class="sml">not Devin / Auto-GPT — this stack only</text>
+  </g>
+
+  <!-- Perception -->
+  <g transform="translate(700,130)">
+    <circle cx="50" cy="40" r="40" fill="none" stroke="#e8eef7" stroke-width="1.8"/>
+    <text x="50" y="36" text-anchor="middle" class="lbl">Perception</text>
+    <text x="50" y="52" text-anchor="middle" class="sml">Retrieval</text>
+  </g>
+
+  <!-- Execution -->
+  <g transform="translate(700,250)">
+    <circle cx="50" cy="40" r="40" fill="none" stroke="#e8eef7" stroke-width="1.8"/>
+    <text x="50" y="36" text-anchor="middle" class="lbl">Execution</text>
+    <text x="50" y="52" text-anchor="middle" class="sml">SQL · tools</text>
+  </g>
+
+  <!-- Guardrails -->
+  <g transform="translate(250,430)">
+    <circle cx="50" cy="40" r="40" fill="none" stroke="#fda4af" stroke-width="1.8"/>
+    <text x="50" y="36" text-anchor="middle" class="lbl" style="fill:#fecdd3">Guardrails</text>
+    <text x="50" y="52" text-anchor="middle" class="sml">E1–E8 · RBAC</text>
+  </g>
+
+  <!-- EVALUATION -->
+  <g transform="translate(500,410)">
+    <circle cx="70" cy="48" r="52" fill="#042f2e" stroke="var(--eval-stroke)" stroke-width="3"/>
+    <text x="70" y="36" text-anchor="middle" class="lbl" style="fill:#99f6e4;font-size:13px">EVALUATION</text>
+    <text x="70" y="52" text-anchor="middle" class="sml" style="fill:#5eead4">golden 50 · attack</text>
+    <text x="70" y="66" text-anchor="middle" class="sml" style="fill:#5eead4">16 SLO scores</text>
+  </g>
+
+  <!-- SCORE GATE diamond -->
+  <g transform="translate(430,545)">
+    <polygon points="140,0 250,40 140,80 30,40" fill="#042f2e" stroke="#fbbf24" stroke-width="2.2"/>
+    <text x="140" y="36" text-anchor="middle" class="lbl" style="fill:#fde68a;font-size:12px">score ≥ target?</text>
+    <text x="140" y="52" text-anchor="middle" class="sml" style="fill:#fcd34d">hard SLOs 10–14 must be 100%</text>
+  </g>
+
+  <!-- FAIL → REFACTOR -->
+  <g transform="translate(250,620)">
+    <rect x="0" y="0" width="130" height="44" rx="6" fill="#4c0519" stroke="#fb7185" stroke-width="1.8"/>
+    <text x="65" y="18" text-anchor="middle" class="lbl" style="fill:#fecdd3;font-size:11px">NO → REFACTOR</text>
+    <text x="65" y="34" text-anchor="middle" class="sml" style="fill:#fda4af">prompts · rules · tools</text>
+  </g>
+
+  <!-- PASS → NO CHANGE -->
+  <g transform="translate(680,620)">
+    <rect x="0" y="0" width="130" height="44" rx="6" fill="#052e16" stroke="#4ade80" stroke-width="1.8"/>
+    <text x="65" y="18" text-anchor="middle" class="lbl" style="fill:#bbf7d0;font-size:11px">YES → NO CHANGE</text>
+    <text x="65" y="34" text-anchor="middle" class="sml" style="fill:#86efac">do not refactor</text>
+  </g>
+
+  <!-- INTERNAL EDGES -->
+  <path class="edge" d="M148 288 L248 288"/>
+  <text class="elbl" x="155" y="278">query + JWT</text>
+  <text class="elbl" x="155" y="308">answer / escalate</text>
+  <path class="edge" d="M148 300 L248 300"/>
+
+  <path class="edge" d="M350 250 L430 180"/>
+  <text class="elbl" x="352" y="200">route path</text>
+
+  <path class="edge" d="M460 200 L530 210"/>
+  <path class="edge" d="M670 270 L700 270"/>
+  <path class="edge" d="M670 250 L700 170"/>
+
+  <path class="edge" d="M300 370 L300 430"/>
+  <text class="elbl" x="210" y="410">before LLM</text>
+
+  <path class="edge" d="M350 430 L500 448" style="stroke:#2dd4bf;marker-end:url(#arrowTeal)"/>
+  <path class="edge" d="M750 290 L620 430" style="stroke:#2dd4bf;marker-end:url(#arrowTeal)"/>
+  <text class="elbl" x="390" y="500" style="fill:#5eead4">traces + outcomes</text>
+
+  <path class="edge" d="M570 510 L570 545" style="stroke:#fbbf24;marker-end:url(#arrow)"/>
+  <text class="elbl" x="580" y="538" style="fill:#fde68a">SLO table</text>
+
+  <path class="edge" d="M460 585 L380 620" style="stroke:#fb7185;marker-end:url(#arrow)"/>
+  <path class="edge" d="M680 585 L745 620" style="stroke:#4ade80;marker-end:url(#arrow)"/>
+
+  <path class="edge edge-dash" d="M315 620 L300 340" style="stroke:#fb7185;marker-end:url(#arrow)"/>
+  <text class="elbl" x="200" y="560" style="fill:#fda4af">only if score fails</text>
+
+  <!-- EXTERNAL SYSTEMS -->
+  <rect x="980" y="80" width="230" height="560" rx="8" fill="none" stroke="var(--ext-stroke)" stroke-width="1.8"/>
+  <text x="1095" y="108" text-anchor="middle" class="lbl" style="font-size:12px;letter-spacing:0.08em">EXTERNAL</text>
+
+  <g transform="translate(1004,130)">
+    <rect width="182" height="70" rx="6" fill="var(--ext)" stroke="#64748b"/>
+    <text x="91" y="32" text-anchor="middle" class="lbl">7 policy PDFs</text>
+    <text x="91" y="50" text-anchor="middle" class="sml">pgvector corpus</text>
+  </g>
+  <g transform="translate(1004,220)">
+    <rect width="182" height="70" rx="6" fill="var(--ext)" stroke="#64748b"/>
+    <text x="91" y="32" text-anchor="middle" class="lbl">finance_risk_db</text>
+    <text x="91" y="50" text-anchor="middle" class="sml">5 tables · SELECT</text>
+  </g>
+  <g transform="translate(1004,310)">
+    <rect width="182" height="70" rx="6" fill="var(--ext)" stroke="#64748b"/>
+    <text x="91" y="32" text-anchor="middle" class="lbl">LLM provider</text>
+    <text x="91" y="50" text-anchor="middle" class="sml">OpenAI-compatible</text>
+  </g>
+  <g transform="translate(1004,400)">
+    <rect width="182" height="70" rx="6" fill="var(--ext)" stroke="#64748b"/>
+    <text x="91" y="32" text-anchor="middle" class="lbl">Human queue</text>
+    <text x="91" y="50" text-anchor="middle" class="sml">E1–E8 handoff</text>
+  </g>
+  <g transform="translate(1004,490)">
+    <rect width="182" height="50" rx="6" fill="#042f2e" stroke="#2dd4bf"/>
+    <text x="91" y="22" text-anchor="middle" class="lbl" style="fill:#99f6e4">eval/reports/</text>
+    <text x="91" y="38" text-anchor="middle" class="sml" style="fill:#5eead4">sprint SLO table</text>
+  </g>
+
+  <path class="edge" d="M800 170 L1004 165"/>
+  <text class="elbl" x="820" y="158">retrieve policy</text>
+  <path class="edge" d="M800 290 L1004 255"/>
+  <text class="elbl" x="820" y="278">SQL templates</text>
+  <path class="edge" d="M800 310 L1004 345"/>
+  <text class="elbl" x="848" y="338">model calls</text>
+  <path class="edge" d="M350 478 L1004 435"/>
+  <text class="elbl" x="780" y="470">escalate</text>
+  <path class="edge" d="M660 490 L1004 515" style="stroke:#2dd4bf;marker-end:url(#arrowTeal)"/>
+  <text class="elbl" x="780" y="540" style="fill:#5eead4">write SLO report</text>
+</svg>
+</div>
+<footer>planning/deliverables/diagrams/Agentic_System_with_Evaluation.html · Refactor is eval-gated (v2/08 §6). No score miss → no agent-path change.</footer>
+</body>
+</html>

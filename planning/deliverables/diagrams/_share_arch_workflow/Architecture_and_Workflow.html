@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Architecture &amp; Workflow — Finance Risk System</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --text: #1c1c1a; --muted: #5c5c57; --line: #cfcfc8;
+    --accent: #6b21a8; --accent-soft: #efe0ff;
+    --red: #f8d4d0; --red-b: #c45c52; --red-ink: #7a2e28;
+    --green: #d8efd4; --green-b: #4f8f4a; --green-ink: #2a5a28;
+    --blue: #d4e4f8; --blue-b: #4a78b8; --blue-ink: #244a78;
+    --grey: #e8e8e4; --grey-b: #7a7a72; --grey-ink: #3a3a36;
+    --chip: #fffef8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { max-width: 1240px; margin: 0 auto; padding: 18px 20px 6px; }
+  h1 { margin: 0 0 6px; font-size: 22px; }
+  .sub { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 10px 20px 36px; }
+  .panel {
+    background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 12px;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  select, button {
+    font: inherit; padding: 8px 12px; border-radius: 8px;
+    border: 1px solid var(--line); background: #fff; cursor: pointer;
+  }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pill {
+    display: inline-block; padding: 3px 9px; border-radius: 999px;
+    border: 1px solid var(--line); font-size: 12px; color: var(--muted);
+  }
+  .note {
+    background: var(--accent-soft); border-left: 3px solid var(--accent);
+    padding: 10px 12px; border-radius: 0 8px 8px 0; margin: 10px 0 0;
+    font-size: 14px; line-height: 1.45;
+  }
+
+  /* Board */
+  .board-wrap {
+    position: relative; overflow: auto;
+    border: 1px solid var(--line); border-radius: 12px; background: #fafaf7;
+    min-height: 720px;
+  }
+  .board {
+    position: relative; width: 1160px; height: 900px; margin: 0 auto;
+    font-size: 12px;
+  }
+  .box {
+    position: absolute; border: 2px solid; border-radius: 10px;
+    padding: 8px 10px; background: #fff; transition: opacity .25s, outline .2s, box-shadow .2s;
+  }
+  .box.on {
+    outline: 3px solid var(--accent); outline-offset: 2px;
+    box-shadow: 0 0 0 5px rgba(107,33,168,.12); z-index: 3;
+  }
+  .box.dim { opacity: 0.38; }
+  .box h3 {
+    margin: 0 0 6px; font-size: 12.5px; font-weight: 700; letter-spacing: .01em;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip {
+    background: var(--chip); border: 1px solid var(--line); border-radius: 6px;
+    padding: 4px 7px; font-size: 11px; line-height: 1.25; color: #2a2a26;
+  }
+  .chip strong { display: block; font-size: 11px; }
+  .chip small { color: var(--muted); font-size: 10px; }
+  .db-row, .doc-row { display: flex; gap: 10px; justify-content: center; align-items: flex-end; padding-top: 4px; }
+  .db, .doc {
+    width: 52px; text-align: center; font-size: 10px; color: var(--muted); font-weight: 600;
+  }
+  .db::before {
+    content: ""; display: block; width: 42px; height: 34px; margin: 0 auto 4px;
+    border: 2px solid currentColor; border-radius: 4px 4px 10px 10px;
+    background: linear-gradient(#fff, #eee); box-shadow: inset 0 8px 0 rgba(0,0,0,.06);
+  }
+  .doc::before {
+    content: ""; display: block; width: 34px; height: 40px; margin: 0 auto 4px;
+    border: 2px solid currentColor; border-radius: 3px; background: #fff;
+    box-shadow: 4px 4px 0 rgba(0,0,0,.08);
+  }
+  .badge {
+    position: absolute; z-index: 4; font-size: 11px; font-weight: 700;
+    background: #fff; border: 2px solid var(--blue-b); color: var(--blue-ink);
+    padding: 5px 8px; border-radius: 8px; white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0,0,0,.06);
+  }
+  .badge.on { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  .c-red { background: var(--red); border-color: var(--red-b); color: var(--red-ink); }
+  .c-green { background: var(--green); border-color: var(--green-b); color: var(--green-ink); }
+  .c-blue { background: var(--blue); border-color: var(--blue-b); color: var(--blue-ink); }
+  .c-grey { background: var(--grey); border-color: var(--grey-b); color: var(--grey-ink); }
+
+  /* Positions — mirror reference layout */
+  #user { left: 380px; top: 18px; width: 400px; }
+  #orch { left: 380px; top: 150px; width: 400px; min-height: 118px; }
+  #resp { left: 380px; top: 430px; width: 400px; }
+  #mem  { left: 380px; top: 600px; width: 400px; }
+
+  #agent { left: 24px; top: 150px; width: 300px; }
+  #conn  { left: 24px; top: 360px; width: 300px; }
+  #edata { left: 24px; top: 580px; width: 300px; }
+
+  #rag   { left: 836px; top: 150px; width: 300px; }
+  #know  { left: 836px; top: 400px; width: 300px; }
+  #ksrc  { left: 836px; top: 640px; width: 300px; }
+  #ingest { left: 870px; top: 575px; }
+
+  svg.flows {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; overflow: visible;
+  }
+  .flow-edge { fill: none; stroke: #8a8a84; stroke-width: 1.6; marker-end: url(#mGrey); }
+  .flow-edge.on {
+    stroke: var(--accent); stroke-width: 2.6; marker-end: url(#mAccent);
+    stroke-dasharray: 7 5; animation: dash .8s linear infinite;
+  }
+  .flow-edge.dim { opacity: 0.2; }
+  @keyframes dash { to { stroke-dashoffset: -24; } }
+  .flow-label {
+    font-size: 10.5px; fill: #4a4a44; font-weight: 600;
+  }
+  .flow-label.on { fill: var(--accent); font-weight: 700; }
+  .packet { fill: var(--accent); }
+
+  .steps { display: grid; gap: 8px; margin-top: 10px; }
+  .step {
+    text-align: left; width: 100%; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: #fff; cursor: pointer;
+    display: grid; grid-template-columns: 40px 1fr; gap: 8px 10px;
+  }
+  .step.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+  .step-num {
+    width: 36px; height: 36px; border-radius: 9px; background: #8a8a84; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
+  }
+  .step.on .step-num { background: var(--accent); }
+  .step.done .step-num { background: #2a7a2a; }
+  .step-title { margin: 0; font-size: 13.5px; font-weight: 600; }
+  .step-note { margin: 2px 0 0; font-size: 12.5px; color: #333; line-height: 1.4; }
+  .legend { font-size: 12px; color: var(--muted); gap: 14px; margin-top: 8px; }
+  .sw { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); display: inline-block; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Finance Risk &amp; Investment Intelligence — Architecture &amp; Workflow</h1>
+  <p class="sub">
+    Layout matches the agentic reference (left tools · center orchestration · right RAG).
+    All tech blocks from the reference are covered and mapped to this system’s stack.
+    Use the dropdown like the multi-flow viewer.
+  </p>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="row">
+      <label>Diagram
+        <select id="flowSelect">
+          <option value="arch">Architecture — full tech map</option>
+          <option value="workflow">Workflow — animated request path</option>
+        </select>
+      </label>
+      <button id="playBtn" class="primary">Pause</button>
+      <button id="prevBtn">Prev</button>
+      <button id="nextBtn">Next</button>
+      <label>Speed
+        <select id="speedSelect">
+          <option value="1000">Fast</option>
+          <option value="1600" selected>Normal</option>
+          <option value="2400">Slow</option>
+        </select>
+      </label>
+      <span class="pill" id="modePill">architecture</span>
+      <span class="pill" id="stepPill">Step 1</span>
+    </div>
+    <div class="note" id="note"></div>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board">
+      <!-- User -->
+      <div class="box c-grey" id="user" data-id="user">
+        <h3>User Profile Management</h3>
+        <div class="chips">
+          <div class="chip"><strong>Analyst / Risk / PM / Compliance</strong><small>JWT · RBAC · allowed_portfolio_ids · FastAPI client</small></div>
+          <div class="chip"><strong>Session &amp; identity</strong><small>role scope · trace_id · /api/v1/query</small></div>
+        </div>
+      </div>
+
+      <!-- Left: Agentic AI -->
+      <div class="box c-red" id="agent" data-id="agent">
+        <h3>Agentic AI System</h3>
+        <div class="chips">
+          <div class="chip"><strong>Goal Manager</strong><small>C1–C5 path goals · risk_level</small></div>
+          <div class="chip"><strong>Decision Engine</strong><small>Risk Agent · E1–E8 escalation rules</small></div>
+          <div class="chip"><strong>Tool Integration</strong><small>Portfolio / Market / Risk agents · SQL tools</small></div>
+        </div>
+      </div>
+
+      <!-- Center: Orchestration -->
+      <div class="box c-green" id="orch" data-id="orch">
+        <h3>Orchestration Layer</h3>
+        <div class="chips">
+          <div class="chip"><strong>Agent Controller</strong><small>LangGraph state machine · budgets · retries</small></div>
+          <div class="chip"><strong>Task Planner</strong><small>Router Agent · category · entities · path</small></div>
+          <div class="chip"><strong>Execution Engine</strong><small>Conditional edges · fan-out · guardrail gate</small></div>
+        </div>
+      </div>
+
+      <!-- Right: Agentic RAG -->
+      <div class="box c-blue" id="rag" data-id="rag">
+        <h3>Agentic RAG System</h3>
+        <div class="chips">
+          <div class="chip"><strong>Query Formulation</strong><small>rewrite · expand · policy intent</small></div>
+          <div class="chip"><strong>Source Selector</strong><small>7 PDF corpus · section / page filter</small></div>
+          <div class="chip"><strong>Retrieval Orchestrator</strong><small>hybrid vector + BM25 · rerank</small></div>
+          <div class="chip"><strong>Information Synthesizer</strong><small>doc_evidence pack for Synthesis</small></div>
+        </div>
+      </div>
+
+      <!-- Left: Connectivity -->
+      <div class="box c-red" id="conn" data-id="conn">
+        <h3>Enterprise Connectivity Layer</h3>
+        <div class="chips">
+          <div class="chip"><strong>API Registry</strong><small>named SQL template registry</small></div>
+          <div class="chip"><strong>Data Transformation</strong><small>RBAC filter · typed evidence rows</small></div>
+          <div class="chip"><strong>External Data Connector — Tool Calls</strong><small>read-only SELECT executor · parameterized</small></div>
+        </div>
+      </div>
+
+      <!-- Center: Response -->
+      <div class="box c-green" id="resp" data-id="resp">
+        <h3>Response Generation</h3>
+        <div class="chips">
+          <div class="chip"><strong>Core LLM</strong><small>OpenAI-compatible · router / agent / judge tiers</small></div>
+          <div class="chip"><strong>Response Optimizer</strong><small>Synthesis (no tools) · citation formatter · output validator · disclaimer</small></div>
+        </div>
+      </div>
+
+      <!-- Right: Knowledge infra -->
+      <div class="box c-blue" id="know" data-id="know">
+        <h3>Knowledge Infrastructure</h3>
+        <div class="chips">
+          <div class="chip"><strong>Vector DB</strong><small>pgvector · policy_chunks</small></div>
+          <div class="chip"><strong>Document Store</strong><small>PDF metadata · page / section</small></div>
+          <div class="chip"><strong>Knowledge Graph</strong><small>section / entity links · limit tables</small></div>
+          <div class="chip"><strong>Real-Time Connectors</strong><small>market_indicators feed path</small></div>
+        </div>
+      </div>
+
+      <!-- Left: Enterprise data -->
+      <div class="box c-red" id="edata" data-id="edata">
+        <h3>Enterprise Data — finance_risk_db</h3>
+        <div class="db-row">
+          <div class="db">portfolios<br/>holdings</div>
+          <div class="db">risk_logs<br/>decisions</div>
+          <div class="db">market<br/>indicators</div>
+        </div>
+      </div>
+
+      <!-- Center: Memory -->
+      <div class="box c-green" id="mem" data-id="mem">
+        <h3>Memory Systems</h3>
+        <div class="chips">
+          <div class="chip"><strong>Short Term Memory</strong><small>active turn state · LangGraph checkpoint</small></div>
+          <div class="chip"><strong>Episodic Memory</strong><small>session last-N turns</small></div>
+          <div class="chip"><strong>Procedural Memory</strong><small>SQL playbooks · escalation playbooks</small></div>
+          <div class="chip"><strong>Semantic Memory</strong><small>policy embeddings · retrieved context</small></div>
+        </div>
+      </div>
+
+      <!-- Right: Knowledge sources -->
+      <div class="box c-blue" id="ksrc" data-id="ksrc">
+        <h3>Enterprise Knowledge Source</h3>
+        <div class="doc-row">
+          <div class="doc">strategy<br/>risk PDFs</div>
+          <div class="doc">Basel III<br/>framework</div>
+          <div class="doc">market<br/>monitoring</div>
+        </div>
+      </div>
+
+      <div class="badge" id="ingest" data-id="ingest">Parsing, Chunking, Embedding</div>
+
+      <svg class="flows" viewBox="0 0 1160 900" aria-hidden="true">
+        <defs>
+          <marker id="mGrey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="#8a8a84"/>
+          </marker>
+          <marker id="mAccent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="#6b21a8"/>
+          </marker>
+        </defs>
+        <!-- Edges with ids for animation -->
+        <path id="e_req" class="flow-edge" d="M580 95 L580 148"/>
+        <text class="flow-label" id="l_req" x="592" y="128">Structured Request</text>
+
+        <path id="e_resp_up" class="flow-edge" d="M545 148 L545 95"/>
+        <text class="flow-label" id="l_resp_up" x="400" y="128">Generated Response</text>
+
+        <path id="e_task" class="flow-edge" d="M380 200 L326 200"/>
+        <text class="flow-label" id="l_task" x="300" y="188">Task Assignment</text>
+        <path id="e_plan" class="flow-edge" d="M326 230 L380 230"/>
+        <text class="flow-label" id="l_plan" x="300" y="252">Action Plan</text>
+
+        <path id="e_info" class="flow-edge" d="M780 200 L834 200"/>
+        <text class="flow-label" id="l_info" x="786" y="188">Information Requirements</text>
+        <path id="e_synk" class="flow-edge" d="M834 230 L780 230"/>
+        <text class="flow-label" id="l_synk" x="786" y="252">Synthesized Knowledge</text>
+
+        <path id="e_tool" class="flow-edge" d="M174 278 L174 358"/>
+        <text class="flow-label" id="l_tool" x="182" y="320">Function / Tool Calls</text>
+        <path id="e_tool_back" class="flow-edge" d="M154 358 L154 278"/>
+        <text class="flow-label" id="l_tool_back" x="48" y="330">Response</text>
+
+        <path id="e_api" class="flow-edge" d="M174 478 L174 578"/>
+        <text class="flow-label" id="l_api" x="182" y="530">API call</text>
+        <path id="e_api_back" class="flow-edge" d="M154 578 L154 478"/>
+        <text class="flow-label" id="l_api_back" x="58" y="540">Response</text>
+
+        <path id="e_kquery" class="flow-edge" d="M986 318 L986 398"/>
+        <text class="flow-label" id="l_kquery" x="994" y="360">Knowledge Source Query</text>
+        <path id="e_kret" class="flow-edge" d="M966 398 L966 318"/>
+        <text class="flow-label" id="l_kret" x="870" y="370">Retrieved Information</text>
+
+        <path id="e_ingest" class="flow-edge" d="M986 638 L986 560"/>
+        <text class="flow-label" id="l_ingest" x="870" y="610">ingest pipeline</text>
+
+        <path id="e_gen" class="flow-edge" d="M580 278 L580 428"/>
+        <text class="flow-label" id="l_gen" x="588" y="360">Generate Response (Actions + Knowledge)</text>
+        <path id="e_opt" class="flow-edge" d="M555 428 L555 278"/>
+        <text class="flow-label" id="l_opt" x="400" y="360">Optimized Response</text>
+
+        <path id="e_store" class="flow-edge" d="M580 508 L580 598"/>
+        <text class="flow-label" id="l_store" x="588" y="560">Store Conversation</text>
+        <path id="e_ctx" class="flow-edge" d="M555 598 L555 508"/>
+        <text class="flow-label" id="l_ctx" x="430" y="560">Context history</text>
+
+        <g id="packets"></g>
+      </svg>
+    </div>
+  </div>
+
+  <div class="row legend">
+    <span><i class="sw" style="background:var(--grey)"></i> User</span>
+    <span><i class="sw" style="background:var(--red)"></i> Agentic tools + enterprise data</span>
+    <span><i class="sw" style="background:var(--green)"></i> Orchestration · LLM · memory</span>
+    <span><i class="sw" style="background:var(--blue)"></i> Agentic RAG · knowledge</span>
+  </div>
+
+  <div class="panel">
+    <strong>Step timeline</strong>
+    <p class="sub" style="margin:4px 0 8px">In Workflow mode, steps follow the labeled arrows on the diagram. Click to jump.</p>
+    <div class="steps" id="steps"></div>
+  </div>
+  <footer>diagrams/Architecture_and_Workflow.html · reference: examples/reference_agentic_architecture_workflow.png</footer>
+</div>
+
+<script>
+/** Box ids present on the board */
+const BOXES = ["user","agent","orch","rag","conn","resp","know","edata","mem","ksrc","ingest"];
+
+/**
+ * Architecture overview steps — spotlight each tech cluster.
+ * Workflow steps — animate labeled flows like the reference image.
+ */
+const VIEWS = {
+  arch: {
+    title: "Architecture — full tech map",
+    budget: "architecture",
+    steps: [
+      {
+        title: "User Profile Management",
+        note: "Entry boundary: analyst personas, JWT/RBAC, allowed_portfolio_ids, FastAPI /api/v1/query, trace_id.",
+        boxes: ["user"], edges: [],
+      },
+      {
+        title: "Orchestration Layer (LangGraph)",
+        note: "Agent Controller + Task Planner (Router) + Execution Engine — budgets, retries, conditional edges, input guardrail gate.",
+        boxes: ["orch"], edges: ["e_req","e_resp_up"],
+      },
+      {
+        title: "Agentic AI System (left)",
+        note: "Goal Manager (C1–C5), Decision Engine (Risk + E1–E8), Tool Integration (Portfolio / Market / Risk agents).",
+        boxes: ["agent"], edges: ["e_task","e_plan"],
+      },
+      {
+        title: "Enterprise Connectivity + Data",
+        note: "API Registry (SQL templates), Data Transformation (RBAC), External connector tool-calls → finance_risk_db (portfolios, risk_logs, markets).",
+        boxes: ["conn","edata"], edges: ["e_tool","e_tool_back","e_api","e_api_back"],
+      },
+      {
+        title: "Agentic RAG System (right)",
+        note: "Query Formulation, Source Selector, Retrieval Orchestrator (hybrid + rerank), Information Synthesizer → doc_evidence.",
+        boxes: ["rag"], edges: ["e_info","e_synk"],
+      },
+      {
+        title: "Knowledge Infrastructure + Sources",
+        note: "Vector DB (pgvector), Document Store, Knowledge Graph links, Real-Time Connectors; 7 policy PDFs via Parsing, Chunking, Embedding.",
+        boxes: ["know","ksrc","ingest"], edges: ["e_kquery","e_kret","e_ingest"],
+      },
+      {
+        title: "Response Generation + Memory",
+        note: "Core LLM (OpenAI-compatible tiers) + Response Optimizer (Synthesis, citations, output validator). Memory: short-term, episodic, procedural, semantic.",
+        boxes: ["resp","mem"], edges: ["e_gen","e_opt","e_store","e_ctx"],
+      },
+      {
+        title: "Full architecture (all tech)",
+        note: "Complete map: user · orchestration · agentic tools · SQL data · agentic RAG · knowledge · LLM response · four memory types.",
+        boxes: BOXES, edges: [
+          "e_req","e_resp_up","e_task","e_plan","e_info","e_synk","e_tool","e_tool_back",
+          "e_api","e_api_back","e_kquery","e_kret","e_ingest","e_gen","e_opt","e_store","e_ctx"
+        ],
+      },
+    ],
+  },
+  workflow: {
+    title: "Workflow — animated request path",
+    budget: "workflow",
+    steps: [
+      {
+        title: "1 · Structured Request",
+        note: "User Profile Management sends a Structured Request into the Orchestration Layer (FastAPI → auth → input guardrail).",
+        boxes: ["user","orch"], edges: ["e_req"],
+      },
+      {
+        title: "2 · Task Assignment ↔ Action Plan",
+        note: "Orchestration assigns work to Agentic AI (Goal Manager / Decision Engine / Tool Integration) and receives an Action Plan.",
+        boxes: ["orch","agent"], edges: ["e_task","e_plan"],
+      },
+      {
+        title: "3 · Information Requirements ↔ Synthesized Knowledge",
+        note: "In parallel, Orchestration sends Information Requirements to Agentic RAG and receives Synthesized Knowledge.",
+        boxes: ["orch","rag"], edges: ["e_info","e_synk"],
+      },
+      {
+        title: "4 · Function / Tool Calls",
+        note: "Agentic AI issues Function / Tool Calls through the Enterprise Connectivity Layer (SQL template registry + executor).",
+        boxes: ["agent","conn"], edges: ["e_tool","e_tool_back"],
+      },
+      {
+        title: "5 · API call → Enterprise Data",
+        note: "Connectivity layer performs API/SQL calls against finance_risk_db and returns typed rows (holdings, risk_logs, markets).",
+        boxes: ["conn","edata"], edges: ["e_api","e_api_back"],
+      },
+      {
+        title: "6 · Knowledge Source Query",
+        note: "Agentic RAG queries Knowledge Infrastructure (pgvector / document store / graph / real-time connectors) and gets Retrieved Information.",
+        boxes: ["rag","know"], edges: ["e_kquery","e_kret"],
+      },
+      {
+        title: "7 · Parsing, Chunking, Embedding (offline)",
+        note: "Enterprise Knowledge Sources (7 PDFs) feed Knowledge Infrastructure via Parsing, Chunking, Embedding (Sprint 4 ingest).",
+        boxes: ["ksrc","know","ingest"], edges: ["e_ingest"],
+      },
+      {
+        title: "8 · Generate Response (Actions + Knowledge)",
+        note: "Orchestration asks Response Generation to compose from tool actions + retrieved knowledge (Core LLM + Optimizer).",
+        boxes: ["orch","resp"], edges: ["e_gen","e_opt"],
+      },
+      {
+        title: "9 · Memory — store and context history",
+        note: "Response path stores the conversation and reads Short Term / Episodic / Procedural / Semantic memory for context history.",
+        boxes: ["resp","mem"], edges: ["e_store","e_ctx"],
+      },
+      {
+        title: "10 · Generated Response to user",
+        note: "Orchestration returns the Generated Response (citations, disclaimer, or escalation handoff) to User Profile Management.",
+        boxes: ["orch","user"], edges: ["e_resp_up"],
+      },
+    ],
+  },
+};
+
+const EDGE_LABEL = {
+  e_req: "l_req", e_resp_up: "l_resp_up", e_task: "l_task", e_plan: "l_plan",
+  e_info: "l_info", e_synk: "l_synk", e_tool: "l_tool", e_tool_back: "l_tool_back",
+  e_api: "l_api", e_api_back: "l_api_back", e_kquery: "l_kquery", e_kret: "l_kret",
+  e_ingest: "l_ingest", e_gen: "l_gen", e_opt: "l_opt", e_store: "l_store", e_ctx: "l_ctx",
+};
+
+let viewId = "arch";
+let step = 0;
+let playing = true;
+let ms = 1600;
+let timer = null;
+
+const sel = document.getElementById("flowSelect");
+sel.value = viewId;
+
+function current() { return VIEWS[viewId]; }
+
+function apply() {
+  const view = current();
+  const s = view.steps[step];
+  document.getElementById("modePill").textContent = view.budget;
+  document.getElementById("stepPill").textContent = `Step ${step + 1} of ${view.steps.length}`;
+  document.getElementById("note").innerHTML = `<strong>${s.title}</strong><br/>${s.note}`;
+
+  const onBoxes = new Set(s.boxes);
+  const onEdges = new Set(s.edges);
+  const workflow = viewId === "workflow";
+
+  BOXES.forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const on = onBoxes.has(id);
+    el.classList.toggle("on", on);
+    el.classList.toggle("dim", workflow && !on);
+  });
+
+  Object.keys(EDGE_LABEL).forEach((eid) => {
+    const path = document.getElementById(eid);
+    const lab = document.getElementById(EDGE_LABEL[eid]);
+    const on = onEdges.has(eid);
+    if (path) {
+      path.classList.toggle("on", on);
+      path.classList.toggle("dim", workflow && !on);
+    }
+    if (lab) lab.classList.toggle("on", on);
+  });
+
+  // moving packets on active edges
+  const pack = document.getElementById("packets");
+  pack.innerHTML = "";
+  onEdges.forEach((eid) => {
+    const path = document.getElementById(eid);
+    if (!path) return;
+    const d = path.getAttribute("d");
+    pack.innerHTML += `<circle class="packet" r="4.5"><animateMotion dur="1.1s" repeatCount="indefinite" path="${d}"/></circle>`;
+  });
+
+  const stepsEl = document.getElementById("steps");
+  stepsEl.innerHTML = "";
+  view.steps.forEach((st, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "step" + (i === step ? " on" : "") + (i < step ? " done" : "");
+    b.innerHTML = `<div class="step-num">${i + 1}</div>
+      <div><p class="step-title">${st.title}</p><p class="step-note">${st.note}</p></div>`;
+    b.onclick = () => { step = i; apply(); };
+    stepsEl.appendChild(b);
+  });
+}
+
+function tick() {
+  if (!playing) return;
+  step = (step + 1) % current().steps.length;
+  apply();
+}
+function restart() { clearInterval(timer); timer = setInterval(tick, ms); }
+
+sel.onchange = () => {
+  viewId = sel.value;
+  step = 0;
+  playing = true;
+  document.getElementById("playBtn").textContent = "Pause";
+  document.getElementById("playBtn").className = "primary";
+  restart();
+  apply();
+};
+
+document.getElementById("playBtn").onclick = () => {
+  playing = !playing;
+  document.getElementById("playBtn").textContent = playing ? "Pause" : "Play";
+  document.getElementById("playBtn").className = playing ? "primary" : "";
+  if (playing) restart();
+};
+document.getElementById("prevBtn").onclick = () => {
+  const n = current().steps.length; step = (step - 1 + n) % n; apply();
+};
+document.getElementById("nextBtn").onclick = () => {
+  step = (step + 1) % current().steps.length; apply();
+};
+document.getElementById("speedSelect").onchange = (e) => { ms = Number(e.target.value); restart(); };
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && playing) restart();
+});
+
+apply();
+restart();
+</script>
+</body>
+</html>

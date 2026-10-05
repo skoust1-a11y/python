@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Task 6 — Architecture &amp; Workflow</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; display: flex; flex-direction: column; background: #f8fafc; color: #111827; }
+  .top { padding: 10px 14px 8px; background: #fff; border-bottom: 1px solid #d1d5db; }
+  h1 { margin: 0 0 4px; font-size: 16px; }
+  .sub { margin: 0 0 8px; font-size: 12px; color: #4b5563; }
+  .tabs { display: flex; gap: 8px; }
+  button {
+    font: inherit; padding: 6px 12px; border-radius: 999px; border: 1px solid #d1d5db;
+    background: #fff; cursor: pointer;
+  }
+  button.on { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+  iframe { flex: 1; border: 0; width: 100%; background: #fff; }
+</style>
+</head>
+<body>
+  <div class="top">
+    <h1>Task 6 — Architecture &amp; Workflow</h1>
+    <p class="sub">Lead submission pair. Older Excalidraw / C4 diagrams remain in this folder as backup.</p>
+    <div class="tabs">
+      <button class="on" data-src="System_Blueprint.html">Architecture blueprint</button>
+      <button data-src="Agentic_RAG_SQL_Workflow.html">Agentic workflow</button>
+    </div>
+  </div>
+  <iframe id="frame" title="Task 6 diagram" src="System_Blueprint.html"></iframe>
+  <script>
+    const frame = document.getElementById("frame");
+    document.querySelectorAll(".tabs button").forEach((b) => {
+      b.onclick = () => {
+        document.querySelectorAll(".tabs button").forEach((x) => x.classList.remove("on"));
+        b.classList.add("on");
+        frame.src = b.dataset.src;
+      };
+    });
+  </script>
+</body>
+</html>

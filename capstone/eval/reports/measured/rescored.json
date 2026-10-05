@@ -1,0 +1,23 @@
+{
+  "note": "Faithfulness and LLM judge re-scored on the same answers with the standard disclaimer excluded (9 of 35 answers not graded: judge rate limit); precision and recall measured on the updated retrieval over the 35 labelled queries.",
+  "1": {
+    "value": 0.8686868686868687,
+    "count": "172/198",
+    "pass": true
+  },
+  "3": {
+    "value": 0.7391304347826086,
+    "count": "34/46",
+    "pass": true
+  },
+  "6": {
+    "value": 0.7727272727272727,
+    "count": "34/44",
+    "pass": true
+  },
+  "7": {
+    "value": 0.8461538461538461,
+    "count": "22/26",
+    "pass": true
+  }
+}

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Finance Risk — Evaluation &amp; SLO Gate</title>
+<style>
+  :root {
+    --bg: #f4f6f8; --text: #1a1f26; --muted: #5b6570; --line: #d5dde5;
+    --eval: #0f766e; --hard: #9f1239; --suite: #1d4e89; --gate: #9a3412;
+    --unit: #64748b; --int: #2563eb; --e2e: #7c3aed;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { max-width: 1180px; margin: 0 auto; padding: 22px 20px 8px; }
+  h1 { margin: 0 0 6px; font-size: 22px; }
+  .sub { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 12px 20px 36px; }
+  .board { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  .row { display: grid; gap: 14px; margin-bottom: 14px; }
+  .row-3 { grid-template-columns: 1fr 1.4fr 1fr; }
+  .row-2 { grid-template-columns: 1.1fr 1fr; }
+  .panel {
+    border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px;
+    background: #fafbfc;
+  }
+  .panel h2 {
+    margin: 0 0 10px; font-size: 12px; letter-spacing: 0.04em;
+    text-transform: uppercase; font-weight: 700;
+  }
+  .p-eval { border-color: #99f6e4; background: #f0fdfa; }
+  .p-eval h2 { color: var(--eval); }
+  .p-suite { border-color: #93c5fd; background: #eff6ff; }
+  .p-suite h2 { color: var(--suite); }
+  .p-gate { border-color: #fdba74; background: #fff7ed; }
+  .p-gate h2 { color: var(--gate); }
+  .p-hard { border-color: #fda4af; background: #fff1f2; }
+  .p-hard h2 { color: var(--hard); }
+  .cards { display: flex; flex-wrap: wrap; gap: 8px; }
+  .card {
+    background: #fff; border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 10px; min-width: 120px; flex: 1;
+  }
+  .card h3 { margin: 0 0 3px; font-size: 13px; }
+  .card p { margin: 0; font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+  .card.hard { border-color: #fda4af; }
+  .card.hard h3 { color: var(--hard); }
+  .flow {
+    display: flex; align-items: stretch; gap: 8px; flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .flow .step {
+    flex: 1; min-width: 140px; background: #fff; border: 2px solid #99f6e4;
+    border-radius: 10px; padding: 10px; text-align: center;
+  }
+  .flow .step strong { display: block; font-size: 13px; margin-bottom: 4px; }
+  .flow .step span { font-size: 11.5px; color: var(--muted); }
+  .arrow { align-self: center; color: var(--eval); font-weight: 700; font-size: 18px; }
+  .pyramid { display: grid; gap: 6px; justify-items: center; padding: 8px 0 4px; }
+  .pyr {
+    text-align: center; color: #fff; font-size: 12px; font-weight: 650;
+    border-radius: 6px; padding: 8px 10px; line-height: 1.3;
+  }
+  .pyr small { display: block; font-weight: 500; opacity: 0.9; font-size: 10.5px; }
+  .pyr-e2e { width: 42%; background: var(--e2e); }
+  .pyr-int { width: 62%; background: var(--int); }
+  .pyr-eval { width: 78%; background: var(--eval); }
+  .pyr-unit { width: 96%; background: var(--unit); }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--line); padding: 5px 7px; text-align: left; }
+  th { background: #ece8e1; font-size: 11px; }
+  tr.hard td { color: var(--hard); font-weight: 650; }
+  .note {
+    background: #ccfbf1; border-left: 3px solid var(--eval);
+    padding: 10px 12px; border-radius: 0 8px 8px 0; margin: 0 0 14px;
+    font-size: 13.5px; line-height: 1.45;
+  }
+  footer { max-width: 1180px; margin: 0 auto; padding: 0 20px 24px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Evaluation &amp; SLO Gate</h1>
+  <p class="sub">How the system is measured. Golden set of 50 is the sprint gate. Hard SLOs (10–14) cannot fail. Source: <code>planning/v2/08_TEST_AND_EVAL_STRATEGY.md</code>.</p>
+</header>
+<div class="wrap">
+  <p class="note"><strong>Eval is not a layer on the request path</strong> — it sits beside the system. Every sprint ends with <code>python -m eval.run --suite golden</code>. Refactor of prompts/rules/tools is allowed only when a score is below target (v2/08 §6).</p>
+  <div class="board">
+
+    <div class="panel p-eval" style="margin-bottom:14px">
+      <h2>Eval loop (offline, every sprint)</h2>
+      <div class="flow">
+        <div class="step"><strong>1. Suites</strong><span>golden 50 · attack · negative</span></div>
+        <div class="arrow">→</div>
+        <div class="step"><strong>2. eval.run</strong><span>POST /api/v1/query per item</span></div>
+        <div class="arrow">→</div>
+        <div class="step"><strong>3. System under test</strong><span>LangGraph + RAG + SQL + E1–E8</span></div>
+        <div class="arrow">→</div>
+        <div class="step"><strong>4. 16 metrics</strong><span>TSR · attribution · routing · latency</span></div>
+        <div class="arrow">→</div>
+        <div class="step"><strong>5. Report + gate</strong><span>eval/reports/sprintN · hard SLOs</span></div>
+      </div>
+    </div>
+
+    <div class="row row-3">
+      <div class="panel p-eval">
+        <h2>Test pyramid</h2>
+        <div class="pyramid">
+          <div class="pyr pyr-e2e">E2E<small>Playwright · Sprint 7+</small></div>
+          <div class="pyr pyr-int">Integration<small>API + DB + graph nodes</small></div>
+          <div class="pyr pyr-eval">Eval / golden<small>50 + attack + negative</small></div>
+          <div class="pyr pyr-unit">Unit<small>E1–E8 · templates · RBAC</small></div>
+        </div>
+      </div>
+      <div class="panel p-suite">
+        <h2>Eval suites</h2>
+        <div class="cards">
+          <div class="card"><h3>golden_queries.jsonl</h3><p>Exactly 50 · 15 C1 / 10 C2 / 10 C3 / 10 C4 / 5 C5. Ground truth hand-derived.</p></div>
+          <div class="card"><h3>attack_suite.jsonl</h3><p>≥20 probes · override, ignore limits, bypass, proceed despite flag. Must score 1.0.</p></div>
+          <div class="card"><h3>negative_controls.jsonl</h3><p>≥10 out-of-corpus. Expect insufficient-evidence refusal, not a guess.</p></div>
+          <div class="card"><h3>Judge model</h3><p>LLM-as-judge (SLO-07) uses a different model than the answering run.</p></div>
+        </div>
+      </div>
+      <div class="panel p-gate">
+        <h2>When it runs</h2>
+        <div class="cards">
+          <div class="card"><h3>Every PR</h3><p>Unit + integration · no live LLM · pip-audit</p></div>
+          <div class="card"><h3>Sprint end</h3><p>eval.run --suite all --slo-table · report committed</p></div>
+          <div class="card"><h3>Nightly / GATE-6</h3><p>Full golden + attack · fail if any hard SLO red</p></div>
+          <div class="card"><h3>Not Done until</h3><p>Eval / SLO column on the board has evidence</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row row-2">
+      <div class="panel p-hard">
+        <h2>Hard SLOs — zero tolerance (maroon)</h2>
+        <div class="cards">
+          <div class="card hard"><h3>SLO-10 Attribution</h3><p>100% · answered ⇒ ≥1 citation</p></div>
+          <div class="card hard"><h3>SLO-11 CMR</h3><p>&lt;3% missed critical class</p></div>
+          <div class="card hard"><h3>SLO-12 Escalation recall</h3><p>100% · miss = system failure</p></div>
+          <div class="card hard"><h3>SLO-13 RBAC</h3><p>0 unauthorized rows</p></div>
+          <div class="card hard"><h3>SLO-14 Guardrails</h3><p>100% attack suite blocked</p></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>All 16 SLOs (targets)</h2>
+        <table>
+          <thead><tr><th>#</th><th>Metric</th><th>Target</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Faithfulness</td><td>≥80%</td></tr>
+            <tr><td>2</td><td>Answer relevance</td><td>≥75%</td></tr>
+            <tr><td>3</td><td>Context precision</td><td>≥70%</td></tr>
+            <tr><td>4</td><td>Latency C1/C2 p95</td><td>≤2s</td></tr>
+            <tr><td>5–7</td><td>Accuracy / Recall / Judge</td><td>≥85 / ≥75 / ≥80%</td></tr>
+            <tr><td>8</td><td>Task success rate</td><td>≥90%</td></tr>
+            <tr><td>9</td><td>SQL correctness</td><td>≥95%</td></tr>
+            <tr class="hard"><td>10–14</td><td>Attribution · CMR · Escalation · RBAC · Guardrail</td><td>100% / &lt;3% / 0</td></tr>
+            <tr><td>15–16</td><td>Routing · Risk class</td><td>≥95%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+<footer>planning/deliverables/diagrams/Evaluation_and_SLO_Gate.html · v2/08 · tracker SLO sheet</footer>
+</body>
+</html>

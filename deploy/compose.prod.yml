@@ -1,0 +1,29 @@
+# App-only compose. Databases are external (set *_DATABASE_URL).
+# Build: docker build -f deploy/Dockerfile -t finance-risk-api:local .
+services:
+  api:
+    image: finance-risk-api:${GIT_SHA:-local}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: prod
+      AUTH_MODE: jwt
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      AUTH_DATABASE_URL: ${AUTH_DATABASE_URL:?}
+      DATABASE_URL: ${DATABASE_URL:?}
+      STOCK_DATABASE_URL: ${STOCK_DATABASE_URL:?}
+      CORPUS_LOCAL_PATH: /data/Documents
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8000}
+    volumes:
+      - corpus:/data/Documents
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+volumes:
+  corpus:

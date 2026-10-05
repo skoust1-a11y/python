@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Agentic RAG + SQL Workflow — Finance Risk &amp; Investment Intelligence</title>
+<style>
+  :root {
+    --ink: #111827; --muted: #4b5563; --line: #d1d5db;
+    --blue: #1d4ed8; --green: #15803d; --purple: #6d28d9;
+    --orange: #c2410c; --teal: #0f766e; --red: #b91c1c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px 18px 12px;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: #fff; color: var(--ink);
+    width: 1760px;
+  }
+  h1 { margin: 0 0 3px; font-size: 20px; letter-spacing: -0.02em; }
+  .kicker { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--purple); }
+  .sub { margin: 0 0 10px; color: var(--muted); font-size: 12px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 250px 1fr 270px;
+    grid-template-areas:
+      "ux api ctrl"
+      "ux ingest ctrl"
+      "ux graph data"
+      "obs obs obs";
+    gap: 8px;
+  }
+  .box { border: 1.5px solid var(--line); border-radius: 9px; padding: 8px 9px; background: #fff; }
+  .box h2 {
+    margin: 0 0 6px; font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase;
+  }
+  .box h3 { margin: 0 0 4px; font-size: 12px; }
+  .item { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 6px; padding: 5px 7px; margin: 0 0 5px; }
+  .item:last-child { margin-bottom: 0; }
+  .item b { display: block; font-size: 11.2px; }
+  .item span, .tiny { font-size: 10.4px; color: var(--muted); line-height: 1.35; }
+  .ux { grid-area: ux; background: #eff6ff; border-color: #93c5fd; }
+  .ux h2 { color: var(--blue); }
+  .api { grid-area: api; background: #f5f3ff; border-color: #c4b5fd; }
+  .api h2 { color: var(--purple); }
+  .ingest { grid-area: ingest; background: #fff7ed; border-color: #fdba74; }
+  .ingest h2 { color: var(--orange); }
+  .graph { grid-area: graph; background: #fef2f2; border-color: #fca5a5; }
+  .graph h2 { color: var(--red); }
+  .ctrl { grid-area: ctrl; background: #ecfdf5; border-color: #6ee7b7; }
+  .ctrl h2 { color: var(--green); }
+  .data { grid-area: data; background: #f0fdfa; border-color: #5eead4; }
+  .data h2 { color: var(--teal); }
+  .obs { grid-area: obs; background: #111827; color: #e5e7eb; border-color: #111827; }
+  .obs h2 { color: #93c5fd; }
+  .cols { display: grid; gap: 6px; }
+  .two { grid-template-columns: 1fr 1fr; }
+  .three { grid-template-columns: 1fr 1fr 1fr; }
+  .four { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .five { grid-template-columns: repeat(5, 1fr); }
+  .path {
+    border: 1px solid #fecaca; background: #fff; border-radius: 7px; padding: 6px 7px;
+  }
+  .path h3 { color: #7f1d1d; }
+  .flowline { font-size: 10.5px; color: #374151; line-height: 1.4; }
+  .metric {
+    display: inline-block; background: #fff; border: 1px solid #bfdbfe; border-radius: 999px;
+    padding: 2px 7px; font-size: 10px; font-weight: 700; color: #1e3a8a; margin: 0 4px 4px 0;
+  }
+  .obs .item { background: #1f2937; border-color: #374151; }
+  .obs .item b { color: #fff; }
+  .obs .item span { color: #d1d5db; }
+  footer { margin-top: 8px; font-size: 10.5px; color: var(--muted); }
+  .chip { display: inline-block; font-size: 10px; font-weight: 700; background: #fff; border: 1px solid #e5e7eb; border-radius: 4px; padding: 1px 5px; margin-right: 3px; }
+  .note { font-size: 10.5px; color: #7c2d12; background: #ffedd5; border: 1px solid #fdba74; border-radius: 6px; padding: 5px 7px; margin: 0 0 8px; }
+  .course-note { font-size: 10.5px; color: #1e3a8a; background: #eff6ff; border: 1px solid #93c5fd; border-radius: 6px; padding: 5px 7px; margin: 0 0 8px; }
+  .alt {
+    display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; align-items: center;
+  }
+  .alt .lbl { font-size: 10.5px; font-weight: 700; color: var(--muted); margin-right: 4px; }
+  .out {
+    font-size: 10px; font-weight: 700; border-radius: 999px; padding: 2px 8px; border: 1px solid;
+  }
+  .out.ok { background: #dcfce7; border-color: #86efac; color: #14532d; }
+  .out.esc { background: #ffedd5; border-color: #fdba74; color: #7c2d12; }
+  .out.ref { background: #fee2e2; border-color: #fca5a5; color: #7f1d1d; }
+  .out.gap { background: #e5e7eb; border-color: #d1d5db; color: #374151; }
+  .hrbox {
+    margin: 6px 0 0; border: 1px solid #fecaca; background: #fff; border-radius: 7px; padding: 6px 7px;
+  }
+  .hrbox h3 { margin: 0 0 4px; font-size: 11px; color: #7f1d1d; text-transform: uppercase; letter-spacing: .04em; }
+  .hrbox .cols5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .hrbox .cell { font-size: 10px; line-height: 1.35; background: #fef2f2; border: 1px solid #fecaca; border-radius: 5px; padding: 4px 5px; }
+  .hrbox .cell b { display: block; font-size: 10.5px; }
+</style>
+</head>
+<body>
+  <div class="kicker">Task 6 · Fixed 7 Sep 2026 · Matches graph.py run_query</div>
+  <h1>Finance Risk &amp; Investment Intelligence — Agentic RAG + SQL Workflow</h1>
+  <p class="sub">
+    React (JWT) · FastAPI · staged agents in <code>run_query</code> · lexical retrieve · named SQL · E1–E8 · synthesis envelope · golden 50 / 16 SLOs.
+  </p>
+  <p class="course-note">
+    <b>Course wording vs this workflow:</b> course brief says LLM intent + vector search.
+    This system: <b>deterministic router</b> + <b>lexical retrieval</b>; LLM optional on synthesis only.
+    Multi-agent = specialized stages writing one shared evidence bundle (sequential collaborate), not agent-to-agent chat.
+  </p>
+  <p class="note">
+    Pipeline (not a separate LangGraph process): input_guard → router → path agents → EscCheck → terminal outcome.
+  </p>
+  <div class="alt">
+    <span class="lbl">Alternate / terminal outcomes:</span>
+    <span class="out ok">answered</span>
+    <span class="out esc">escalated</span>
+    <span class="out ref">refused</span>
+    <span class="out gap">insufficient_evidence</span>
+    <span class="out ref">RBAC deny / 403</span>
+  </div>
+
+  <div class="grid">
+    <section class="box ux">
+      <h2>User experience</h2>
+      <div class="item"><b>Login / Signup</b><span>JWT. Unauthenticated users never see /app.</span></div>
+      <div class="item"><b>Query workspace</b><span>Natural language. Shows category, agents_used, citations, disclaimer. SSE stream.</span></div>
+      <div class="item"><b>Screens</b><span>Named filters on holdings / risk logs. Save + rerun. CSV export.</span></div>
+      <div class="item"><b>Escalations</b><span>Role-gated queue. Handoff reason + evidence. No action chips on refused/escalated.</span></div>
+      <div class="item"><b>Documents / Admin</b><span>PDF upload · listing · scope assign · health.</span></div>
+      <div class="item">
+        <b>Eval SLOs (hard gates)</b>
+        <span class="metric">Attribution 100%</span>
+        <span class="metric">Escalation 100%</span>
+        <span class="metric">Guardrail 100%</span>
+        <span class="metric">RBAC 0</span>
+      </div>
+    </section>
+
+    <section class="box api">
+      <h2>API gateway + deterministic services</h2>
+      <div class="cols two">
+        <div class="item"><b>FastAPI gateway</b><span>POST /api/v1/query · /query/stream. JWT. RBAC. Rate + budget caps. X-Request-Id / trace_id.</span></div>
+        <div class="item"><b>No-LLM services</b><span>Auth · sessions/turns · screens · portfolios · documents · /health · /metrics.</span></div>
+      </div>
+    </section>
+
+    <section class="box ctrl">
+      <h2>Control plane</h2>
+      <div class="item"><b>Prompts (git files)</b><span>router, retrieval, risk, market_data, portfolio_eval, synthesis, refusals. Synthesis is the main LLM consumer.</span></div>
+      <div class="item"><b>Guardrails</b><span>Input: override / ignore / injection / advice. After evidence: E1–E8. Risk bands Low&lt;30 / Med 30–69 / High≥70. Output: citation + disclaimer + strip advice.</span></div>
+      <div class="item"><b>Human-in-the-loop</b><span>C5 or E-trigger → Escalation stage writes envelope only. Reviewer from trigger map.</span></div>
+      <div class="item"><b>Security</b><span>Secrets in env. Named SQL only. Two-DB split. Executor injects portfolio scope.</span></div>
+    </section>
+
+    <section class="box ingest">
+      <h2>Offline ingestion (not the query path)</h2>
+      <div class="cols three">
+        <div class="item"><b>7 policy PDFs</b><span>Extract → chunk → policy_chunks. Same files as Project-3 pack.</span></div>
+        <div class="item"><b>SQL seed</b><span>portfolios · portfolio_holdings · asset_risk_logs · market_indicators · investment_decisions.</span></div>
+        <div class="item"><b>Jobs</b><span>seed --reset · reindex_from_pdfs · golden build. Not required on every boot.</span></div>
+      </div>
+    </section>
+
+    <section class="box graph">
+      <h2>Orchestration — run_query pipeline · five category paths</h2>
+      <p class="flowline" style="margin:0 0 7px">
+        <span class="chip">input_guard</span>→
+        <span class="chip">router (C1–C5)</span>→
+        path stages →
+        <span class="chip">E1–E8 EscCheck</span>→
+        <span class="chip">answered</span> /
+        <span class="chip">escalated</span> /
+        <span class="chip">refused</span> /
+        <span class="chip">insufficient</span>
+      </p>
+      <div class="cols five">
+        <div class="path">
+          <h3>C1 · Policy RAG · 15 · ≤2s</h3>
+          <div class="flowline">retrieval → EscCheck → answered (doc cite) <b>or</b> insufficient if no chunks.</div>
+        </div>
+        <div class="path">
+          <h3>C2 · SQL lookup · 10 · ≤2s</h3>
+          <div class="flowline">portfolio_eval templates → EscCheck → answered <b>or</b> insufficient / RBAC 403.</div>
+        </div>
+        <div class="path">
+          <h3>C3 · Hybrid · 10 · ≤4s · HR-2/3/5</h3>
+          <div class="flowline">retrieval + portfolio_eval → risk → EscCheck → answered only with doc+sql cites, else insufficient / escalate.</div>
+        </div>
+        <div class="path">
+          <h3>C4 · High-risk · 10 · ≤6s · HR-1/4</h3>
+          <div class="flowline">retrieval + SQL (+ market) → risk → EscCheck → answered <b>or</b> escalate. Live market if evidence_mode=current.</div>
+        </div>
+        <div class="path">
+          <h3>C5 · Handoff · 5 · ≤1.5s</h3>
+          <div class="flowline">Terminal escalate. E1 / override. No product answer. Reviewer + envelope.</div>
+        </div>
+      </div>
+      <div class="cols" style="grid-template-columns: repeat(7, 1fr); margin-top: 6px;">
+        <div class="item"><b>Router</b><span>Deterministic rules. E1→C5. Advice→refused.</span></div>
+        <div class="item"><b>Retrieval</b><span>Token overlap on policy_chunks.</span></div>
+        <div class="item"><b>Portfolio Eval</b><span>sql templates · RBAC.</span></div>
+        <div class="item"><b>Market Data</b><span>SQL indicators; live optional.</span></div>
+        <div class="item"><b>Risk</b><span>Flags · scores · breaches.</span></div>
+        <div class="item"><b>Synthesis</b><span>No tools. Bundle only.</span></div>
+        <div class="item"><b>Escalation</b><span>Handoff text only.</span></div>
+      </div>
+      <div class="hrbox">
+        <h3>Course-mandatory HR scenarios → path</h3>
+        <div class="cols5">
+          <div class="cell"><b>HR-1</b>Portfolio risk in market volatility → <b>C4</b></div>
+          <div class="cell"><b>HR-2</b>Performance vs benchmarks → <b>C1/C2/C3</b></div>
+          <div class="cell"><b>HR-3</b>Sectors under regulatory scrutiny → <b>C1/C3</b></div>
+          <div class="cell"><b>HR-4</b>Unusual risk patterns in history → <b>C2/C4</b></div>
+          <div class="cell"><b>HR-5</b>Alignment with risk policies → <b>C3</b></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="box data">
+      <h2>Data layer + shared contracts</h2>
+      <div class="item"><b>finance_auth_db</b><span>users · sessions · turns · saved_screens · escalations · traces. No vectors.</span></div>
+      <div class="item"><b>finance_risk_db</b><span>5 finance tables + policy_chunks (+ equities). Read via templates.</span></div>
+      <div class="item"><b>Evidence in memory</b><span>doc_evidence[] · sql_evidence[] · breaches/conflicts · citations[]. Synthesis may use only this.</span></div>
+      <div class="item"><b>Stable IDs</b><span>session_id · turn_id · trace_id · chunk_id · query_id · portfolio_id.</span></div>
+    </section>
+
+    <section class="box obs">
+      <h2>Observability + RAG / SQL quality</h2>
+      <div class="cols four">
+        <div class="item"><b>Runtime</b><span>structlog JSON. Prometheus /metrics. Cost counters. OTel exporter optional (not required for GATE-6).</span></div>
+        <div class="item"><b>Offline golden (n=50)</b><span>15 C1 · 10 C2 · 10 C3 · 10 C4 · 5 C5. Attack suite for overrides / ignore-regulatory.</span></div>
+        <div class="item"><b>Hard SLOs</b><span>Attribution 100% · Escalation recall 100% · Guardrails 100% · RBAC 0 · CMR &lt;3%.</span></div>
+        <div class="item"><b>Soft SLOs</b><span>Faithfulness ≥80 · Relevance ≥75 · C1/C2 p95 ≤2s · SQL ≥95 · Routing ≥95 · TSR ≥90.</span></div>
+      </div>
+    </section>
+  </div>
+  <footer>
+    Source of truth for this diagram: <code>capstone/app/graph.py</code> + <code>guardrails.py</code> + <code>sqlq/</code> + <code>rag.py</code>.
+    Agents communicate through the shared request evidence, not free-form agent chat. SQL is named templates only — never NL2SQL.
+    Synthetic/educational data — not investment advice. Regenerated 7 Sep 2026.
+  </footer>
+</body>
+</html>
