@@ -1,0 +1,29 @@
+[
+    {
+        "id": 1,
+        "name": "Morning Walk",
+        "type": "physical",
+        "description": "A 30-minute walk in the morning"
+    },
+    {
+        "id": 2,
+        "name": "Meditation",
+        "type": "mental",
+        "description": "10 minutes of mindfulness meditation"
+    },
+
+    {
+        "interaction_id": "uuid",
+        "user_id": "optional/session_id",
+        "user_input": "I feel stressed",
+        "mood": "stress",
+        "intensity": 0.8,
+        "confidence": 0.85,
+        "activity": "breathing",
+        "message": "Try this breathing exercise...",
+        "rating": 5,
+       
+        "comment": "felt better",
+        "created_at": "timestamp"
+}
+]

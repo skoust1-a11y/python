@@ -1,0 +1,90 @@
+[
+    {
+        "description": "Sample flow 1: Happy user input",
+        "user_input": {
+            "text": "I feel so happy and energetic today!"
+        },
+        "emotion_service_output": {
+            "emotion": "joy",
+            "confidence": 0.95,
+            "intensity": "high"
+        },
+        "recommendation_service_input": {
+            "mood": "joy",
+            "intensity": "high",
+            "trend": "positive",
+            "preferences": ["outdoor", "social"],
+            "avoid": ["sedentary"]
+        },
+        "recommendation_service_output": {
+            "activity": "Go for a brisk walk in the park",
+            "message": "Take advantage of your energy and enjoy some fresh air!"
+        }
+    },
+    {
+        "description": "Sample flow 2: Stressed user input",
+        "user_input": {
+            "text": "I'm feeling really stressed and overwhelmed."
+        },
+        "emotion_service_output": {
+            "emotion": "stress",
+            "confidence": 0.88,
+            "intensity": "medium"
+        },
+        "recommendation_service_input": {
+            "mood": "stress",
+            "intensity": "medium",
+            "trend": "negative",
+            "preferences": ["relaxation", "breathing"],
+            "avoid": ["loud", "crowded"]
+        },
+        "recommendation_service_output": {
+            "activity": "Practice deep breathing exercises",
+            "message": "Take 5 minutes to focus on your breath and calm your mind."
+        }
+    },
+    {
+        "description": "Sample flow 3: Sad user input",
+        "user_input": {
+            "text": "I feel sad and unmotivated today."
+        },
+        "emotion_service_output": {
+            "emotion": "sadness",
+            "confidence": 0.92,
+            "intensity": "low"
+        },
+        "recommendation_service_input": {
+            "mood": "sadness",
+            "intensity": "low",
+            "trend": "neutral",
+            "preferences": ["music", "comfort"],
+            "avoid": ["exercise"]
+        },
+        "recommendation_service_output": {
+            "activity": "Listen to your favorite uplifting music",
+            "message": "Let the music lift your spirits for a few minutes."
+        }
+    },
+    {
+        "description": "Sample flow 4: Neutral user input with no preferences/avoid",
+        "user_input": {
+            "text": "I'm feeling okay, nothing special today."
+        },
+        "emotion_service_output": {
+            "emotion": "neutral",
+            "confidence": 0.85,
+            "intensity": "low"
+        },
+        "recommendation_service_input": {
+            "mood": "neutral",
+            "intensity": "low",
+            "trend": "stable",
+            "preferences": [],
+            "avoid": []
+        },
+        "recommendation_service_output": {
+            "activity": "Take a moment to journal your thoughts",
+            "message": "Spend 5 minutes writing down what's on your mind."
+        }
+    }
+]
