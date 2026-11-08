@@ -1,0 +1,31 @@
+// complete the code
+
+syntax = "proto3";
+
+package ollama;
+
+// Ollama AI Inference Service
+service OllamaService {
+	rpc GenerateExplanation(GenerateRequest) returns (GenerateResponse);
+}
+
+
+// Request for AI inference
+message GenerateRequest {
+	string model = 1;
+	string prompt = 2;
+}
+
+
+// Response from AI inference
+message GenerateResponse {
+	string model = 1;
+	string explanation = 2;
+	bool success = 3;
+	string error_message = 4;
+}
+
+
+
+
+
