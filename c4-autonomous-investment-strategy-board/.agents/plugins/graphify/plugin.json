@@ -1,0 +1,5 @@
+{
+  "name": "graphify",
+  "version": "1.0.0",
+  "description": "AST-based knowledge graph for code navigation and architectural queries"
+}

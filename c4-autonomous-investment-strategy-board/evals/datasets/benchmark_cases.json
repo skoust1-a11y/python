@@ -1,0 +1,67 @@
+[
+  {
+    "id": "case_01_single_stock_tech",
+    "name": "Single Stock Fundamental & Market Analysis (AAPL)",
+    "description": "Evaluate multi-agent synthesis on a large-cap US tech stock.",
+    "request": {
+      "text": "Analyze AAPL: check current trend, valuation, and key financial health indicators.",
+      "symbols": ["AAPL"],
+      "analysis_type": "stock_analysis"
+    },
+    "expected": {
+      "required_agents": ["market-analysis", "fundamental-analysis"],
+      "expected_evidence_fields": ["price", "pe_ratio", "revenue"],
+      "min_confidence": 0.5,
+      "requires_reflection": false
+    }
+  },
+  {
+    "id": "case_02_indian_equity",
+    "name": "Indian Market Equity Review (RELIANCE.NS)",
+    "description": "Evaluate market data and fundamental fetching for NSE/BSE stock.",
+    "request": {
+      "text": "Give an evidence-based summary of RELIANCE.NS as a single-name investment.",
+      "symbols": ["RELIANCE.NS"],
+      "analysis_type": "stock_analysis"
+    },
+    "expected": {
+      "required_agents": ["market-analysis", "fundamental-analysis"],
+      "expected_evidence_fields": ["price"],
+      "min_confidence": 0.5,
+      "requires_reflection": false
+    }
+  },
+  {
+    "id": "case_03_portfolio_risk_review",
+    "name": "Multi-Asset Portfolio Risk & Concentration Review",
+    "description": "Evaluate risk agent and portfolio manager on multi-holding portfolio.",
+    "request": {
+      "text": "Evaluate overall portfolio risk, concentration, and diversification.",
+      "symbols": ["AAPL", "MSFT", "GOOGL", "AMZN"],
+      "analysis_type": "portfolio_risk",
+      "portfolio_id": "eval-pf-001"
+    },
+    "expected": {
+      "required_agents": ["risk-assessment", "optimization-strategy"],
+      "expected_evidence_fields": ["hhi", "effective_n"],
+      "min_confidence": 0.6,
+      "requires_reflection": false
+    }
+  },
+  {
+    "id": "case_04_conflict_critique_scenario",
+    "name": "Conflict Detection & Critique Reflection",
+    "description": "Evaluate manager critique and reflection cycle handling when signals differ.",
+    "request": {
+      "text": "Check if TSLA is suitable for conservative risk tolerance.",
+      "symbols": ["TSLA"],
+      "analysis_type": "stock_analysis"
+    },
+    "expected": {
+      "required_agents": ["market-analysis", "fundamental-analysis", "risk-assessment"],
+      "expected_evidence_fields": ["price", "volatility"],
+      "min_confidence": 0.4,
+      "requires_reflection": true
+    }
+  }
+]

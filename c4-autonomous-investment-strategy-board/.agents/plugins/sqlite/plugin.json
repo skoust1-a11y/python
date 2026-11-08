@@ -1,0 +1,5 @@
+{
+  "name": "sqlite",
+  "version": "1.0.0",
+  "description": "Direct SQLite database querying, schema inspection, and data storage MCP server"
+}

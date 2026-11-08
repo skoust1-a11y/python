@@ -1,0 +1,5 @@
+{
+  "name": "fetch",
+  "version": "1.0.0",
+  "description": "Web fetch and content extraction MCP server"
+}
