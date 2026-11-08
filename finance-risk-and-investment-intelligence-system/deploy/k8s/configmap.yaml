@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: finance-risk-config
+data:
+  APP_ENV: "prod"
+  AUTH_MODE: "jwt"
+  CORS_ORIGINS: "https://example.invalid"
+  CORPUS_LOCAL_PATH: "/data/Documents"

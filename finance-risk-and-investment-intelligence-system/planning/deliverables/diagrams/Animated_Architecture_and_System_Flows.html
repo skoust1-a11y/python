@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Finance Risk — Animated Architecture & System Flows</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #ffffff; --text: #1c1c1a; --muted: #5c5c57;
+    --line: #d8d8d2; --accent: #6b21a8; --accent-soft: #efe0ff;
+    --boundary: #e8edf2; --agent: #c8f0ea; --safety: #ffd0c8; --store: #ffe6a8; --route: #c5d8ff; --out: #c8efc8;
+    --boundary-stroke: #5a6b7d; --agent-stroke: #0d7a6f; --safety-stroke: #c43c22; --store-stroke: #b07800; --route-stroke: #1a4db3; --out-stroke: #2a7a2a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { padding: 20px 24px 8px; max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 12px 24px 40px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  select, button { font: inherit; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button:hover { filter: brightness(0.97); }
+  .pill { display: inline-block; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  .note { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 10px 12px; border-radius: 0 8px 8px 0; margin: 10px 0; font-size: 14px; }
+  #stage { overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: #fff; min-height: 320px; }
+  svg { display: block; }
+  .node { stroke-width: 1.2; }
+  .node.active { stroke: var(--accent); stroke-width: 2.2; filter: drop-shadow(0 0 0.5px var(--accent)); }
+  .node-label { font-size: 11px; fill: var(--text); font-weight: 500; }
+  .node-label.active { fill: #fff; font-weight: 600; }
+  .edge { fill: none; stroke: #bdbdb5; stroke-width: 1.3; }
+  .edge.active { stroke: var(--accent); stroke-width: 2.4; stroke-dasharray: 8 4; animation: dash 0.9s linear infinite; }
+  @keyframes dash { to { stroke-dashoffset: -24; } }
+  @keyframes pulse { 0%,100% { opacity: .3; } 50% { opacity: .85; } }
+  .halo { fill: none; stroke: var(--accent); stroke-width: 1.5; animation: pulse 1.2s ease-in-out infinite; }
+  .steps { display: grid; gap: 10px; margin-top: 12px; }
+  .step {
+    text-align: left; width: 100%; padding: 12px 14px; border-radius: 10px;
+    border: 1px solid var(--line); background: #fff; cursor: pointer;
+    display: grid; grid-template-columns: 52px 1fr; gap: 10px 12px; align-items: start;
+  }
+  .step:hover { border-color: #9aa3b2; }
+  .step.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+  .step.done { opacity: 0.92; }
+  .step-num {
+    grid-row: span 2; width: 44px; height: 44px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; color: #fff; background: #8a8a84;
+  }
+  .step.on .step-num { background: var(--accent); }
+  .step.done .step-num { background: #2a7a2a; }
+  .step-title { font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--text); margin: 0; }
+  .step-path {
+    font-size: 12px; color: var(--muted); margin: 2px 0 0; line-height: 1.4;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .step-note { grid-column: 2; font-size: 13px; line-height: 1.45; color: #333; margin: 0; }
+  .step.on .step-note { color: #1c1c1a; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; margin-right: 12px; font-size: 12px; color: var(--muted); }
+  .sw { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); display: inline-block; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 18px; }
+  @media print {
+    header .sub, .controls, .steps, footer { display: none !important; }
+    body { background: #fff; }
+    .panel { border: none; padding: 0; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Finance Risk &amp; Investment Intelligence — Animated Flows</h1>
+  <p class="sub">Standalone viewer (no Cursor required). Open this file in Chrome / Safari / Edge. Source: planning/06 + 03.</p>
+</header>
+<div class="wrap">
+  <div class="panel controls">
+    <div class="row">
+      <label>Diagram
+        <select id="flowSelect"></select>
+      </label>
+      <button id="playBtn" class="primary">Pause</button>
+      <button id="prevBtn">Prev</button>
+      <button id="nextBtn">Next</button>
+      <label>Speed
+        <select id="speedSelect">
+          <option value="900">Fast (0.9s)</option>
+          <option value="1400" selected>Normal (1.4s)</option>
+          <option value="2200">Slow (2.2s)</option>
+        </select>
+      </label>
+      <span class="pill" id="budget"></span>
+      <span class="pill" id="stepPill"></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 id="title" style="margin:0 0 4px;font-size:18px"></h2>
+    <p id="subtitle" class="sub"></p>
+    <div class="note" id="note"></div>
+    <div id="stage"></div>
+    <div class="legend row" style="margin-top:10px">
+      <span><i class="sw" style="background:#6b21a8"></i>Active</span>
+      <span><i class="sw" style="background:var(--boundary);border-color:var(--boundary-stroke)"></i>Boundary</span>
+      <span><i class="sw" style="background:var(--route);border-color:var(--route-stroke)"></i>Route</span>
+      <span><i class="sw" style="background:var(--agent);border-color:var(--agent-stroke)"></i>Agent</span>
+      <span><i class="sw" style="background:var(--store);border-color:var(--store-stroke)"></i>Store</span>
+      <span><i class="sw" style="background:var(--safety);border-color:var(--safety-stroke)"></i>Safety</span>
+      <span><i class="sw" style="background:var(--out);border-color:var(--out-stroke)"></i>Output</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <strong style="font-size:15px">Step timeline</strong>
+    <p class="sub" style="margin:4px 0 0">Click a step to jump. Current step is highlighted; green numbers are completed.</p>
+    <div class="steps" id="steps"></div>
+  </div>
+  <footer>planning/deliverables/diagrams/Animated_Architecture_and_System_Flows.html</footer>
+</div>
+
+<script>
+const FLOWS = [{"id": "ctx", "title": "System Context (C4 L1)", "subtitle": "Actors, the system, evidence stores, LLM, human handoff, observability", "budget": "architecture", "nodes": [{"id": "p1", "label": "Investment Analyst", "kind": "boundary"}, {"id": "p2", "label": "Risk Manager", "kind": "boundary"}, {"id": "p3", "label": "Portfolio Manager", "kind": "boundary"}, {"id": "p4", "label": "Compliance", "kind": "boundary"}, {"id": "p5", "label": "Platform Admin", "kind": "boundary"}, {"id": "sys", "label": "Finance Risk System", "kind": "route"}, {"id": "pdf", "label": "Policy Corpus (7 PDFs)", "kind": "store"}, {"id": "db", "label": "finance_risk_db", "kind": "store"}, {"id": "llm", "label": "OpenAI-compatible LLM", "kind": "agent"}, {"id": "hum", "label": "Human Analyst Queue", "kind": "safety"}, {"id": "obs", "label": "Observability", "kind": "out"}], "edges": [{"from": "p1", "to": "sys"}, {"from": "p2", "to": "sys"}, {"from": "p3", "to": "sys"}, {"from": "p4", "to": "sys"}, {"from": "p5", "to": "sys"}, {"from": "sys", "to": "pdf"}, {"from": "sys", "to": "db"}, {"from": "sys", "to": "llm"}, {"from": "llm", "to": "sys"}, {"from": "sys", "to": "hum"}, {"from": "sys", "to": "obs"}], "steps": [{"active": ["p1", "p2", "p3", "p4"], "note": "Internal personas query the system: analyst, risk, PM, compliance (not retail clients)."}, {"active": ["p5", "sys"], "note": "Platform Admin uses /admin, health, traces — no answer-path privilege."}, {"active": ["sys", "pdf"], "note": "Semantic retrieval over 7 policy PDFs (strategy through Basel III and risk framework)."}, {"active": ["sys", "db"], "note": "Read-only parameterized SQL against portfolios, holdings, risk logs, markets, decisions."}, {"active": ["sys", "llm"], "note": "Tiered LLM: router (cheap), agents (reasoning), judge (eval) — OpenAI-compatible."}, {"active": ["sys", "hum"], "note": "Mandatory escalation with full context whenever E1–E8 fires — Escalation Recall = 1.0."}, {"active": ["sys", "obs"], "note": "Every request: structlog + OTel spans + Prometheus + token/cost meter."}]}, {"id": "arch", "title": "Architecture Flow (C4 L2)", "subtitle": "Request path through FastAPI → safety → router → LangGraph → RAG/SQL → synthesis", "budget": "layers L1–L6", "nodes": [{"id": "client", "label": "API Client", "kind": "boundary"}, {"id": "api", "label": "L1 FastAPI /query", "kind": "boundary"}, {"id": "auth", "label": "Auth + RBAC", "kind": "boundary"}, {"id": "gin", "label": "X1 Input Guardrail", "kind": "safety"}, {"id": "rt", "label": "L2 Router Agent", "kind": "route"}, {"id": "graph", "label": "L3 LangGraph", "kind": "route"}, {"id": "retr", "label": "L4 Retrieval", "kind": "agent"}, {"id": "hyb", "label": "Hybrid retriever", "kind": "agent"}, {"id": "vs", "label": "pgvector", "kind": "store"}, {"id": "pev", "label": "L5 Portfolio Eval", "kind": "agent"}, {"id": "mda", "label": "L5 Market Data", "kind": "agent"}, {"id": "rsk", "label": "L5 Risk Agent", "kind": "agent"}, {"id": "tpl", "label": "SQL templates", "kind": "store"}, {"id": "db", "label": "finance_risk_db", "kind": "store"}, {"id": "esc", "label": "X1 Escalation E1–E8", "kind": "safety"}, {"id": "syn", "label": "L6 Synthesis", "kind": "agent"}, {"id": "cit", "label": "Citation formatter", "kind": "out"}, {"id": "gout", "label": "X1 Output validator", "kind": "safety"}, {"id": "mem", "label": "Session memory", "kind": "store"}, {"id": "obs", "label": "X2 Observability", "kind": "out"}], "edges": [{"from": "client", "to": "api"}, {"from": "api", "to": "auth"}, {"from": "auth", "to": "gin"}, {"from": "gin", "to": "rt"}, {"from": "rt", "to": "graph"}, {"from": "graph", "to": "retr"}, {"from": "retr", "to": "hyb"}, {"from": "hyb", "to": "vs"}, {"from": "graph", "to": "pev"}, {"from": "graph", "to": "mda"}, {"from": "graph", "to": "rsk"}, {"from": "pev", "to": "tpl"}, {"from": "mda", "to": "tpl"}, {"from": "rsk", "to": "tpl"}, {"from": "tpl", "to": "db"}, {"from": "graph", "to": "esc"}, {"from": "graph", "to": "syn"}, {"from": "syn", "to": "cit"}, {"from": "cit", "to": "gout"}, {"from": "esc", "to": "gout"}, {"from": "gout", "to": "api"}, {"from": "graph", "to": "mem"}, {"from": "graph", "to": "obs"}], "steps": [{"active": ["client", "api", "auth"], "note": "L1 Query Interface: POST /api/v1/query — JWT → role + allowed_portfolio_ids + trace_id."}, {"active": ["gin"], "note": "X1 Safety first: input guardrail blocks override / bypass / injection before any LLM spend."}, {"active": ["rt"], "note": "L2 Understanding: Router assigns C1–C5, risk_level, entities, and path."}, {"active": ["graph"], "note": "L3 Orchestration: LangGraph state machine — conditional edges, budgets, retries."}, {"active": ["retr", "hyb", "vs"], "note": "L4 Knowledge: hybrid vector + BM25 + rerank over policy_chunks."}, {"active": ["pev", "mda", "rsk", "tpl", "db"], "note": "L5 Data Analysis: named SQL templates → read-only executor → finance_risk_db."}, {"active": ["esc"], "note": "X1 Escalation engine runs after evidence nodes — any E2–E8 → terminal handoff."}, {"active": ["syn", "cit", "gout", "api"], "note": "L6 Synthesis is tool-less; citations formatted; output validator; response returned."}, {"active": ["mem", "obs"], "note": "Cross-cutting: session memory (last N turns) + logs/traces/metrics/cost on every node."}]}, {"id": "bands", "title": "System Flow — Four Bands", "subtitle": "Narrative request journey: Boundary → Understanding → Execution → Synthesis", "budget": "end-to-end", "nodes": [{"id": "b1a", "label": "Authenticate", "kind": "boundary"}, {"id": "b1b", "label": "Input guardrail", "kind": "safety"}, {"id": "b2a", "label": "Classify category", "kind": "route"}, {"id": "b2b", "label": "Extract entities", "kind": "route"}, {"id": "b3a", "label": "Fan-out agents", "kind": "agent"}, {"id": "b3b", "label": "Evidence bundle", "kind": "store"}, {"id": "b3c", "label": "Risk + E1–E8", "kind": "safety"}, {"id": "b4a", "label": "Synthesis", "kind": "agent"}, {"id": "b4b", "label": "Validate output", "kind": "safety"}, {"id": "b4c", "label": "Response envelope", "kind": "out"}], "edges": [{"from": "b1a", "to": "b1b"}, {"from": "b1b", "to": "b2a"}, {"from": "b2a", "to": "b2b"}, {"from": "b2b", "to": "b3a"}, {"from": "b3a", "to": "b3b"}, {"from": "b3b", "to": "b3c"}, {"from": "b3c", "to": "b4a"}, {"from": "b3c", "to": "b4b"}, {"from": "b4a", "to": "b4b"}, {"from": "b4b", "to": "b4c"}], "steps": [{"active": ["b1a", "b1b"], "note": "Band 1 — Boundary: auth + RBAC scope; guardrail before any expensive model call."}, {"active": ["b2a", "b2b"], "note": "Band 2 — Understanding: category (C1–C5) + entities. Routing Accuracy SLO >=95%."}, {"active": ["b3a", "b3b"], "note": "Band 3 — Execution: path-conditional depth; agents write typed evidence only (no free chat)."}, {"active": ["b3c"], "note": "Still Band 3: Risk assigns level; deterministic escalation can divert to terminal handoff."}, {"active": ["b4a"], "note": "Band 4 — Synthesis: no tools; may only assert what is in the evidence bundle."}, {"active": ["b4b", "b4c"], "note": "Output validator: citations, no advice, disclaimer → response envelope + trace_id."}]}, {"id": "orch", "title": "Orchestration State Machine", "subtitle": "LangGraph: guardrail → router → path → escalation check → synthesis / handoff", "budget": "LangGraph", "nodes": [{"id": "gin", "label": "Input Guardrail", "kind": "safety"}, {"id": "rt", "label": "Router", "kind": "route"}, {"id": "c1", "label": "C1 RAG path", "kind": "agent"}, {"id": "c2", "label": "C2 SQL path", "kind": "agent"}, {"id": "c3", "label": "C3 Hybrid fan-out", "kind": "agent"}, {"id": "c4", "label": "C4 High-Risk fan-out", "kind": "agent"}, {"id": "c5", "label": "C5 Escalation", "kind": "safety"}, {"id": "chk", "label": "Escalation check", "kind": "safety"}, {"id": "weak", "label": "Insufficient evidence", "kind": "out"}, {"id": "syn", "label": "Synthesis", "kind": "agent"}, {"id": "esc", "label": "Escalation terminal", "kind": "safety"}, {"id": "ov", "label": "Output validator", "kind": "safety"}, {"id": "done", "label": "Emit response", "kind": "out"}], "edges": [{"from": "gin", "to": "rt"}, {"from": "gin", "to": "esc"}, {"from": "rt", "to": "c1"}, {"from": "rt", "to": "c2"}, {"from": "rt", "to": "c3"}, {"from": "rt", "to": "c4"}, {"from": "rt", "to": "c5"}, {"from": "c1", "to": "chk"}, {"from": "c2", "to": "chk"}, {"from": "c3", "to": "chk"}, {"from": "c4", "to": "chk"}, {"from": "c5", "to": "esc"}, {"from": "chk", "to": "syn"}, {"from": "chk", "to": "esc"}, {"from": "chk", "to": "weak"}, {"from": "syn", "to": "ov"}, {"from": "weak", "to": "ov"}, {"from": "esc", "to": "ov"}, {"from": "ov", "to": "done"}, {"from": "ov", "to": "syn"}], "steps": [{"active": ["gin"], "note": "Entry: override/bypass/injection → Escalation (E1). Clean → Router."}, {"active": ["rt"], "note": "Router picks exactly one path: C1, C2, C3, C4, or C5."}, {"active": ["c1", "c2"], "note": "Fast paths: C1 Retrieval only · C2 Portfolio/SQL only (<=2s budget)."}, {"active": ["c3", "c4"], "note": "Deep paths: C3 parallel RAG+SQL → Risk · C4 adds Market + deep Portfolio Eval."}, {"active": ["c5", "esc"], "note": "C5 (or E1 from guardrail): terminal Escalation — no autonomous answer."}, {"active": ["chk"], "note": "After evidence: E2–E8 may divert; E5 → insufficient-evidence template."}, {"active": ["syn", "ov", "done"], "note": "Clear → Synthesis → validator (1 citation retry allowed) → response emitted."}]}, {"id": "c1", "title": "C1 — Policy Interpretation (RAG)", "subtitle": "Single-hop: Router → Retrieval → Synthesis", "budget": "<=2s p95", "nodes": [{"id": "req", "label": "Request", "kind": "boundary"}, {"id": "auth", "label": "Auth / RBAC", "kind": "boundary"}, {"id": "gin", "label": "Input Guardrail", "kind": "safety"}, {"id": "router", "label": "Router → C1", "kind": "route"}, {"id": "retr", "label": "Retrieval", "kind": "agent"}, {"id": "vec", "label": "pgvector", "kind": "store"}, {"id": "esc", "label": "Escalation check", "kind": "safety"}, {"id": "syn", "label": "Synthesis", "kind": "agent"}, {"id": "ov", "label": "Output validator", "kind": "safety"}, {"id": "resp", "label": "Response + citations", "kind": "out"}], "edges": [{"from": "req", "to": "auth"}, {"from": "auth", "to": "gin"}, {"from": "gin", "to": "router"}, {"from": "router", "to": "retr"}, {"from": "retr", "to": "vec"}, {"from": "vec", "to": "retr"}, {"from": "retr", "to": "esc"}, {"from": "esc", "to": "syn"}, {"from": "syn", "to": "ov"}, {"from": "ov", "to": "resp"}], "steps": [{"active": ["req"], "note": "Analyst submits a policy question with JWT."}, {"active": ["auth"], "note": "Role + allowed_portfolio_ids attached; trace_id stamped."}, {"active": ["gin"], "note": "Deterministic + LLM guardrail screens override/bypass intent."}, {"active": ["router"], "note": "Router classifies category=C1 (Investment Policy Interpretation)."}, {"active": ["retr", "vec"], "note": "Hybrid retrieval over 7 policy PDFs with page/section metadata."}, {"active": ["esc"], "note": "E1–E8 evaluated on evidence (usually clear for pure C1)."}, {"active": ["syn"], "note": "Tool-less Synthesis composes answer from doc_evidence only."}, {"active": ["ov", "resp"], "note": "Citations validated; disclaimer attached; Source Attribution = 1.0."}]}, {"id": "c2", "title": "C2 — Portfolio & Risk Lookup (SQL)", "subtitle": "Router → SQL templates → Synthesis", "budget": "<=2s p95", "nodes": [{"id": "req", "label": "Request", "kind": "boundary"}, {"id": "gin", "label": "Input Guardrail", "kind": "safety"}, {"id": "router", "label": "Router → C2", "kind": "route"}, {"id": "pe", "label": "Portfolio Eval", "kind": "agent"}, {"id": "tpl", "label": "SQL templates", "kind": "store"}, {"id": "db", "label": "finance_risk_db", "kind": "store"}, {"id": "esc", "label": "Escalation check", "kind": "safety"}, {"id": "syn", "label": "Synthesis", "kind": "agent"}, {"id": "resp", "label": "Response + SQL cites", "kind": "out"}], "edges": [{"from": "req", "to": "gin"}, {"from": "gin", "to": "router"}, {"from": "router", "to": "pe"}, {"from": "pe", "to": "tpl"}, {"from": "tpl", "to": "db"}, {"from": "db", "to": "pe"}, {"from": "pe", "to": "esc"}, {"from": "esc", "to": "syn"}, {"from": "syn", "to": "resp"}], "steps": [{"active": ["req"], "note": "Structured lookup: holdings, risk logs, decisions, indicators."}, {"active": ["gin"], "note": "Guardrail: no override intent."}, {"active": ["router"], "note": "Router → C2; entities extracted (portfolio, threshold, sector)."}, {"active": ["pe", "tpl", "db"], "note": "Named parameterized template; SELECT-only role; RBAC filter."}, {"active": ["esc"], "note": "If escalation_flag rows appear, divert to Escalation (E2)."}, {"active": ["syn", "resp"], "note": "Answer cites query_id + result set; SQL Correctness target >=95%."}]}, {"id": "c3", "title": "C3 — Hybrid Risk Evaluation", "subtitle": "Parallel RAG + SQL → Risk → Synthesis / Escalation", "budget": "<=4s p95", "nodes": [{"id": "req", "label": "Request", "kind": "boundary"}, {"id": "router", "label": "Router → C3", "kind": "route"}, {"id": "retr", "label": "Retrieval", "kind": "agent"}, {"id": "pe", "label": "Portfolio Eval", "kind": "agent"}, {"id": "vec", "label": "pgvector", "kind": "store"}, {"id": "db", "label": "finance_risk_db", "kind": "store"}, {"id": "risk", "label": "Risk Agent", "kind": "agent"}, {"id": "esc", "label": "E1–E8 engine", "kind": "safety"}, {"id": "syn", "label": "Synthesis", "kind": "agent"}, {"id": "hand", "label": "Human handoff", "kind": "safety"}, {"id": "resp", "label": "Dual-cite answer", "kind": "out"}], "edges": [{"from": "req", "to": "router"}, {"from": "router", "to": "retr"}, {"from": "router", "to": "pe"}, {"from": "retr", "to": "vec"}, {"from": "pe", "to": "db"}, {"from": "retr", "to": "risk"}, {"from": "pe", "to": "risk"}, {"from": "risk", "to": "esc"}, {"from": "esc", "to": "syn"}, {"from": "esc", "to": "hand"}, {"from": "syn", "to": "resp"}, {"from": "hand", "to": "resp"}], "steps": [{"active": ["req"], "note": "Example: Are any assets exceeding allowed risk thresholds?"}, {"active": ["router"], "note": "Category=C3 Hybrid; entities include threshold + portfolio scope."}, {"active": ["retr", "pe", "vec", "db"], "note": "Fan-out in parallel: policy limits from PDFs + risk_logs/holdings from SQL."}, {"active": ["risk"], "note": "Risk reconciles policy thresholds vs observed risk_score (Low/Med/High)."}, {"active": ["esc"], "note": "If escalation_flag=TRUE or limit breach → E2/E6 fire (terminal)."}, {"active": ["hand", "resp"], "note": "Escalated path: handoff envelope, no autonomous answer."}, {"active": ["syn", "resp"], "note": "Clear path: Synthesis with DOC: + SQL: citations and contradiction notes."}]}, {"id": "c4", "title": "C4 — High-Risk Decision", "subtitle": "3-way fan-out → Risk → deep Portfolio Eval", "budget": "<=6s p95", "nodes": [{"id": "req", "label": "Request", "kind": "boundary"}, {"id": "gin", "label": "Guardrail", "kind": "safety"}, {"id": "router", "label": "Router → C4", "kind": "route"}, {"id": "retr", "label": "Retrieval", "kind": "agent"}, {"id": "pe", "label": "Portfolio Eval", "kind": "agent"}, {"id": "mkt", "label": "Market Data", "kind": "agent"}, {"id": "risk", "label": "Risk Agent", "kind": "agent"}, {"id": "deep", "label": "Deep Portfolio Eval", "kind": "agent"}, {"id": "esc", "label": "Escalation check", "kind": "safety"}, {"id": "syn", "label": "Synthesis", "kind": "agent"}, {"id": "resp", "label": "Answer or escalate", "kind": "out"}], "edges": [{"from": "req", "to": "gin"}, {"from": "gin", "to": "router"}, {"from": "router", "to": "retr"}, {"from": "router", "to": "pe"}, {"from": "router", "to": "mkt"}, {"from": "retr", "to": "risk"}, {"from": "pe", "to": "risk"}, {"from": "mkt", "to": "risk"}, {"from": "risk", "to": "deep"}, {"from": "deep", "to": "esc"}, {"from": "esc", "to": "syn"}, {"from": "syn", "to": "resp"}], "steps": [{"active": ["req", "gin"], "note": "High-stakes ask screened first — override intent → C5/E1 immediately."}, {"active": ["router"], "note": "Router → C4 High-Risk Financial Decision."}, {"active": ["retr", "pe", "mkt"], "note": "Parallel fan-out: policy + portfolio/SQL + market indicators."}, {"active": ["risk"], "note": "Risk agent assigns level; flags breaches and stale assessments."}, {"active": ["deep"], "note": "Deep portfolio eval: concentration, benchmark, decision history."}, {"active": ["esc"], "note": "Any E2–E8 trigger pre-empts synthesis."}, {"active": ["syn", "resp"], "note": "If clear: grounded multi-source answer with risk summary."}]}, {"id": "c5", "title": "C5 — Escalation / Override", "subtitle": "Terminal handoff — no autonomous answer", "budget": "<=1.5s p95", "nodes": [{"id": "req", "label": "Override request", "kind": "boundary"}, {"id": "gin", "label": "Input Guardrail", "kind": "safety"}, {"id": "e1", "label": "E1 Override intent", "kind": "safety"}, {"id": "esc", "label": "Escalation node", "kind": "safety"}, {"id": "ref", "label": "Refusal template", "kind": "out"}, {"id": "hum", "label": "Human analyst queue", "kind": "out"}], "edges": [{"from": "req", "to": "gin"}, {"from": "gin", "to": "e1"}, {"from": "e1", "to": "esc"}, {"from": "esc", "to": "ref"}, {"from": "esc", "to": "hum"}], "steps": [{"active": ["req"], "note": "Override risk assessment… / Ignore regulatory limits…"}, {"active": ["gin"], "note": "Pattern match + LLM paraphrase classifier catch bypass intent."}, {"active": ["e1"], "note": "E1 fires — never begin constructing a partial answer."}, {"active": ["esc"], "note": "Escalation terminal: build handoff envelope (trigger, evidence, reviewer)."}, {"active": ["ref", "hum"], "note": "Refusal (no method disclosed) + mandatory human handoff. Escalation Recall = 1.0."}]}, {"id": "ingest", "title": "Offline Ingestion (Sprint 4)", "subtitle": "Corpus → chunks → embeddings; SQL seed → finance_risk_db", "budget": "batch", "nodes": [{"id": "pdf", "label": "7 policy PDFs", "kind": "store"}, {"id": "ext", "label": "Extract + sections", "kind": "agent"}, {"id": "chk", "label": "Chunk (~800 tok)", "kind": "agent"}, {"id": "emb", "label": "Embed", "kind": "agent"}, {"id": "vec", "label": "policy_chunks", "kind": "store"}, {"id": "smoke", "label": "20-probe smoke", "kind": "safety"}, {"id": "gen", "label": "SQL generator", "kind": "agent"}, {"id": "db", "label": "finance_risk_db", "kind": "store"}, {"id": "pre", "label": "Golden preconditions", "kind": "safety"}], "edges": [{"from": "pdf", "to": "ext"}, {"from": "ext", "to": "chk"}, {"from": "chk", "to": "emb"}, {"from": "emb", "to": "vec"}, {"from": "vec", "to": "smoke"}, {"from": "gen", "to": "db"}, {"from": "db", "to": "pre"}], "steps": [{"active": ["pdf"], "note": "Strategy, risk, regulatory, market, monitoring, Basel III, framework."}, {"active": ["ext"], "note": "Per-page extract; keep page numbers; detect section headings."}, {"active": ["chk"], "note": "~800 tokens / 120 overlap; never split a limits table."}, {"active": ["emb", "vec"], "note": "Upsert embeddings + {doc_id, section, page} metadata."}, {"active": ["smoke"], "note": "Validate retrieval with 20 known-answer probes."}, {"active": ["gen", "db"], "note": "Seeded INSERT into 5 business tables."}, {"active": ["pre"], "note": "Extend rows required by golden queries; assert data preconditions."}]}, {"id": "guard", "title": "Guardrail & Escalation Engine", "subtitle": "Deterministic E1–E8 before any answer ships", "budget": "hard gate", "nodes": [{"id": "q", "label": "Analyst query", "kind": "boundary"}, {"id": "pat", "label": "Pattern match", "kind": "safety"}, {"id": "llm", "label": "Intent classifier", "kind": "route"}, {"id": "path", "label": "Agent path", "kind": "agent"}, {"id": "ev", "label": "Evidence bundle", "kind": "store"}, {"id": "rules", "label": "E2–E8 checks", "kind": "safety"}, {"id": "ok", "label": "No trigger", "kind": "out"}, {"id": "esc", "label": "Escalation terminal", "kind": "safety"}, {"id": "syn", "label": "Synthesis", "kind": "agent"}, {"id": "ov", "label": "Output validator", "kind": "out"}], "edges": [{"from": "q", "to": "pat"}, {"from": "pat", "to": "llm"}, {"from": "pat", "to": "esc"}, {"from": "llm", "to": "path"}, {"from": "llm", "to": "esc"}, {"from": "path", "to": "ev"}, {"from": "ev", "to": "rules"}, {"from": "rules", "to": "ok"}, {"from": "rules", "to": "esc"}, {"from": "ok", "to": "syn"}, {"from": "syn", "to": "ov"}, {"from": "esc", "to": "ov"}], "steps": [{"active": ["q"], "note": "Every query enters Safety before expensive retrieval."}, {"active": ["pat"], "note": "Deterministic lexicon: override, ignore, bypass, waive, despite flag…"}, {"active": ["llm"], "note": "If clean of patterns, LLM checks paraphrased bypass."}, {"active": ["path", "ev"], "note": "Clean → router path; agents write typed evidence only."}, {"active": ["rules"], "note": "E2 flag · E3 score>80 · E4 conflict · E5 weak evidence · E6 limit · E7 unapproved · E8 low conf."}, {"active": ["esc", "ov"], "note": "Any hard trigger → terminal handoff; never partial fulfillment."}, {"active": ["ok", "syn", "ov"], "note": "Clear → evidence-only Synthesis → citation/advice validator."}]}];
+
+const KIND_FILL = {
+  boundary: "#e8edf2",
+  route: "#c5d8ff",
+  agent: "#c8f0ea",
+  store: "#ffe6a8",
+  safety: "#ffd0c8",
+  out: "#c8efc8",
+};
+const KIND_STROKE = {
+  boundary: "#5a6b7d",
+  route: "#1a4db3",
+  agent: "#0d7a6f",
+  store: "#b07800",
+  safety: "#c43c22",
+  out: "#2a7a2a",
+};
+
+function layout(flow) {
+  // Simple layered layout via longest-path rank (Kahn-ish)
+  const ids = flow.nodes.map(n => n.id);
+  const indeg = Object.fromEntries(ids.map(i => [i, 0]));
+  const outs = Object.fromEntries(ids.map(i => [i, []]));
+  for (const e of flow.edges) {
+    if (!outs[e.from] || indeg[e.to] === undefined) continue;
+    outs[e.from].push(e.to);
+    indeg[e.to] += 1;
+  }
+  const rank = Object.fromEntries(ids.map(i => [i, 0]));
+  const q = ids.filter(i => indeg[i] === 0);
+  const seen = new Set();
+  while (q.length) {
+    const u = q.shift();
+    if (seen.has(u)) continue;
+    seen.add(u);
+    for (const v of outs[u]) {
+      rank[v] = Math.max(rank[v], rank[u] + 1);
+      indeg[v] -= 1;
+      if (indeg[v] <= 0) q.push(v);
+    }
+  }
+  // break residual cycles
+  for (const e of flow.edges) {
+    if (rank[e.to] <= rank[e.from]) rank[e.to] = rank[e.from] + 1;
+  }
+  const byRank = {};
+  for (const id of ids) {
+    (byRank[rank[id]] ||= []).push(id);
+  }
+  const NW = 140, NH = 44, RG = 70, NG = 26, PAD = 28;
+  const maxRank = Math.max(...Object.keys(byRank).map(Number));
+  let maxInRank = 1;
+  const pos = {};
+  for (let r = 0; r <= maxRank; r++) {
+    const list = byRank[r] || [];
+    maxInRank = Math.max(maxInRank, list.length);
+    list.forEach((id, i) => {
+      pos[id] = {
+        x: PAD + r * (NW + RG),
+        y: PAD + i * (NH + NG),
+        w: NW, h: NH,
+      };
+    });
+  }
+  return {
+    pos,
+    width: PAD * 2 + (maxRank + 1) * NW + maxRank * RG,
+    height: PAD * 2 + maxInRank * NH + (maxInRank - 1) * NG,
+  };
+}
+
+let flowId = "arch";
+let step = 0;
+let playing = true;
+let ms = 1400;
+let timer = null;
+
+const sel = document.getElementById("flowSelect");
+FLOWS.forEach(f => {
+  const o = document.createElement("option");
+  o.value = f.id; o.textContent = f.title;
+  sel.appendChild(o);
+});
+sel.value = flowId;
+
+function current() { return FLOWS.find(f => f.id === flowId); }
+
+function nodeLabelMap(flow) {
+  return Object.fromEntries(flow.nodes.map(n => [n.id, n.label]));
+}
+
+function stepLabels(flow, s) {
+  const map = nodeLabelMap(flow);
+  return s.active.map(id => map[id] || id);
+}
+
+function stepHeadline(flow, s, i) {
+  const labels = stepLabels(flow, s);
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return `${labels[0]} → ${labels[1]}`;
+  return `${labels[0]} → … → ${labels[labels.length - 1]} (${labels.length} nodes)`;
+}
+
+function render() {
+  const flow = current();
+  document.getElementById("title").textContent = flow.title;
+  document.getElementById("subtitle").textContent = flow.subtitle;
+  document.getElementById("budget").textContent = flow.budget;
+  document.getElementById("stepPill").textContent = `Step ${step + 1} of ${flow.steps.length}`;
+  const st = flow.steps[step];
+  document.getElementById("note").innerHTML =
+    `<strong>Step ${step + 1}: ${stepHeadline(flow, st, step)}</strong><br/>${st.note}`;
+  const active = new Set(st.active);
+  const L = layout(flow);
+
+  let edgesSvg = "";
+  for (const e of flow.edges) {
+    const a = L.pos[e.from], b = L.pos[e.to];
+    if (!a || !b) continue;
+    const x1 = a.x + a.w, y1 = a.y + a.h/2;
+    const x2 = b.x, y2 = b.y + b.h/2;
+    const mx = (x1 + x2) / 2;
+    const on = active.has(e.from) && active.has(e.to);
+    edgesSvg += `<path class="edge${on ? " active" : ""}" d="M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}" marker-end="url(#arrow${on ? "A" : ""})"/>`;
+  }
+
+  let nodesSvg = "";
+  for (const n of flow.nodes) {
+    const p = L.pos[n.id];
+    const on = active.has(n.id);
+    const fill = on ? "#6b21a8" : KIND_FILL[n.kind];
+    const stroke = on ? "#6b21a8" : KIND_STROKE[n.kind];
+    const label = n.label.length > 18 ? n.label.slice(0,17) + "…" : n.label;
+    if (on) nodesSvg += `<rect class="halo" x="${p.x-3}" y="${p.y-3}" width="${p.w+6}" height="${p.h+6}" rx="10"/>`;
+    nodesSvg += `<rect class="node${on ? " active" : ""}" x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="${on ? 2.5 : 1.8}"/>`;
+    nodesSvg += `<text class="node-label${on ? " active" : ""}" x="${p.x + p.w/2}" y="${p.y + p.h/2 + 4}" text-anchor="middle">${label}</text>`;
+  }
+
+  document.getElementById("stage").innerHTML = `
+    <svg width="${L.width}" height="${L.height}" viewBox="0 0 ${L.width} ${L.height}">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#bdbdb5"/>
+        </marker>
+        <marker id="arrowA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#6b21a8"/>
+        </marker>
+      </defs>
+      ${edgesSvg}${nodesSvg}
+    </svg>`;
+
+  const stepsEl = document.getElementById("steps");
+  stepsEl.innerHTML = "";
+  flow.steps.forEach((s, i) => {
+    const b = document.createElement("button");
+    const on = i === step;
+    const done = i < step;
+    b.className = "step" + (on ? " on" : "") + (done ? " done" : "");
+    b.type = "button";
+    const labels = stepLabels(flow, s);
+    const path = labels.join(" → ");
+    b.innerHTML = `
+      <div class="step-num">${i + 1}</div>
+      <p class="step-title">${stepHeadline(flow, s, i)}</p>
+      <p class="step-path">${path}</p>
+      <p class="step-note">${s.note}</p>`;
+    b.onclick = () => { step = i; render(); };
+    stepsEl.appendChild(b);
+  });
+}
+
+function tick() {
+  if (!playing) return;
+  const flow = current();
+  step = (step + 1) % flow.steps.length;
+  render();
+}
+
+function restartTimer() {
+  clearInterval(timer);
+  timer = setInterval(tick, ms);
+}
+
+sel.onchange = () => { flowId = sel.value; step = 0; playing = true; document.getElementById("playBtn").textContent = "Pause"; restartTimer(); render(); };
+document.getElementById("playBtn").onclick = () => {
+  playing = !playing;
+  document.getElementById("playBtn").textContent = playing ? "Pause" : "Play";
+  document.getElementById("playBtn").className = playing ? "primary" : "";
+  if (playing) restart();
+};
+document.getElementById("prevBtn").onclick = () => {
+  const flow = current(); step = (step - 1 + flow.steps.length) % flow.steps.length; render();
+};
+document.getElementById("nextBtn").onclick = () => {
+  const flow = current(); step = (step + 1) % flow.steps.length; render();
+};
+document.getElementById("speedSelect").onchange = (e) => { ms = Number(e.target.value); restartTimer(); };
+
+render();
+restartTimer();
+
+// deep-link: ?flow=arch&step=0&play=0
+const params = new URLSearchParams(location.search);
+if (params.get("flow") && FLOWS.some(f => f.id === params.get("flow"))) {
+  flowId = params.get("flow"); sel.value = flowId;
+}
+if (params.get("step")) step = Math.max(0, Number(params.get("step")) || 0);
+if (params.get("play") === "0") { playing = false; document.getElementById("playBtn").textContent = "Play"; document.getElementById("playBtn").className = ""; }
+render();
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && typeof playing !== "undefined" && playing) {
+    if (typeof restartTimer === "function") restartTimer();
+    else if (typeof restart === "function") restart();
+  }
+});
+</script>
+</body>
+</html>

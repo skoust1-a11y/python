@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Finance Risk — RAG + SQL Request Workflow (Light)</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --panel: #ffffff;
+    --line: #c45b7a;
+    --text: #1a1f26;
+    --muted: #5b6570;
+    --anno: #f3f4f6;
+    --user: #16a34a;
+    --prompt: #e5e7eb;
+    --active: #7c3aed;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, ui-monospace, SFMono-Regular, Menlo, Consolas, sans-serif;
+  }
+  header { max-width: 1180px; margin: 0 auto; padding: 20px 18px 6px; }
+  h1 { margin: 0 0 6px; font-size: 18px; font-weight: 700; letter-spacing: 0.02em; }
+  .sub { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; max-width: 90ch; }
+  .sub a { color: #7c3aed; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 10px 18px 40px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0; }
+  button, select {
+    font: inherit; font-size: 12px; padding: 8px 12px; border-radius: 6px;
+    border: 1px solid #d1d5db; background: #fff; color: var(--text); cursor: pointer;
+  }
+  button.primary { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+  .note {
+    background: #f3e8ff; border-left: 3px solid #7c3aed;
+    padding: 10px 12px; margin-bottom: 14px; font-size: 13px; line-height: 1.45;
+  }
+  .stage-wrap {
+    overflow: auto; border: 1px solid #d8dde5; border-radius: 10px;
+    background: #ffffff; padding: 12px;
+  }
+  svg { display: block; min-width: 1080px; }
+  .box {
+    fill: #ffffff; stroke: var(--line); stroke-width: 1.8;
+  }
+  .box.solid-user { fill: var(--user); stroke: var(--user); }
+  .box.solid-grey { fill: var(--prompt); stroke: #9ca3af; }
+  .box.active { stroke: var(--active); stroke-width: 2.8; filter: drop-shadow(0 0 4px rgba(124,58,237,0.35)); }
+  .box.solid-user.active { fill: #22c55e; }
+  .lbl {
+    fill: var(--text); font-size: 11px; font-weight: 700;
+    text-anchor: middle; dominant-baseline: middle;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .lbl.on-user { fill: #ffffff; }
+  .group {
+    fill: #fafbfc; stroke: #e8a0b0; stroke-width: 1.5;
+  }
+  .group.active { stroke: var(--active); stroke-width: 2.2; fill: #f5f0ff; }
+  .group-lbl {
+    fill: #9d174d; font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .edge { fill: none; stroke: #9ca3af; stroke-width: 1.4; marker-end: url(#arr); opacity: 0.7; }
+  .edge.active {
+    stroke: var(--active); stroke-width: 2.2; opacity: 1;
+    stroke-dasharray: 7 4; animation: dash 0.85s linear infinite;
+    marker-end: url(#arrA);
+  }
+  @keyframes dash { to { stroke-dashoffset: -22; } }
+  .anno {
+    fill: var(--anno); stroke: #d1d5db; stroke-width: 1;
+  }
+  .anno.active { fill: #ede9fe; stroke: var(--active); }
+  .anno-txt {
+    fill: #374151; font-size: 9.5px; text-anchor: middle;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .footer-cats {
+    margin-top: 14px; color: var(--muted); font-size: 11px; line-height: 1.5;
+  }
+  .steps { display: grid; gap: 8px; margin-top: 16px; }
+  .step {
+    text-align: left; width: 100%; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid #d8dde5; background: #fff; color: var(--text); cursor: pointer;
+    display: grid; grid-template-columns: 40px 1fr; gap: 8px 10px;
+  }
+  .step.on { border-color: #7c3aed; background: #f3e8ff; }
+  .step-num {
+    width: 36px; height: 36px; border-radius: 8px; background: #9ca3af; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px;
+  }
+  .step.on .step-num { background: #7c3aed; }
+  .step.done .step-num { background: #16a34a; }
+  .step-title { margin: 0; font-size: 13px; font-weight: 700; }
+  .step-note { margin: 2px 0 0; font-size: 12px; color: #4b5563; line-height: 1.4; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ARCHITECTURE OF THIS LLM APPLICATION � FINANCE RISK &amp; INVESTMENT INTELLIGENCE</h1>
+  <p class="sub">
+    Light RAG-style request loop adapted from common �Architecture of Today�s LLM Application� diagrams
+    (user ? enrich ? prompt ? model ? safety ? user), customized for our hybrid <b>RAG + SQL + multi-agent + guardrails</b> system.
+  </p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <button id="playBtn" class="primary">Pause</button>
+    <button id="prevBtn">Prev</button>
+    <button id="nextBtn">Next</button>
+    <select id="speedSelect">
+      <option value="1200">Fast</option>
+      <option value="1800" selected>Normal</option>
+      <option value="2600">Slow</option>
+    </select>
+    <span id="pill" style="font-size:12px;color:#5b6570"></span>
+  </div>
+  <div class="note" id="note"></div>
+
+  <div class="stage-wrap">
+    <svg id="svg" viewBox="0 0 1100 620" width="1100" height="620">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#9ca3af"/>
+        </marker>
+        <marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#7c3aed"/>
+        </marker>
+      </defs>
+
+      <!-- Groups -->
+      <rect class="group" data-id="g-obs" x="780" y="70" width="200" height="200" rx="6"/>
+      <text class="group-lbl" x="790" y="88">OBSERVABILITY</text>
+
+      <rect class="group" data-id="g-llm" x="300" y="430" width="420" height="120" rx="6"/>
+      <text class="group-lbl" x="310" y="448">LLM HOST (TIERED)</text>
+
+      <rect class="group" data-id="g-enrich" x="40" y="40" width="520" height="250" rx="6"/>
+      <text class="group-lbl" x="50" y="58">INPUT ENRICHMENT (RAG + SQL)</text>
+
+      <!-- Nodes -->
+      <g data-node="user">
+        <rect class="box solid-user" x="1000" y="150" width="80" height="40" rx="4"/>
+        <text class="lbl on-user" x="1040" y="170">END USER</text>
+      </g>
+
+      <g data-node="ui">
+        <rect class="box" x="840" y="150" width="70" height="40" rx="4"/>
+        <text class="lbl" x="875" y="170">UI / API</text>
+      </g>
+
+      <g data-node="guard">
+        <rect class="box" x="840" y="230" width="110" height="40" rx="4"/>
+        <text class="lbl" x="895" y="250">INPUT GUARDRAIL</text>
+      </g>
+
+      <g data-node="router">
+        <rect class="box" x="640" y="150" width="90" height="40" rx="4"/>
+        <text class="lbl" x="685" y="170">ROUTER</text>
+      </g>
+
+      <g data-node="embed">
+        <rect class="box" x="380" y="70" width="130" height="40" rx="4"/>
+        <text class="lbl" x="445" y="90">EMBEDDING MODEL</text>
+      </g>
+
+      <g data-node="vec">
+        <rect class="box" x="70" y="70" width="130" height="40" rx="4"/>
+        <text class="lbl" x="135" y="90">PGVECTOR STORE</text>
+      </g>
+
+      <g data-node="sql">
+        <rect class="box" x="70" y="150" width="150" height="40" rx="4"/>
+        <text class="lbl" x="145" y="170">SQL TEMPLATES + DB</text>
+      </g>
+
+      <g data-node="rbac">
+        <rect class="box" x="70" y="220" width="150" height="40" rx="4"/>
+        <text class="lbl" x="145" y="240">RBAC / DATA FILTER</text>
+      </g>
+
+      <g data-node="prompt">
+        <rect class="box solid-grey" x="380" y="220" width="140" height="44" rx="4"/>
+        <text class="lbl" x="450" y="242">EVIDENCE BUNDLE</text>
+      </g>
+
+      <g data-node="risk">
+        <rect class="box" x="560" y="220" width="100" height="44" rx="4"/>
+        <text class="lbl" x="610" y="242">RISK AGENT</text>
+      </g>
+
+      <g data-node="opt">
+        <rect class="box" x="400" y="320" width="160" height="40" rx="4"/>
+        <text class="lbl" x="480" y="340">SYNTHESIS PROMPT</text>
+      </g>
+
+      <g data-node="cache">
+        <rect class="box" x="320" y="470" width="90" height="40" rx="4"/>
+        <text class="lbl" x="365" y="490">LLM CACHE</text>
+      </g>
+
+      <g data-node="llm">
+        <rect class="box" x="450" y="470" width="90" height="40" rx="4"/>
+        <text class="lbl" x="495" y="490">LLM API</text>
+      </g>
+
+      <g data-node="outguard">
+        <rect class="box" x="580" y="470" width="120" height="40" rx="4"/>
+        <text class="lbl" x="640" y="490">OUTPUT VALIDATOR</text>
+      </g>
+
+      <g data-node="esc">
+        <rect class="box" x="760" y="470" width="120" height="40" rx="4"/>
+        <text class="lbl" x="820" y="490">ESCALATION / E1�E8</text>
+      </g>
+
+      <g data-node="output">
+        <rect class="box" x="840" y="360" width="100" height="40" rx="4"/>
+        <text class="lbl" x="890" y="380">LLM OUTPUT</text>
+      </g>
+
+      <!-- Edges -->
+      <path class="edge" data-edge="e1" d="M1000,170 H920"/>
+      <path class="edge" data-edge="e2" d="M840,170 H730"/>
+      <path class="edge" data-edge="e3" d="M875,190 V230"/>
+      <path class="edge" data-edge="e4" d="M640,170 H520"/>
+      <path class="edge" data-edge="e5" d="M445,110 V70" />
+      <path class="edge" data-edge="e5b" d="M380,90 H200"/>
+      <path class="edge" data-edge="e6" d="M135,110 V150"/>
+      <path class="edge" data-edge="e7" d="M640,190 C640,210 145,200 145,220"/>
+      <path class="edge" data-edge="e8" d="M220,240 H380"/>
+      <path class="edge" data-edge="e9" d="M220,170 H380"/>
+      <path class="edge" data-edge="e10" d="M685,190 V220 H610"/>
+      <path class="edge" data-edge="e11" d="M520,242 H500"/>
+      <path class="edge" data-edge="e12" d="M450,264 V320"/>
+      <path class="edge" data-edge="e13" d="M480,360 V470"/>
+      <path class="edge" data-edge="e14" d="M450,490 H410"/>
+      <path class="edge" data-edge="e14b" d="M410,490 H450"/>
+      <path class="edge" data-edge="e15" d="M540,490 H580"/>
+      <path class="edge" data-edge="e16" d="M700,490 H760"/>
+      <path class="edge" data-edge="e17" d="M640,470 V400 H890 V400"/>
+      <path class="edge" data-edge="e18" d="M890,360 V210"/>
+      <path class="edge" data-edge="e19" d="M910,170 H1000"/>
+
+      <!-- Annotations (positioned near edges) -->
+      <g data-anno="a1">
+        <rect class="anno" x="910" y="118" width="160" height="28" rx="4"/>
+        <text class="anno-txt" x="990" y="135">Analyst sends query via UI</text>
+      </g>
+      <g data-anno="a2">
+        <rect class="anno" x="730" y="108" width="170" height="28" rx="4"/>
+        <text class="anno-txt" x="815" y="125">Guardrail screens override intent</text>
+      </g>
+      <g data-anno="a3">
+        <rect class="anno" x="250" y="28" width="250" height="28" rx="4"/>
+        <text class="anno-txt" x="375" y="45">Query embedding ? policy snippets</text>
+      </g>
+      <g data-anno="a4">
+        <rect class="anno" x="40" y="118" width="210" height="28" rx="4"/>
+        <text class="anno-txt" x="145" y="135">SQL templates hit finance_risk_db</text>
+      </g>
+      <g data-anno="a5">
+        <rect class="anno" x="40" y="268" width="230" height="28" rx="4"/>
+        <text class="anno-txt" x="155" y="285">RBAC filter blocks unauthorized rows</text>
+      </g>
+      <g data-anno="a6">
+        <rect class="anno" x="300" y="188" width="220" height="28" rx="4"/>
+        <text class="anno-txt" x="410" y="205">DOC + SQL evidence injected</text>
+      </g>
+      <g data-anno="a7">
+        <rect class="anno" x="360" y="380" width="220" height="28" rx="4"/>
+        <text class="anno-txt" x="470" y="397">Evidence-only prompt ? LLM</text>
+      </g>
+      <g data-anno="a8">
+        <rect class="anno" x="300" y="530" width="220" height="28" rx="4"/>
+        <text class="anno-txt" x="410" y="547">Cache hit/miss for similar asks</text>
+      </g>
+      <g data-anno="a9">
+        <rect class="anno" x="560" y="530" width="260" height="28" rx="4"/>
+        <text class="anno-txt" x="690" y="547">Citations � no advice � disclaimer check</text>
+      </g>
+      <g data-anno="a10">
+        <rect class="anno" x="760" y="530" width="220" height="28" rx="4"/>
+        <text class="anno-txt" x="870" y="547">E1�E8 ? human handoff if required</text>
+      </g>
+      <g data-anno="a11">
+        <rect class="anno" x="900" y="300" width="160" height="28" rx="4"/>
+        <text class="anno-txt" x="980" y="317">Grounded answer to analyst</text>
+      </g>
+    </svg>
+  </div>
+
+  <p class="footer-cats">
+    Components above can be grouped as: <b>User Input</b> (END USER, UI/API) �
+    <b>Input Enrichment &amp; Prompt Construction</b> (embedding, pgvector, SQL, RBAC, evidence bundle, risk, synthesis prompt) �
+    <b>Efficient &amp; Responsible AI Tooling</b> (LLM host/cache, output validator, escalation, observability).
+  </p>
+
+  <div class="steps" id="steps"></div>
+</div>
+
+<script>
+const STEPS = [
+  {
+    title: "Analyst sends a query",
+    note: "End user submits a natural-language finance/risk question through the UI / FastAPI client.",
+    nodes: ["user", "ui"],
+    edges: ["e1"],
+    annos: ["a1"],
+    groups: ["g-obs"],
+  },
+  {
+    title: "Input guardrail before any model spend",
+    note: "Override / bypass / injection intent is blocked. Clean requests continue to the Router.",
+    nodes: ["ui", "guard", "router"],
+    edges: ["e2", "e3"],
+    annos: ["a2"],
+    groups: ["g-obs"],
+  },
+  {
+    title: "RAG enrichment � embed & retrieve policy",
+    note: "Copy of the query is embedded and mapped to pgvector policy_chunks (7 PDFs, page/section metadata).",
+    nodes: ["router", "embed", "vec"],
+    edges: ["e4", "e5", "e5b"],
+    annos: ["a3"],
+    groups: ["g-enrich"],
+  },
+  {
+    title: "SQL enrichment � templated DB lookup",
+    note: "For C2/C3/C4, named parameterized SQL templates read finance_risk_db (portfolios, risk logs, �).",
+    nodes: ["router", "sql"],
+    edges: ["e7"],
+    annos: ["a4"],
+    groups: ["g-enrich"],
+  },
+  {
+    title: "RBAC / data filter",
+    note: "Every result set is scoped to allowed_portfolio_ids. Unauthorized data never reaches the prompt.",
+    nodes: ["rbac", "sql", "vec"],
+    edges: ["e6", "e8", "e9"],
+    annos: ["a5"],
+    groups: ["g-enrich"],
+  },
+  {
+    title: "Evidence bundle + risk reconcile",
+    note: "DOC and SQL snippets converge into the Evidence Bundle. Risk Agent scores / detects breaches.",
+    nodes: ["prompt", "risk", "router"],
+    edges: ["e10", "e11"],
+    annos: ["a6"],
+    groups: ["g-enrich"],
+  },
+  {
+    title: "Synthesis prompt ? LLM host",
+    note: "Tool-less synthesis prompt is built from evidence only, then sent to the tiered LLM API (with optional cache).",
+    nodes: ["opt", "llm", "cache"],
+    edges: ["e12", "e13", "e14", "e14b"],
+    annos: ["a7", "a8"],
+    groups: ["g-llm"],
+  },
+  {
+    title: "Output validator & escalation gates",
+    note: "Citations, non-advice, disclaimer checked. Any E1�E8 trigger becomes a human-handoff envelope instead of an answer.",
+    nodes: ["outguard", "esc", "output"],
+    edges: ["e15", "e16", "e17"],
+    annos: ["a9", "a10"],
+    groups: ["g-llm"],
+  },
+  {
+    title: "Answer returns to the analyst",
+    note: "Grounded response (or escalation refusal) flows back through UI/API to the end user, with full telemetry.",
+    nodes: ["output", "ui", "user"],
+    edges: ["e18", "e19"],
+    annos: ["a11"],
+    groups: ["g-obs"],
+  },
+];
+
+let step = 0, playing = true, ms = 1800, timer = null;
+
+function apply() {
+  const s = STEPS[step];
+  document.getElementById("note").innerHTML = `<strong>Step ${step + 1} of ${STEPS.length}: ${s.title}</strong><br/>${s.note}`;
+  document.getElementById("pill").textContent = `Step ${step + 1} of ${STEPS.length}`;
+
+  document.querySelectorAll("[data-node] .box").forEach((el) => el.classList.remove("active"));
+  document.querySelectorAll("[data-node]").forEach((g) => {
+    if (s.nodes.includes(g.getAttribute("data-node"))) {
+      g.querySelector(".box").classList.add("active");
+    }
+  });
+
+  document.querySelectorAll(".edge").forEach((el) => el.classList.remove("active"));
+  s.edges.forEach((id) => {
+    const el = document.querySelector(`[data-edge="${id}"]`);
+    if (el) el.classList.add("active");
+  });
+
+  document.querySelectorAll("[data-anno] .anno").forEach((el) => el.classList.remove("active"));
+  s.annos.forEach((id) => {
+    const g = document.querySelector(`[data-anno="${id}"]`);
+    if (g) g.querySelector(".anno").classList.add("active");
+  });
+
+  document.querySelectorAll(".group").forEach((el) => el.classList.remove("active"));
+  (s.groups || []).forEach((id) => {
+    const el = document.querySelector(`[data-id="${id}"]`);
+    if (el) el.classList.add("active");
+  });
+
+  const stepsEl = document.getElementById("steps");
+  stepsEl.innerHTML = "";
+  STEPS.forEach((st, i) => {
+    const b = document.createElement("button");
+    b.className = "step" + (i === step ? " on" : "") + (i < step ? " done" : "");
+    b.innerHTML = `<div class="step-num">${i + 1}</div>
+      <div><p class="step-title">${st.title}</p><p class="step-note">${st.note}</p></div>`;
+    b.onclick = () => { step = i; apply(); };
+    stepsEl.appendChild(b);
+  });
+}
+
+function tick() { if (!playing) return; step = (step + 1) % STEPS.length; apply(); }
+function restart() { clearInterval(timer); timer = setInterval(tick, ms); }
+
+document.getElementById("playBtn").onclick = () => {
+  playing = !playing;
+  document.getElementById("playBtn").textContent = playing ? "Pause" : "Play";
+  document.getElementById("playBtn").className = playing ? "primary" : "";
+  if (playing) restart();
+};
+document.getElementById("prevBtn").onclick = () => { step = (step - 1 + STEPS.length) % STEPS.length; apply(); };
+document.getElementById("nextBtn").onclick = () => { step = (step + 1) % STEPS.length; apply(); };
+document.getElementById("speedSelect").onchange = (e) => { ms = Number(e.target.value); restart(); };
+
+apply();
+restart();
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && typeof playing !== "undefined" && playing) {
+    if (typeof restartTimer === "function") restartTimer();
+    else if (typeof restart === "function") restart();
+  }
+});
+</script>
+</body>
+</html>

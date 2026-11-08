@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Finance Risk — Layered System Architecture</title>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --text: #1a1f26;
+    --muted: #5b6570;
+    --line: #d5dde5;
+    --ui: #4f6bed;
+    --app: #2f9e87;
+    --ai: #8b5cf6;
+    --data: #d97706;
+    --infra: #64748b;
+    --safety: #dc4c3f;
+    --obs: #0ea5e9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header { max-width: 1100px; margin: 0 auto; padding: 22px 20px 8px; }
+  h1 { margin: 0 0 6px; font-size: 22px; }
+  .sub { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 12px 20px 36px; }
+  .board {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px;
+  }
+  .layer {
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 12px 14px 14px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .layer-title {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
+    text-transform: uppercase; margin: 0 0 10px;
+  }
+  .layer-title .badge {
+    font-size: 11px; padding: 3px 8px; border-radius: 999px;
+    color: #fff; font-weight: 700;
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+  }
+  .card {
+    background: rgba(255,255,255,0.72);
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 10px;
+    padding: 10px 12px;
+    min-height: 72px;
+  }
+  .card h3 { margin: 0 0 4px; font-size: 13px; font-weight: 700; }
+  .card p { margin: 0; font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+  .card.active {
+    outline: 2px solid #6b21a8;
+    background: #fff;
+  }
+  .l-ui { background: #eef1ff; border-color: #c7d0ff; }
+  .l-ui .badge { background: var(--ui); }
+  .l-app { background: #e8f7f3; border-color: #b7e5d9; }
+  .l-app .badge { background: var(--app); }
+  .l-ai { background: #f3eefe; border-color: #d8c8ff; }
+  .l-ai .badge { background: var(--ai); }
+  .l-data { background: #fff5e6; border-color: #ffd9a1; }
+  .l-data .badge { background: var(--data); }
+  .l-infra { background: #eef2f6; border-color: #cfd8e3; }
+  .l-infra .badge { background: var(--infra); }
+  .cross {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px;
+  }
+  .l-safety { background: #ffecea; border-color: #ffc5bf; }
+  .l-safety .badge { background: var(--safety); }
+  .l-obs { background: #e7f6fe; border-color: #b6e4fb; }
+  .l-obs .badge { background: var(--obs); }
+  .flow-arrow {
+    text-align: center; color: var(--muted); font-size: 12px; font-weight: 600;
+    margin: -2px 0 8px; letter-spacing: 0.04em;
+  }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin-bottom: 14px;
+  }
+  button, select {
+    font: inherit; padding: 8px 12px; border-radius: 8px;
+    border: 1px solid var(--line); background: #fff; cursor: pointer;
+  }
+  button.primary { background: #6b21a8; color: #fff; border-color: #6b21a8; }
+  .note {
+    background: #efe0ff; border-left: 3px solid #6b21a8;
+    padding: 10px 12px; border-radius: 0 8px 8px 0; margin-bottom: 14px;
+    font-size: 13.5px; line-height: 1.45;
+  }
+  .steps { display: grid; gap: 8px; margin-top: 14px; }
+  .step {
+    text-align: left; width: 100%; padding: 12px 14px; border-radius: 10px;
+    border: 1px solid var(--line); background: #fff; cursor: pointer;
+    display: grid; grid-template-columns: 44px 1fr; gap: 8px 12px;
+  }
+  .step.on { border-color: #6b21a8; background: #efe0ff; }
+  .step-num {
+    width: 40px; height: 40px; border-radius: 10px; background: #8a8a84;
+    color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
+  .step.on .step-num { background: #6b21a8; }
+  .step.done .step-num { background: #2a7a2a; }
+  .step-title { margin: 0; font-size: 14px; font-weight: 600; }
+  .step-note { margin: 0; font-size: 13px; color: #333; line-height: 1.4; }
+  .legend { margin-top: 10px; font-size: 12px; color: var(--muted); }
+  footer { margin-top: 16px; font-size: 12px; color: var(--muted); }
+  @media (max-width: 720px) { .cross { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Layered System Architecture</h1>
+  <p class="sub">
+    EdrawMax-style layered view for the Finance Risk &amp; Investment Intelligence System
+    (inspired by
+    <a href="https://www.edrawmax.com/templates/ai-based-system-architecture-diagram-template-1060346/">AI-Based System Architecture Diagram Template</a>).
+    Top-to-bottom: Users/UI ? Application ? AI Agents ? Data ? Infrastructure, with Safety and Observability as cross-cutting bands.
+  </p>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <button id="playBtn" class="primary">Pause</button>
+    <button id="prevBtn">Prev</button>
+    <button id="nextBtn">Next</button>
+    <select id="speedSelect">
+      <option value="1200">Fast</option>
+      <option value="1800" selected>Normal</option>
+      <option value="2600">Slow</option>
+    </select>
+    <span id="stepPill" style="font-size:12px;color:#5b6570"></span>
+  </div>
+
+  <div class="note" id="note"></div>
+
+  <div class="board" id="board">
+    <section class="layer l-ui" data-layer="ui">
+      <div class="layer-title"><span class="badge">1</span> User / Interface Layer</div>
+      <div class="cards">
+        <div class="card" data-id="analyst"><h3>Investment Analyst</h3><p>Policy &amp; portfolio questions</p></div>
+        <div class="card" data-id="riskmgr"><h3>Risk Manager</h3><p>Thresholds &amp; breaches</p></div>
+        <div class="card" data-id="pm"><h3>Portfolio Manager</h3><p>Allocation &amp; decisions</p></div>
+        <div class="card" data-id="compliance"><h3>Compliance</h3><p>Audit &amp; escalation</p></div>
+        <div class="card" data-id="ui"><h3>Frontend / API Client</h3><p>Sprint 5+ UI + JWT</p></div>
+      </div>
+    </section>
+    <div class="flow-arrow">? natural-language query + auth token</div>
+
+    <section class="layer l-app" data-layer="app">
+      <div class="layer-title"><span class="badge">2</span> Application Layer (FastAPI)</div>
+      <div class="cards">
+        <div class="card" data-id="api"><h3>POST /api/v1/query</h3><p>Request / response envelope</p></div>
+        <div class="card" data-id="auth"><h3>Auth + RBAC</h3><p>role · allowed_portfolio_ids</p></div>
+        <div class="card" data-id="admin"><h3>Admin / Health</h3><p>/health · /metrics · /admin</p></div>
+        <div class="card" data-id="schemas"><h3>Pydantic Schemas</h3><p>citations · risk · escalation</p></div>
+      </div>
+    </section>
+    <div class="flow-arrow">? classified path into LangGraph</div>
+
+    <section class="layer l-ai" data-layer="ai">
+      <div class="layer-title"><span class="badge">3</span> AI / Agent Layer (LangGraph + LLM)</div>
+      <div class="cards">
+        <div class="card" data-id="router"><h3>Router Agent</h3><p>C1–C5 · entities · risk level</p></div>
+        <div class="card" data-id="retr"><h3>Retrieval Agent</h3><p>Hybrid RAG over policies</p></div>
+        <div class="card" data-id="pe"><h3>Portfolio Eval</h3><p>Holdings · concentration</p></div>
+        <div class="card" data-id="mkt"><h3>Market Data</h3><p>Indicators · trends</p></div>
+        <div class="card" data-id="risk"><h3>Risk Agent</h3><p>Scorer · breach detect</p></div>
+        <div class="card" data-id="syn"><h3>Synthesis</h3><p>Tool-less, evidence only</p></div>
+        <div class="card" data-id="esc"><h3>Escalation Agent</h3><p>Human handoff envelope</p></div>
+      </div>
+    </section>
+    <div class="flow-arrow">? evidence from stores (read-only)</div>
+
+    <section class="layer l-data" data-layer="data">
+      <div class="layer-title"><span class="badge">4</span> Data / Knowledge Layer</div>
+      <div class="cards">
+        <div class="card" data-id="pdfs"><h3>Policy Corpus</h3><p>7 PDFs · page/section meta</p></div>
+        <div class="card" data-id="vec"><h3>pgvector</h3><p>policy_chunks embeddings</p></div>
+        <div class="card" data-id="db"><h3>finance_risk_db</h3><p>5 tables · SELECT-only</p></div>
+        <div class="card" data-id="tpl"><h3>SQL Templates</h3><p>18 named parameterized</p></div>
+        <div class="card" data-id="mem"><h3>Session Memory</h3><p>last N turns · entities</p></div>
+        <div class="card" data-id="authdb"><h3>finance_auth_db</h3><p>Users / JWT (separate)</p></div>
+      </div>
+    </section>
+    <div class="flow-arrow">? runtime platform</div>
+
+    <section class="layer l-infra" data-layer="infra">
+      <div class="layer-title"><span class="badge">5</span> Infrastructure Layer</div>
+      <div class="cards">
+        <div class="card" data-id="pg"><h3>PostgreSQL 16</h3><p>+ pgvector extension</p></div>
+        <div class="card" data-id="llm"><h3>OpenAI-compatible LLM</h3><p>router / agent / judge tiers</p></div>
+        <div class="card" data-id="docker"><h3>Docker Compose</h3><p>local · CI · prod stubs</p></div>
+        <div class="card" data-id="eval"><h3>Eval Harness</h3><p>50 golden + attack suite</p></div>
+      </div>
+    </section>
+
+    <div class="cross">
+      <section class="layer l-safety" data-layer="safety">
+        <div class="layer-title"><span class="badge">X1</span> Safety &amp; Governance (cross-cutting)</div>
+        <div class="cards">
+          <div class="card" data-id="gin"><h3>Input Guardrail</h3><p>override / bypass / injection</p></div>
+          <div class="card" data-id="rules"><h3>E1–E8 Engine</h3><p>deterministic hard gates</p></div>
+          <div class="card" data-id="gout"><h3>Output Validator</h3><p>citations · no advice</p></div>
+          <div class="card" data-id="rbac"><h3>RBAC Filter</h3><p>0 unauthorized access</p></div>
+        </div>
+      </section>
+      <section class="layer l-obs" data-layer="obs">
+        <div class="layer-title"><span class="badge">X2</span> Observability &amp; Cost (cross-cutting)</div>
+        <div class="cards">
+          <div class="card" data-id="logs"><h3>structlog JSON</h3><p>per-request audit</p></div>
+          <div class="card" data-id="trace"><h3>OpenTelemetry</h3><p>span per agent node</p></div>
+          <div class="card" data-id="met"><h3>Prometheus</h3><p>/metrics</p></div>
+          <div class="card" data-id="cost"><h3>Token / Cost Meter</h3><p>per category spend</p></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <p class="legend">
+    Colour bands: blue = UI · teal = Application · purple = AI agents · amber = Data · slate = Infra · coral = Safety · sky = Observability
+  </p>
+
+  <div class="steps" id="steps"></div>
+  <footer>
+    Source: planning/03_Initial_System_Blueprint.md · planning/06_High_Level_Architecture.md ·
+    style inspired by EdrawMax AI system architecture template
+  </footer>
+</div>
+
+<script>
+const STEPS = [
+  {
+    title: "Users enter via the Interface layer",
+    note: "Analysts, risk managers, PMs, and compliance ask natural-language questions through the frontend / API client.",
+    layers: ["ui"],
+    cards: ["analyst", "riskmgr", "pm", "compliance", "ui"],
+  },
+  {
+    title: "Application layer authenticates the request",
+    note: "FastAPI accepts POST /api/v1/query, resolves JWT ? role + allowed_portfolio_ids, and stamps trace_id.",
+    layers: ["app"],
+    cards: ["api", "auth", "schemas"],
+  },
+  {
+    title: "Safety runs before any expensive AI work",
+    note: "Input guardrail blocks override / bypass / injection. Escalation rules E1–E8 are deterministic hard gates.",
+    layers: ["safety"],
+    cards: ["gin", "rules", "rbac"],
+  },
+  {
+    title: "AI layer routes and fans out agents",
+    note: "Router classifies C1–C5. Retrieval, Portfolio Eval, Market Data, and Risk collaborate through GraphState — not free chat.",
+    layers: ["ai"],
+    cards: ["router", "retr", "pe", "mkt", "risk"],
+  },
+  {
+    title: "Data layer supplies grounded evidence",
+    note: "pgvector holds 7 policy PDFs; finance_risk_db answers structured lookups via named SQL templates only.",
+    layers: ["data"],
+    cards: ["pdfs", "vec", "db", "tpl"],
+  },
+  {
+    title: "Synthesis + validation produce the answer",
+    note: "Tool-less Synthesis may only use the evidence bundle. Output validator enforces citations, no advice, disclaimer.",
+    layers: ["ai", "safety", "app"],
+    cards: ["syn", "gout", "api"],
+  },
+  {
+    title: "Escalation or observability close the loop",
+    note: "High-risk paths hand off to a human with full context. Every node emits logs, traces, metrics, and cost.",
+    layers: ["ai", "safety", "obs", "infra"],
+    cards: ["esc", "rules", "logs", "trace", "cost", "llm"],
+  },
+];
+
+let step = 0;
+let playing = true;
+let ms = 1800;
+let timer = null;
+
+function applyStep() {
+  const s = STEPS[step];
+  document.getElementById("note").innerHTML = `<strong>Step ${step + 1} of ${STEPS.length}: ${s.title}</strong><br/>${s.note}`;
+  document.getElementById("stepPill").textContent = `Step ${step + 1} of ${STEPS.length}`;
+
+  document.querySelectorAll(".layer").forEach((el) => {
+    el.style.opacity = s.layers.includes(el.dataset.layer) ? "1" : "0.45";
+  });
+  document.querySelectorAll(".card").forEach((el) => {
+    el.classList.toggle("active", s.cards.includes(el.dataset.id));
+  });
+
+  const stepsEl = document.getElementById("steps");
+  stepsEl.innerHTML = "";
+  STEPS.forEach((st, i) => {
+    const b = document.createElement("button");
+    b.className = "step" + (i === step ? " on" : "") + (i < step ? " done" : "");
+    b.innerHTML = `<div class="step-num">${i + 1}</div>
+      <div><p class="step-title">${st.title}</p><p class="step-note">${st.note}</p></div>`;
+    b.onclick = () => { step = i; applyStep(); };
+    stepsEl.appendChild(b);
+  });
+}
+
+function tick() {
+  if (!playing) return;
+  step = (step + 1) % STEPS.length;
+  applyStep();
+}
+function restart() {
+  clearInterval(timer);
+  timer = setInterval(tick, ms);
+}
+
+document.getElementById("playBtn").onclick = () => {
+  playing = !playing;
+  document.getElementById("playBtn").textContent = playing ? "Pause" : "Play";
+  document.getElementById("playBtn").className = playing ? "primary" : "";
+  if (playing) restart();
+};
+document.getElementById("prevBtn").onclick = () => {
+  step = (step - 1 + STEPS.length) % STEPS.length; applyStep();
+};
+document.getElementById("nextBtn").onclick = () => {
+  step = (step + 1) % STEPS.length; applyStep();
+};
+document.getElementById("speedSelect").onchange = (e) => {
+  ms = Number(e.target.value); restart();
+};
+
+applyStep();
+restart();
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && typeof playing !== "undefined" && playing) {
+    if (typeof restartTimer === "function") restartTimer();
+    else if (typeof restart === "function") restart();
+  }
+});
+</script>
+</body>
+</html>

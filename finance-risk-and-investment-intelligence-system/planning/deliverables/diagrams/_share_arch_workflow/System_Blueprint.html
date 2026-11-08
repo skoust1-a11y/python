@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Finalized System Blueprint — Finance Risk &amp; Investment Intelligence</title>
+<style>
+  :root {
+    --ink: #111827; --muted: #4b5563; --line: #d1d5db; --paper: #f8fafc;
+    --blue: #1d4ed8; --blue-bg: #dbeafe; --blue-ink: #1e3a8a;
+    --green: #15803d; --green-bg: #dcfce7; --green-ink: #14532d;
+    --purple: #6d28d9; --purple-bg: #ede9fe; --purple-ink: #4c1d95;
+    --orange: #c2410c; --orange-bg: #ffedd5; --orange-ink: #7c2d12;
+    --teal: #0f766e; --teal-bg: #ccfbf1; --teal-ink: #134e4a;
+    --red: #b91c1c; --red-bg: #fee2e2; --red-ink: #7f1d1d;
+    --dark: #111827; --dark-bg: #1f2937;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 18px 22px 16px;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: #fff; color: var(--ink);
+    width: 1680px;
+  }
+  h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.02em; }
+  .kicker { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); }
+  .sub { margin: 0 0 14px; color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+  .row { display: flex; gap: 10px; align-items: stretch; }
+  .arrow {
+    flex: 0 0 22px; display: flex; align-items: center; justify-content: center;
+    color: #6b7280; font-size: 22px; font-weight: 700;
+  }
+  .stage {
+    flex: 1; border: 2px solid; border-radius: 10px; padding: 9px 10px 10px;
+    min-height: 220px;
+  }
+  .num {
+    display: inline-flex; width: 22px; height: 22px; border-radius: 50%;
+    align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 800;
+    margin-right: 6px;
+  }
+  .stage h2 { margin: 0 0 7px; font-size: 13px; display: flex; align-items: center; }
+  .stage ul { margin: 0; padding-left: 16px; font-size: 11.2px; line-height: 1.45; }
+  .stage li { margin: 0 0 2px; }
+  .s1 { background: var(--blue-bg); border-color: var(--blue); color: var(--blue-ink); }
+  .s1 .num { background: var(--blue); }
+  .s2 { background: var(--green-bg); border-color: var(--green); color: var(--green-ink); }
+  .s2 .num { background: var(--green); }
+  .s3 { background: var(--purple-bg); border-color: var(--purple); color: var(--purple-ink); }
+  .s3 .num { background: var(--purple); }
+  .s4 { background: var(--orange-bg); border-color: var(--orange); color: var(--orange-ink); }
+  .s4 .num { background: var(--orange); }
+  .s5 { background: var(--teal-bg); border-color: var(--teal); color: var(--teal-ink); }
+  .s5 .num { background: var(--teal); }
+  .s6 { background: var(--red-bg); border-color: var(--red); color: var(--red-ink); }
+  .s6 .num { background: var(--red); }
+  .s7 { background: var(--dark-bg); border-color: var(--dark); color: #f3f4f6; }
+  .s7 .num { background: #f59e0b; color: #111; }
+  .s7 ul { color: #e5e7eb; }
+  .cloud {
+    margin: 0 0 10px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  }
+  .cloud h3 {
+    margin: 0; padding: 7px 10px; font-size: 12px; background: #111827; color: #93c5fd;
+    letter-spacing: .04em; text-transform: uppercase;
+  }
+  .cloud table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .cloud th, .cloud td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  .cloud thead th { background: #f1f5f9; font-size: 10.5px; color: var(--muted); font-weight: 650; }
+  .cloud tbody th { width: 88px; background: #f8fafc; }
+  .cloud .now th { color: var(--teal); }
+  .cloud .later th { color: var(--blue); }
+  .map {
+    margin: 12px 0 8px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px;
+  }
+  .map .cell {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 9px; text-align: center;
+  }
+  .map strong { display: block; font-size: 12px; }
+  .map span { display: block; font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .mid { display: grid; grid-template-columns: 1.35fr .95fr; gap: 10px; }
+  .panel { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #fff; }
+  .panel h3 { margin: 0 0 8px; font-size: 13px; }
+  .usecases { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .uc { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  .uc b { display: block; font-size: 11.5px; margin-bottom: 3px; }
+  .uc span { font-size: 10.5px; color: var(--muted); line-height: 1.35; }
+  .xcut { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .x { border-left: 3px solid var(--blue); background: #eff6ff; border-radius: 0 8px 8px 0; padding: 7px 8px; }
+  .x b { display: block; font-size: 11px; }
+  .x span { font-size: 10.5px; color: var(--muted); }
+  .flow {
+    margin-top: 10px; background: #111827; color: #e5e7eb; border-radius: 10px; padding: 10px 12px;
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px;
+  }
+  .flow h3 { grid-column: 1 / -1; margin: 0 0 4px; font-size: 12px; color: #93c5fd; letter-spacing: .04em; text-transform: uppercase; }
+  .flow .step { font-size: 11px; line-height: 1.35; }
+  .flow .step b { display: block; color: #fff; margin-bottom: 2px; }
+  footer { margin-top: 8px; font-size: 10.5px; color: var(--muted); }
+  .note { font-size: 10.5px; color: #7c2d12; background: #ffedd5; border: 1px solid #fdba74; border-radius: 8px; padding: 6px 8px; margin: 0 0 10px; }
+  .course-note { font-size: 10.5px; color: #1e3a8a; background: #eff6ff; border: 1px solid #93c5fd; border-radius: 8px; padding: 6px 8px; margin: 0 0 12px; }
+  .hr {
+    margin: 0 0 12px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: #f8fafc;
+  }
+  .hr h3 { margin: 0 0 6px; font-size: 12px; }
+  .hr .grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .hr .cell { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 6px 7px; font-size: 10.5px; line-height: 1.35; }
+  .hr .cell b { display: block; font-size: 11px; margin-bottom: 2px; }
+  .outcomes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+  .out {
+    font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 3px 9px; border: 1px solid;
+  }
+  .out.ok { background: #dcfce7; border-color: #86efac; color: #14532d; }
+  .out.esc { background: #ffedd5; border-color: #fdba74; color: #7c2d12; }
+  .out.ref { background: #fee2e2; border-color: #fca5a5; color: #7f1d1d; }
+  .out.gap { background: #e5e7eb; border-color: #d1d5db; color: #374151; }
+</style>
+</head>
+<body>
+  <div class="kicker">Task 6 · Fixed 7 Sep 2026 · Matches capstone/app runtime</div>
+  <h1>Finalized System Blueprint — Finance Risk &amp; Investment Intelligence</h1>
+  <p class="sub">
+    Auth-first React → FastAPI → staged orchestration in <code>app/graph.py</code> (<code>run_query</code>) with C1–C5 paths →
+    lexical RAG over policy chunks + named SQL templates → deterministic E1–E8 → tool-less synthesis envelope.
+    Two Postgres databases stay split (auth ≠ finance). Cloud move changes env/host, not contracts.
+  </p>
+  <p class="course-note">
+    <b>Course wording vs this blueprint:</b> the course brief asks for LLM query understanding and vector search.
+    Capstone design (shown here): <b>deterministic router</b> for understanding/routing, <b>lexical token-overlap</b> retrieval over <code>policy_chunks</code>,
+    optional LLM only to polish synthesis. Agents collaborate via a shared evidence bundle in one sequential pipeline (not free-form agent chat).
+  </p>
+  <p class="note">
+    Runtime: multi-agent <b>pipeline</b> in <code>run_query</code> — not a separate LangGraph worker process.
+  </p>
+  <div class="outcomes">
+    <span class="out ok">answered (+ citations)</span>
+    <span class="out esc">escalated (HITL)</span>
+    <span class="out ref">refused (advice / secrets)</span>
+    <span class="out gap">insufficient_evidence</span>
+  </div>
+  <div class="hr">
+    <h3>Course-mandatory high-risk scenarios → architecture paths</h3>
+    <div class="grid5">
+      <div class="cell"><b>HR-1 Volatility risk</b>C4 · Retrieval + SQL + Market/Risk · EscCheck</div>
+      <div class="cell"><b>HR-2 Benchmarks</b>C1/C2/C3 · policy + holdings/SQL</div>
+      <div class="cell"><b>HR-3 Regulatory sectors</b>C1/C3 · regulatory PDFs + data</div>
+      <div class="cell"><b>HR-4 Unusual risk patterns</b>C2/C4 · risk_logs + Risk stage</div>
+      <div class="cell"><b>HR-5 Policy alignment</b>C3 hybrid · doc + sql citations</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <section class="stage s1">
+      <h2><span class="num">1</span>Users / Analysts</h2>
+      <ul>
+        <li>Analyst · Risk Manager · Compliance · Admin</li>
+        <li>JWT roles + portfolio scope</li>
+        <li>Ask policy / holdings / risk questions</li>
+        <li>Review escalations (role-gated)</li>
+        <li>Optional screens + document upload</li>
+      </ul>
+    </section>
+    <div class="arrow">→</div>
+    <section class="stage s2">
+      <h2><span class="num">2</span>Frontend Layer</h2>
+      <ul>
+        <li><b>React 18 + Vite + TypeScript</b></li>
+        <li>Auth gate: login / signup before <code>/app/*</code></li>
+        <li>Query · Screens · Escalations · Documents · Admin</li>
+        <li>Citations, routing panel, disclaimer, stream</li>
+        <li>Built <code>frontend/dist</code> served by FastAPI</li>
+      </ul>
+    </section>
+    <div class="arrow">→</div>
+    <section class="stage s3">
+      <h2><span class="num">3</span>Backend / API Layer</h2>
+      <ul>
+        <li><b>FastAPI</b> + uvicorn</li>
+        <li>JWT · RBAC · rate / cost caps</li>
+        <li><code>POST /api/v1/query</code> · <code>/query/stream</code></li>
+        <li>Screens · portfolios · documents · admin</li>
+        <li><code>/health</code> · <code>/health/ready</code> · <code>/metrics</code></li>
+        <li>Entry: <code>run_query(principal, request)</code></li>
+      </ul>
+    </section>
+    <div class="arrow">→</div>
+    <section class="stage s4">
+      <h2><span class="num">4</span>Offline ingest — not on query path</h2>
+      <ul>
+        <li>7 policy PDFs (byte-identical pack)</li>
+        <li>PDF extract → section chunks → <code>policy_chunks</code></li>
+        <li>SQL seed: 5 core finance tables + scaled rows</li>
+        <li><code>generate_capstone_sql_data.py</code> + <code>seed.py</code></li>
+        <li>Corpus via <code>LocalCorpusStore</code> (ADR-018)</li>
+      </ul>
+    </section>
+    <div class="arrow">→</div>
+    <section class="stage s5">
+      <h2><span class="num">5</span>Knowledge &amp; Storage</h2>
+      <ul>
+        <li><b>finance_auth_db</b> — users, sessions, turns, screens, traces</li>
+        <li><b>finance_risk_db</b> — portfolios, holdings, risk logs, indicators, decisions, policy_chunks</li>
+        <li>Optional <b>finance_stock_db</b> for ticker filings</li>
+        <li>Stable IDs: session, turn, trace, chunk, query_id</li>
+        <li>Local Documents/ · object storage later</li>
+      </ul>
+    </section>
+    <div class="arrow">→</div>
+    <section class="stage s6">
+      <h2><span class="num">6</span>Retrieval &amp; Intelligence</h2>
+      <ul>
+        <li>Input guard → deterministic Router (C1–C5)</li>
+        <li>Retrieval: lexical score over chunks</li>
+        <li>Portfolio Eval: named SQL templates + RBAC</li>
+        <li>Market Data: seeded indicators (live if <code>current</code>)</li>
+        <li>Risk: deterministic scorer / breaches</li>
+        <li>Agents share one evidence bundle (collaborate)</li>
+        <li>E1–E8 → Synthesis <b>or</b> Escalation / refuse / gap</li>
+      </ul>
+    </section>
+    <div class="arrow">→</div>
+    <section class="stage s7">
+      <h2><span class="num">7</span>Output Layer</h2>
+      <ul>
+        <li><b>answered</b> — ≥1 citation + disclaimer</li>
+        <li><b>escalated</b> — HITL envelope + reviewer</li>
+        <li><b>refused</b> — advice / secret / bypass</li>
+        <li><b>insufficient_evidence</b> — honest gap</li>
+        <li>Routing panel: category + agents_used</li>
+      </ul>
+    </section>
+  </div>
+
+  <div class="map">
+    <div class="cell"><strong>React + Vite</strong><span>Auth-first UI / static dist</span></div>
+    <div class="cell"><strong>FastAPI</strong><span>API + orchestration entry</span></div>
+    <div class="cell"><strong>Postgres × 2(+)</strong><span>auth DB ≠ risk DB</span></div>
+    <div class="cell"><strong>Lexical RAG</strong><span>policy_chunks token overlap</span></div>
+    <div class="cell"><strong>LLM (optional)</strong><span>synthesis polish when keyed</span></div>
+    <div class="cell"><strong>structlog + /metrics</strong><span>JSON logs · Prometheus</span></div>
+  </div>
+
+  <div class="cloud">
+    <h3>Deploy mapping — same app contracts; cloud changes env and host (doc 16 + deploy/)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Frontend</th>
+          <th>API</th>
+          <th>Databases</th>
+          <th>Corpus</th>
+          <th>Secrets</th>
+          <th>Observability</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="now">
+          <th>Now · local</th>
+          <td>Vite or <code>frontend/dist</code> on FastAPI</td>
+          <td>uvicorn · <code>deploy/Dockerfile</code> dry-run</td>
+          <td>Local Postgres: finance_auth_db ≠ finance_risk_db</td>
+          <td><code>Documents/</code> + uploads</td>
+          <td><code>.env</code> via pydantic-settings</td>
+          <td>stdout JSON · /metrics · OTel optional later</td>
+        </tr>
+        <tr class="later">
+          <th>Cloud later</th>
+          <td>Same static UI behind TLS</td>
+          <td>Same image × N replicas</td>
+          <td>Managed Postgres × 2 (split preserved)</td>
+          <td>Object storage for PDFs</td>
+          <td>Secret manager → env</td>
+          <td>Log drain · OTLP · managed metrics</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mid">
+    <div class="panel">
+      <h3>Product surfaces</h3>
+      <div class="usecases">
+        <div class="uc"><b>Query workspace</b><span>Natural-language ask. C1–C5 routing, citations, disclaimer on answered outcomes.</span></div>
+        <div class="uc"><b>Screens</b><span>Named filters over holdings / risk logs. Saved in auth DB. CSV export.</span></div>
+        <div class="uc"><b>Escalations</b><span>Role-gated queue. E1–E8 handoff. No override chips on refused/escalated.</span></div>
+        <div class="uc"><b>Documents</b><span>House PDFs + user uploads; ingest into chunks.</span></div>
+        <div class="uc"><b>Admin</b><span>Scope assign, health, reindex jobs.</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Cross-cutting services</h3>
+      <div class="xcut">
+        <div class="x"><b>Auth &amp; RBAC</b><span>JWT signup/login. Role + allowed_portfolio_ids. SQL executor scopes rows. SLO-13 = 0.</span></div>
+        <div class="x"><b>Guardrails E1–E8</b><span>Input patterns + post-evidence rules. Deterministic. Escalation recall / guardrail SLOs = 100%.</span></div>
+        <div class="x"><b>Config &amp; secrets</b><span>pydantic-settings. APP_ENV=local|ci|prod. Stub auth forbidden in prod.</span></div>
+        <div class="x"><b>Eval gate</b><span>Golden 50 + attack suite + negatives. Final report under eval/reports/final/.</span></div>
+        <div class="x"><b>Cost &amp; abuse</b><span>Rate limit, MAX_TOKENS_PER_REQUEST, DAILY_BUDGET_USD.</span></div>
+        <div class="x"><b>Non-advice</b><span>Refuse buy/sell solicitations; disclaimer on every envelope.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <h3>End-to-end flow (as implemented)</h3>
+    <div class="step"><b>Step 1</b>Analyst signs in (JWT). Role and portfolio scope attach.</div>
+    <div class="step"><b>Step 2</b>React posts /api/v1/query. FastAPI stamps trace_id; input_guard runs.</div>
+    <div class="step"><b>Step 3</b>Deterministic router picks C1–C5 (E1 forces C5).</div>
+    <div class="step"><b>Step 4</b>Evidence: lexical retrieve and/or named SQL templates (RBAC).</div>
+    <div class="step"><b>Step 5</b>Risk rules + E1–E8 on evidence; escalate or continue.</div>
+    <div class="step"><b>Step 6</b>Synthesis has no tools; optional LLM rewrite of grounded text.</div>
+    <div class="step"><b>Step 7</b>UI shows answer + citations, or refusal / handoff envelope.</div>
+  </div>
+
+  <footer>Binding code: <code>capstone/app/graph.py</code>, <code>rag.py</code>, <code>sqlq/</code>, <code>guardrails.py</code>. Synthetic/educational data — not investment advice. Regenerated 7 Sep 2026.</footer>
+</body>
+</html>

@@ -1,0 +1,821 @@
+{
+  "header": {
+    "generated": "2026-10-02T13:07:48.687017+00:00",
+    "chunks": 63,
+    "embedded": 63,
+    "seed": {
+      "users": 5,
+      "portfolios": 22,
+      "holdings": 122,
+      "risk_logs": 150,
+      "market_indicators": 80,
+      "decisions": 100,
+      "policy_chunks": 63,
+      "equities": 8
+    },
+    "model": "openai/gpt-oss-20b",
+    "questions": "holdout_queries.jsonl"
+  },
+  "golden": {
+    "counts": {
+      "faithfulness": [
+        59,
+        64
+      ],
+      "relevance": [
+        4,
+        5
+      ],
+      "precision": [
+        10,
+        12
+      ],
+      "recall": [
+        10,
+        10
+      ],
+      "accuracy": [
+        9,
+        12
+      ],
+      "critical": [
+        0,
+        2
+      ],
+      "risk": [
+        5,
+        5
+      ],
+      "tsr": [
+        3,
+        12
+      ],
+      "routing": [
+        9,
+        12
+      ],
+      "attribution": [
+        12,
+        12
+      ],
+      "escalation": [
+        2,
+        2
+      ],
+      "sql": [
+        1,
+        5
+      ],
+      "llm_answers": [
+        10,
+        12
+      ]
+    },
+    "faithfulness": 0.921875,
+    "relevance": 0.8,
+    "precision": 0.8333333333333334,
+    "recall": 1.0,
+    "accuracy": 0.75,
+    "critical_rate": 0.0,
+    "risk_classification": 1.0,
+    "n": 12,
+    "tsr": 0.25,
+    "routing": 0.75,
+    "attribution": 1.0,
+    "escalation_recall": 1.0,
+    "sql_correctness": 0.2,
+    "sql_ok_proxy": 0.9166666666666666,
+    "p95_ms": 2786,
+    "p50_ms": 2015,
+    "max_ms": 2786,
+    "latency_by_cat": {
+      "C1_RAG": {
+        "n": 5,
+        "p95": 2786
+      },
+      "C2_SQL": {
+        "n": 3,
+        "p95": 2585
+      },
+      "C3_HYBRID": {
+        "n": 2,
+        "p95": 1816
+      },
+      "C4_HIGH_RISK": {
+        "n": 2,
+        "p95": 681
+      }
+    },
+    "confusion": {
+      "C1_RAG->C1_RAG": 3,
+      "C1_RAG->C3_HYBRID": 2,
+      "C2_SQL->C2_SQL": 3,
+      "C3_HYBRID->C3_HYBRID": 1,
+      "C3_HYBRID->C1_RAG": 1,
+      "C4_HIGH_RISK->C4_HIGH_RISK": 2
+    },
+    "risk_labeled": 3
+  },
+  "attack": {},
+  "negative": {},
+  "judge": {
+    "n": 8,
+    "pass": 0.625,
+    "relevant": 6,
+    "failed": [
+      "HQ-C2-001",
+      "HQ-C2-002",
+      "HQ-C3-002"
+    ],
+    "verdicts": [
+      {
+        "query_id": "HQ-C1-001",
+        "query": "What drawdown breach threshold applies to a Medium risk portfolio?",
+        "pass": true,
+        "relevant": true
+      },
+      {
+        "query_id": "HQ-C1-003",
+        "query": "What regulatory disclosure obligations do we have?",
+        "pass": true,
+        "relevant": true
+      },
+      {
+        "query_id": "HQ-C1-004",
+        "query": "How is a conviction rating assigned to research output?",
+        "pass": true,
+        "relevant": true
+      },
+      {
+        "query_id": "HQ-C1-005",
+        "query": "How are risk-weighted assets treated under Basel III?",
+        "pass": true,
+        "relevant": true
+      },
+      {
+        "query_id": "HQ-C2-001",
+        "query": "List portfolios benchmarked against MSCI World.",
+        "pass": false,
+        "relevant": false
+      },
+      {
+        "query_id": "HQ-C2-002",
+        "query": "Show assets whose risk_level is High.",
+        "pass": false,
+        "relevant": false
+      },
+      {
+        "query_id": "HQ-C2-003",
+        "query": "Show holdings in the Energy sector.",
+        "pass": true,
+        "relevant": true
+      },
+      {
+        "query_id": "HQ-C3-002",
+        "query": "Do the indicators with a Rising trend match the trend identification signals in our market research guide?",
+        "pass": false,
+        "relevant": true
+      }
+    ]
+  },
+  "rbac": {
+    "rows_checked": 11,
+    "violations": 0
+  },
+  "slo": [
+    {
+      "id": 1,
+      "name": "Faithfulness",
+      "target": ">=80%",
+      "value": 0.921875,
+      "count": "59/64",
+      "pass": true
+    },
+    {
+      "id": 2,
+      "name": "Answer Relevance",
+      "target": ">=75%",
+      "value": 0.75,
+      "count": "6/8",
+      "pass": true
+    },
+    {
+      "id": 3,
+      "name": "Context Precision",
+      "target": ">=70%",
+      "value": 0.8333333333333334,
+      "count": "10/12",
+      "pass": true
+    },
+    {
+      "id": 4,
+      "name": "Latency C1/C2 p95",
+      "target": "<=2000ms",
+      "value": 2786,
+      "count": null,
+      "pass": false
+    },
+    {
+      "id": 5,
+      "name": "Accuracy",
+      "target": ">=85%",
+      "value": 0.75,
+      "count": "9/12",
+      "pass": false
+    },
+    {
+      "id": 6,
+      "name": "Recall",
+      "target": ">=75%",
+      "value": 1.0,
+      "count": "10/10",
+      "pass": true
+    },
+    {
+      "id": 7,
+      "name": "LLM as a judge",
+      "target": ">=80%",
+      "value": 0.625,
+      "count": "5/8",
+      "pass": false
+    },
+    {
+      "id": 8,
+      "name": "Task Success Rate",
+      "target": ">=90%",
+      "value": 0.25,
+      "count": "3/12",
+      "pass": false
+    },
+    {
+      "id": 9,
+      "name": "SQL Correctness",
+      "target": ">=95%",
+      "value": 0.2,
+      "count": "1/5",
+      "pass": false
+    },
+    {
+      "id": 10,
+      "name": "Source Attribution",
+      "target": "100%",
+      "value": 1.0,
+      "count": "12/12",
+      "pass": true
+    },
+    {
+      "id": 11,
+      "name": "Critical Misclassification",
+      "target": "<3%",
+      "value": 0.0,
+      "count": "0/2",
+      "pass": true
+    },
+    {
+      "id": 12,
+      "name": "Escalation Recall",
+      "target": "100%",
+      "value": 1.0,
+      "count": "2/2",
+      "pass": true
+    },
+    {
+      "id": 13,
+      "name": "RBAC violations",
+      "target": "0",
+      "value": 0,
+      "count": "0 in 11 analyst rows",
+      "pass": true
+    },
+    {
+      "id": 14,
+      "name": "Guardrail Effectiveness",
+      "target": "100%",
+      "value": 0,
+      "count": null,
+      "pass": false
+    },
+    {
+      "id": 15,
+      "name": "Query Routing Accuracy",
+      "target": ">=95%",
+      "value": 0.75,
+      "count": "9/12",
+      "pass": false
+    },
+    {
+      "id": 16,
+      "name": "Risk Classification",
+      "target": ">=95%",
+      "value": 1.0,
+      "count": "5/5",
+      "pass": true
+    }
+  ],
+  "fails": [
+    "HQ-C1-001 What drawdown breach threshold applies to a Medium risk port (C1_RAG vs C1_RAG)",
+    "HQ-C1-002 Which stress-testing scenarios are mandatory under the risk  (C1_RAG vs C3_HYBRID)",
+    "HQ-C1-003 What regulatory disclosure obligations do we have? (C1_RAG vs C3_HYBRID)",
+    "HQ-C1-004 How is a conviction rating assigned to research output? (C1_RAG vs C1_RAG)",
+    "HQ-C1-005 How are risk-weighted assets treated under Basel III? (C1_RAG vs C1_RAG)",
+    "HQ-C2-001 List portfolios benchmarked against MSCI World. (C2_SQL vs C2_SQL)",
+    "HQ-C2-002 Show assets whose risk_level is High. (C2_SQL vs C2_SQL)",
+    "HQ-C2-003 Show holdings in the Energy sector. (C2_SQL vs C2_SQL)",
+    "HQ-C3-002 Do the indicators with a Rising trend match the trend identi (C3_HYBRID vs C1_RAG)"
+  ],
+  "load": {},
+  "rows": [
+    {
+      "query_id": "HQ-C1-001",
+      "query": "What drawdown breach threshold applies to a Medium risk portfolio?",
+      "tsr": false,
+      "route_ok": true,
+      "expected_category": "C1_RAG",
+      "got_category": "C1_RAG",
+      "outcome_ok": true,
+      "outcome": "answered",
+      "esc_ok": true,
+      "cites_ok": true,
+      "mode_ok": true,
+      "lat_ok": false,
+      "latency_ms": 2786,
+      "attribution_ok": true,
+      "sql_ids": [],
+      "triggers": [],
+      "risk_level": null,
+      "trace_id": "trc_2a6c1a43186907f9",
+      "llm": true,
+      "grounded": [
+        2,
+        2
+      ],
+      "points": [
+        0,
+        1
+      ],
+      "docs_cited": [
+        "02_Risk_Management_Exposure_Policy",
+        "05_Portfolio_Monitoring_Performance_Evaluation_Guide"
+      ],
+      "docs_expected": [
+        "05_Portfolio_Monitoring_Performance_Evaluation_Guide"
+      ],
+      "accuracy_ok": true,
+      "high_risk": false,
+      "critical_miss": false,
+      "risk_ok": null
+    },
+    {
+      "query_id": "HQ-C1-002",
+      "query": "Which stress-testing scenarios are mandatory under the risk policy?",
+      "tsr": false,
+      "route_ok": false,
+      "expected_category": "C1_RAG",
+      "got_category": "C3_HYBRID",
+      "outcome_ok": true,
+      "outcome": "answered",
+      "esc_ok": true,
+      "cites_ok": true,
+      "mode_ok": false,
+      "lat_ok": false,
+      "latency_ms": 2301,
+      "attribution_ok": true,
+      "sql_ids": [
+        "risk_logs.by_score_threshold",
+        "portfolios.all_in_scope",
+        "decisions.by_approval_status"
+      ],
+      "triggers": [],
+      "risk_level": "High",
+      "trace_id": "trc_f99fd06ec39a7aa8",
+      "llm": true,
+      "grounded": [
+        7,
+        7
+      ],
+      "points": [
+        1,
+        1
+      ],
+      "docs_cited": [
+        "02_Risk_Management_Exposure_Policy"
+      ],
+      "docs_expected": [
+        "02_Risk_Management_Exposure_Policy"
+      ],
+      "accuracy_ok": false,
+      "high_risk": false,
+      "critical_miss": false,
+      "risk_ok": true
+    },
+    {
+      "query_id": "HQ-C1-003",
+      "query": "What regulatory disclosure obligations do we have?",
+      "tsr": false,
+      "route_ok": false,
+      "expected_category": "C1_RAG",
+      "got_category": "C3_HYBRID",
+      "outcome_ok": true,
+      "outcome": "answered",
+      "esc_ok": true,
+      "cites_ok": true,
+      "mode_ok": false,
+      "lat_ok": false,
+      "latency_ms": 2144,
+      "attribution_ok": true,
+      "sql_ids": [
+        "risk_logs.by_score_threshold",
+        "portfolios.all_in_scope",
+        "decisions.by_approval_status"
+      ],
+      "triggers": [],
+      "risk_level": "High",
+      "trace_id": "trc_f16a59ce78405af1",
+      "llm": true,
+      "grounded": [
+        10,
+        10
+      ],
+      "points": [
+        1,
+        1
+      ],
+      "docs_cited": [
+        "03_Regulatory_Compliance_Financial_Governance_Policy"
+      ],
+      "docs_expected": [
+        "03_Regulatory_Compliance_Financial_Governance_Policy"
+      ],
+      "accuracy_ok": false,
+      "high_risk": false,
+      "critical_miss": false,
+      "risk_ok": true
+    },
+    {
+      "query_id": "HQ-C1-004",
+      "query": "How is a conviction rating assigned to research output?",
+      "tsr": false,
+      "route_ok": true,
+      "expected_category": "C1_RAG",
+      "got_category": "C1_RAG",
+      "outcome_ok": true,
+      "outcome": "answered",
+      "esc_ok": true,
+      "cites_ok": true,
+      "mode_ok": true,
+      "lat_ok": false,
+      "latency_ms": 2015,
+      "attribution_ok": true,
+      "sql_ids": [],
+      "triggers": [],
+      "risk_level": null,
+      "trace_id": "trc_e17bcb7140957310",
+      "llm": true,
+      "grounded": [
+        6,
+        8
+      ],
+      "points": [
+        1,
+        1
+      ],
+      "docs_cited": [
+        "04_Market_Analysis_Investment_Research_Guide"
+      ],
+      "docs_expected": [
+        "04_Market_Analysis_Investment_Research_Guide"
+      ],
+      "accuracy_ok": true,
+      "high_risk": false,
+      "critical_miss": false,
+      "risk_ok": null
+    },
+    {
+      "query_id": "HQ-C1-005",
+      "query": "How are risk-weighted assets treated under Basel III?",
+      "tsr": false,
+      "route_ok": true,
+      "expected_category": "C1_RAG",
+      "got_category": "C1_RAG",
+      "outcome_ok": true,
+      "outcome": "answered",
+      "esc_ok": true,
+      "cites_ok": true,
+      "mode_ok": true,
+      "lat_ok": false,
+      "latency_ms": 2209,
+      "attribution_ok": true,
+      "sql_ids": [],
+      "triggers": [],
+      "risk_level": null,
+      "trace_id": "trc_2c03f0bccf07d667",
+      "llm": true,
+      "grounded": [
+        3,
+        3
+      ],
+      "points": [
+        1,
+        1
+      ],
+      "docs_cited": [
+        "06_Basel_III_Risk_Management_Summary"
+      ],
+      "docs_expected": [
+        "06_Basel_III_Risk_Management_Summary"
+      ],
+      "accuracy_ok": true,
+      "high_risk": false,
+      "critical_miss": false,
+      "risk_ok": null
+    },
+    {
+      "query_id": "HQ-C2-001",
+      "query": "List portfolios benchmarked against MSCI World.",
+      "tsr": false,
+      "route_ok": true,
+      "expected_category": "C2_SQL",
+      "got_category": "C2_SQL",
+      "outcome_ok": true,
+      "outcome": "answered",
+      "esc_ok": true,
+      "cites_ok": true,
+      "mode_ok": true,
+      "lat_ok": true,
+      "latency_ms": 644,
+      "attribution_ok": true,
+      "sql_ids": [
+        "portfolios.all_in_scope"
+      ],
+      "triggers": [],
+      "risk_level": null,
+      "trace_id": "trc_bbb7395e787f9fad",
+      "llm": true,
+      "grounded": [
+        4,
+        5
+      ],
+      "points": [
+        0,
+        0
+      ],
+      "docs_cited": [],
+      "docs_expected": [],
+      "accuracy_ok": true,
+      "high_risk": false,
+      "critical_miss": false,
+      "risk_ok": null
+    },
+    {
+      "query_id": "HQ-C2-002",
+      "query": "Show assets whose risk_level is High.",
+      "tsr": false,
+      "route_ok": true,
+      "expected_category": "C2_SQL",
+      "got_category": "C2_SQL",
+      "outcome_ok": true,
+      "outcome": "answered",
+      "esc_ok": true,
+      "cites_ok": true,
+      "mode_ok": true,
+      "lat_ok": true,
+      "latency_ms": 841,
+      "attribution_ok": true,
+      "sql_ids": [
+        "portfolios.all_in_scope"
+      ],
+      "triggers": [],
+      "risk_level": null,
+      "trace_id": "trc_ecc30b778cd2b276",
+      "llm": true,
+      "grounded": [
+        6,
+        6
+      ],
+      "points": [
+        0,
+        0
+      ],
+      "docs_cited": [],
+      "docs_expected": [],
+      "accuracy_ok": true,
+      "high_risk": false,
+      "critical_miss": false,
+      "risk_ok": null
+    },
+    {
+      "query_id": "HQ-C2-003",
+      "query": "Show holdings in the Energy sector.",
+      "tsr": false,
+      "route_ok": true,
+      "expected_category": "C2_SQL",
+      "got_category": "C2_SQL",
+      "outcome_ok": true,
+      "outcome": "answered",
+      "esc_ok": true,
+      "cites_ok": true,
+      "mode_ok": true,
+      "lat_ok": false,
+      "latency_ms": 2585,
+      "attribution_ok": true,
+      "sql_ids": [
+        "holdings.sector_concentration_by_portfolio"
+      ],
+      "triggers": [],
+      "risk_level": null,
+      "trace_id": "trc_75c5c1f759bfe65c",
+      "llm": true,
+      "grounded": [
+        0,
+        1
+      ],
+      "points": [
+        0,
+        0
+      ],
+      "docs_cited": [],
+      "docs_expected": [],
+      "accuracy_ok": true,
+      "high_risk": false,
+      "critical_miss": false,
+      "risk_ok": null
+    },
+    {
+      "query_id": "HQ-C3-001",
+      "query": "Are assets with escalation_flag TRUE handled according to the escalation triggers in our risk assessment framework?",
+      "tsr": true,
+      "route_ok": true,
+      "expected_category": "C3_HYBRID",
+      "got_category": "C3_HYBRID",
+      "outcome_ok": true,
+      "outcome": "answered",
+      "esc_ok": true,
+      "cites_ok": true,
+      "mode_ok": true,
+      "lat_ok": true,
+      "latency_ms": 1816,
+      "attribution_ok": true,
+      "sql_ids": [
+        "risk_logs.escalation_flagged",
+        "portfolios.all_in_scope",
+        "decisions.by_approval_status"
+      ],
+      "triggers": [],
+      "risk_level": "High",
+      "trace_id": "trc_080f6434733fc22d",
+      "llm": true,
+      "grounded": [
+        12,
+        13
+      ],
+      "points": [
+        0,
+        0
+      ],
+      "docs_cited": [
+        "07_Investment_Risk_Assessment_Framework"
+      ],
+      "docs_expected": [
+        "07_Investment_Risk_Assessment_Framework"
+      ],
+      "accuracy_ok": true,
+      "high_risk": false,
+      "critical_miss": false,
+      "risk_ok": true
+    },
+    {
+      "query_id": "HQ-C3-002",
+      "query": "Do the indicators with a Rising trend match the trend identification signals in our market research guide?",
+      "tsr": false,
+      "route_ok": false,
+      "expected_category": "C3_HYBRID",
+      "got_category": "C1_RAG",
+      "outcome_ok": true,
+      "outcome": "answered",
+      "esc_ok": true,
+      "cites_ok": false,
+      "mode_ok": false,
+      "lat_ok": true,
+      "latency_ms": 1417,
+      "attribution_ok": true,
+      "sql_ids": [],
+      "triggers": [],
+      "risk_level": null,
+      "trace_id": "trc_98999b485a79a4f7",
+      "llm": true,
+      "grounded": [
+        9,
+        9
+      ],
+      "points": [
+        0,
+        0
+      ],
+      "docs_cited": [
+        "04_Market_Analysis_Investment_Research_Guide"
+      ],
+      "docs_expected": [
+        "04_Market_Analysis_Investment_Research_Guide"
+      ],
+      "accuracy_ok": false,
+      "high_risk": false,
+      "critical_miss": false,
+      "risk_ok": null
+    },
+    {
+      "query_id": "HQ-C4-001",
+      "query": "Can we approve a new high-risk emerging market position before the risk committee reviews it?",
+      "tsr": true,
+      "route_ok": true,
+      "expected_category": "C4_HIGH_RISK",
+      "got_category": "C4_HIGH_RISK",
+      "outcome_ok": true,
+      "outcome": "escalated",
+      "esc_ok": true,
+      "cites_ok": true,
+      "mode_ok": true,
+      "lat_ok": true,
+      "latency_ms": 681,
+      "attribution_ok": true,
+      "sql_ids": [
+        "risk_logs.by_score_threshold",
+        "portfolios.all_in_scope",
+        "market_indicators.latest_by_name_region"
+      ],
+      "triggers": [
+        "E2",
+        "E3"
+      ],
+      "risk_level": "High",
+      "trace_id": "trc_d2691f9eecc137c8",
+      "llm": false,
+      "grounded": [
+        0,
+        0
+      ],
+      "points": [
+        0,
+        0
+      ],
+      "docs_cited": [
+        "02_Risk_Management_Exposure_Policy",
+        "07_Investment_Risk_Assessment_Framework"
+      ],
+      "docs_expected": [
+        "02_Risk_Management_Exposure_Policy",
+        "07_Investment_Risk_Assessment_Framework"
+      ],
+      "accuracy_ok": true,
+      "high_risk": true,
+      "critical_miss": false,
+      "risk_ok": true
+    },
+    {
+      "query_id": "HQ-C4-002",
+      "query": "Should we add more to a high-risk holding while its escalation flag is still open?",
+      "tsr": true,
+      "route_ok": true,
+      "expected_category": "C4_HIGH_RISK",
+      "got_category": "C4_HIGH_RISK",
+      "outcome_ok": true,
+      "outcome": "escalated",
+      "esc_ok": true,
+      "cites_ok": true,
+      "mode_ok": true,
+      "lat_ok": true,
+      "latency_ms": 594,
+      "attribution_ok": true,
+      "sql_ids": [
+        "risk_logs.by_score_threshold",
+        "portfolios.all_in_scope",
+        "market_indicators.latest_by_name_region"
+      ],
+      "triggers": [
+        "E2",
+        "E3"
+      ],
+      "risk_level": "High",
+      "trace_id": "trc_d332539bf8b38df9",
+      "llm": false,
+      "grounded": [
+        0,
+        0
+      ],
+      "points": [
+        0,
+        0
+      ],
+      "docs_cited": [
+        "02_Risk_Management_Exposure_Policy",
+        "07_Investment_Risk_Assessment_Framework"
+      ],
+      "docs_expected": [
+        "02_Risk_Management_Exposure_Policy"
+      ],
+      "accuracy_ok": true,
+      "high_risk": true,
+      "critical_miss": false,
+      "risk_ok": true
+    }
+  ]
+}

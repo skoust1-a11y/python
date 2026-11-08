@@ -1,0 +1,6 @@
+-- Golden-set preconditions (12 §1.2 step 4). Applied in app.sqlq.seed.apply_golden_extensions.
+-- >=3 assets with risk_score > 80 and escalation_flag TRUE
+-- >=1 holding with allocation_percentage > 25 in Technology (Nvidia holding_id=5)
+-- >=1 portfolio per Low / Medium / High
+-- >=2 pending/under-review decisions, one referencing a flagged risk log
+-- >=1 High assessment older than 180 days (Tesla risk_id=4)

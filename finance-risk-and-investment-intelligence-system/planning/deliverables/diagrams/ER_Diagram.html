@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ER Diagram — Finance Risk &amp; Investment Intelligence</title>
+<style>
+  body { margin: 0; padding: 16px 18px; font-family: "Segoe UI", system-ui, sans-serif; color: #111827; width: 1600px; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  .kicker { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #1d4ed8; }
+  .sub { margin: 0 0 12px; color: #4b5563; font-size: 12px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .db { border: 2px solid; border-radius: 10px; padding: 10px; }
+  .auth { border-color: #1d4ed8; background: #eff6ff; }
+  .risk { border-color: #0f766e; background: #f0fdfa; }
+  .db h2 { margin: 0 0 8px; font-size: 14px; }
+  .tables { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .t { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 7px 8px; }
+  .t b { display: block; font-size: 12px; margin-bottom: 3px; }
+  .t span { font-size: 10.5px; color: #4b5563; line-height: 1.4; }
+  .pk { color: #1d4ed8; font-weight: 700; }
+  .fk { color: #b45309; }
+  footer { margin-top: 10px; font-size: 11px; color: #4b5563; }
+</style>
+</head>
+<body>
+  <div class="kicker">Capstone data model · ADR-020</div>
+  <h1>Entity-Relationship Diagram — two Postgres databases</h1>
+  <p class="sub">finance_auth_db ≠ finance_risk_db. Query path reads risk/vector; identity and memory stay on auth. Source: capstone/app/models.py.</p>
+  <div class="grid">
+    <section class="db auth">
+      <h2>finance_auth_db (no vectors)</h2>
+      <div class="tables">
+        <div class="t"><b>users</b><span><span class="pk">user_id</span> PK · email UK · password_hash · role · portfolio_ids · status · last_login_at</span></div>
+        <div class="t"><b>sessions</b><span><span class="pk">session_id</span> PK · <span class="fk">user_id</span> → users · expires_at (TTL 60 min)</span></div>
+        <div class="t"><b>turns</b><span><span class="pk">turn_id</span> PK · <span class="fk">session_id</span> → sessions · query · outcome · category · envelope_json · last 5 used as memory</span></div>
+        <div class="t"><b>saved_screens</b><span><span class="pk">screen_id</span> PK · <span class="fk">user_id</span> → users · name · definition JSON</span></div>
+        <div class="t"><b>escalations</b><span><span class="pk">escalation_id</span> PK · trace_id · triggers · reviewer · envelope_json</span></div>
+        <div class="t"><b>traces</b><span><span class="pk">trace_id</span> PK · session_id · category · outcome · spans_json</span></div>
+        <div class="t"><b>audit_log</b><span><span class="pk">audit_id</span> PK · trace_id · query_id · role · row_count · duration_ms</span></div>
+        <div class="t"><b>idempotency_keys</b><span><span class="pk">key</span> PK · user_id · envelope_json</span></div>
+      </div>
+    </section>
+    <section class="db risk">
+      <h2>finance_risk_db + pgvector</h2>
+      <div class="tables">
+        <div class="t"><b>portfolios</b><span><span class="pk">portfolio_id</span> PK · name · manager · risk_category · total_value · benchmark</span></div>
+        <div class="t"><b>portfolio_holdings</b><span><span class="pk">holding_id</span> PK · <span class="fk">portfolio_id</span> → portfolios · asset · sector · allocation% · market_value</span></div>
+        <div class="t"><b>asset_risk_logs</b><span><span class="pk">risk_id</span> PK · asset_name · risk_score · risk_level · escalation_flag · assessment_date</span></div>
+        <div class="t"><b>market_indicators</b><span><span class="pk">indicator_id</span> PK · name · region · value · trend · measurement_date (seeded)</span></div>
+        <div class="t"><b>investment_decisions</b><span><span class="pk">decision_id</span> PK · <span class="fk">portfolio_id</span> · <span class="fk">risk_assessment_reference</span> → asset_risk_logs · approval_status</span></div>
+        <div class="t"><b>policy_chunks</b><span><span class="pk">chunk_id</span> PK · doc_id · section · page · chunk_text · embedding (pgvector)</span></div>
+        <div class="t"><b>equity_universe</b><span><span class="pk">symbol</span> PK · company · sector · market_cap · is_active</span></div>
+        <div class="t"><b>equity_fundamentals</b><span><span class="pk">id</span> PK · <span class="fk">symbol</span> → equity_universe · pe/pb/roe · UK(symbol, period_end, period_type)</span></div>
+      </div>
+    </section>
+  </div>
+  <footer>
+    Relationships: users 1—N sessions/turns/saved_screens · portfolios 1—N holdings/decisions · asset_risk_logs 1—N decisions (optional) · equity_universe 1—N fundamentals.
+    Risk bands: Low &lt;30 · Medium 30–69 · High ≥70 · escalation_flag TRUE iff score &gt;80. SQL only via named templates + executor RBAC. Corpus only — current market adapters out of scope.
+  </footer>
+</body>
+</html>
