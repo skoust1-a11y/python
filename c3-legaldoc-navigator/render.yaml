@@ -1,0 +1,90 @@
+services:
+  - type: web
+    name: c3-legaldoc-navigator-api
+    runtime: python
+    plan: starter
+    autoDeploy: true
+    healthCheckPath: /health
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_HOST
+        value: 0.0.0.0
+      - key: LOG_LEVEL
+        value: INFO
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SYNC_URL
+        sync: false
+      - key: VECTOR_BACKEND
+        value: qdrant
+      - key: VECTOR_DIMENSION
+        value: "1536"
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: QDRANT_COLLECTION_NAME
+        value: document_embeddings
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_PATH_PREFIX
+        value: uploads
+      - key: MAX_UPLOAD_SIZE_MB
+        value: "50"
+      - key: ALLOWED_EXTENSIONS
+        value: '["pdf","docx","txt"]'
+      - key: EMBEDDING_PROVIDER
+        value: openai
+      - key: DEFAULT_LLM_PROVIDER
+        value: openai
+      - key: FALLBACK_LLM_PROVIDER
+        value: anthropic
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_EMBEDDING_MODEL
+        value: text-embedding-3-small
+      - key: OPENAI_CHAT_MODEL
+        value: gpt-4o-mini
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_CHAT_MODEL
+        value: claude-3-5-sonnet-20241022
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_CHAT_MODEL
+        value: gemini-2.5-flash
+      - key: GEMINI_EMBEDDING_MODEL
+        value: gemini-embedding-001
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_CHAT_MODEL
+        value: llama-3.3-70b-versatile
+      - key: ENABLE_GUARDRAILS
+        value: "true"
+      - key: ENABLE_CONTEXT_COMPRESSION
+        value: "true"
+      - key: MCP_ENABLED
+        value: "false"
+      - key: ENABLE_LANGFUSE
+        value: "false"

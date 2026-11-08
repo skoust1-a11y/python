@@ -1,0 +1,46 @@
+{
+  "name": "legal-doc-benchmark",
+  "description": "Golden-set benchmark for legal document RAG evaluation (sample contract)",
+  "items": [
+    {
+      "question": "What is the notice period required for termination under this agreement?",
+      "ground_truth": "Either party may terminate upon thirty (30) days written notice.",
+      "reference_contexts": [
+        "Either party may terminate upon thirty (30) days written notice."
+      ],
+      "tags": ["termination", "contract"]
+    },
+    {
+      "question": "When does this Master Services Agreement commence?",
+      "ground_truth": "This Agreement shall commence on the Effective Date.",
+      "reference_contexts": [
+        "This Agreement shall commence on the Effective Date."
+      ],
+      "tags": ["term", "contract"]
+    },
+    {
+      "question": "How is Confidential Information protected under this agreement?",
+      "ground_truth": "All Confidential Information shall be protected in accordance with applicable law.",
+      "reference_contexts": [
+        "All Confidential Information shall be protected in accordance with applicable law."
+      ],
+      "tags": ["confidentiality", "contract"]
+    },
+    {
+      "question": "What does the term Services mean in this agreement?",
+      "ground_truth": "Services means the professional services described in Exhibit A.",
+      "reference_contexts": [
+        "\"Services\" means the professional services described in Exhibit A."
+      ],
+      "tags": ["definitions", "contract"]
+    },
+    {
+      "question": "What is defined as the Agreement in Section 1?",
+      "ground_truth": "Agreement means this Master Services Agreement.",
+      "reference_contexts": [
+        "\"Agreement\" means this Master Services Agreement."
+      ],
+      "tags": ["definitions", "contract"]
+    }
+  ]
+}
