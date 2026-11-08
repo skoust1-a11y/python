@@ -2,3 +2,6 @@
 .env.local
 .env.test
 .envbackup
+__pycache__/
+*.pyc
+.coverage
