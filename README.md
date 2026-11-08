@@ -1,6 +1,6 @@
 # python
 
-My course projects (copied from https://gitlab.example.com/skoust1, history kept).
+My Agentic AI with Python course projects (commit history kept).
 
 - `python-programming/` – Python practice exercises and the Python capstone
 - `deploy-intelligent-conversational-agents/` – trip & travel planner agent practices, Azure AI chat

@@ -23,8 +23,8 @@ No database, Docker, Docker Compose, Redis, or other local infrastructure is use
 Origin URL from this repository:
 
 ```bash
-git clone https://gitlab.example.com/c4-autonomous-investement-strategy/c4-autonomous-investment-strategy-board.git
-cd c4-autonomous-investment-strategy-board
+git clone https://github.com/skoust1-a11y/python.git
+cd python/capstones/c4-investment-strategy-board/c4-autonomous-investment-strategy-board
 ```
 
 If you already have a local copy, enter that directory instead.
@@ -214,8 +214,8 @@ Prerequisites already installed. Run the backend and frontend in two terminals.
 **Windows**
 
 ```bat
-git clone https://gitlab.example.com/c4-autonomous-investement-strategy/c4-autonomous-investment-strategy-board.git
-cd c4-autonomous-investment-strategy-board
+git clone https://github.com/skoust1-a11y/python.git
+cd python/capstones/c4-investment-strategy-board/c4-autonomous-investment-strategy-board
 
 python -m venv .venv
 .venv\Scripts\activate
@@ -231,8 +231,8 @@ npm run dev
 **macOS / Linux**
 
 ```bash
-git clone https://gitlab.example.com/c4-autonomous-investement-strategy/c4-autonomous-investment-strategy-board.git
-cd c4-autonomous-investment-strategy-board
+git clone https://github.com/skoust1-a11y/python.git
+cd python/capstones/c4-investment-strategy-board/c4-autonomous-investment-strategy-board
 
 python -m venv .venv
 source .venv/bin/activate
